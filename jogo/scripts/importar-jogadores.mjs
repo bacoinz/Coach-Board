@@ -60,6 +60,13 @@ function indice(tabela, nome) {
   return indices[tabela].get(nome);
 }
 
+// As 6 facetas da carta: PAC SHO PAS DRI DEF PHY, ou DIV HAN KIC REF SPD POS nos guarda-redes.
+const facetas = (r) =>
+  (r.position === 'GK'
+    ? [r.goalkeeping_diving, r.goalkeeping_handling, r.goalkeeping_kicking, r.goalkeeping_reflexes, r.movement_sprint_speed, r.goalkeeping_positioning]
+    : [r.pace, r.shooting, r.passing, r.dribbling, r.defending, r.physicality]
+  ).map(Number);
+
 const avisos = [];
 const jogadores = [];
 for (const r of registos) {
@@ -92,6 +99,7 @@ for (const r of registos) {
     overall,
     Number(r.attacking_finishing),
     Number(r.attacking_short_passing),
+    facetas(r),
   ]);
 }
 jogadores.sort((a, b) => b[COLUNAS.indexOf('overall')] - a[COLUNAS.indexOf('overall')]);
@@ -121,10 +129,11 @@ console.log(`ficheiro: ${(json.length / 1024).toFixed(0)} KB em JSON, ${(gz.leng
 console.log('por linha:', Object.fromEntries(contar(jogadores, (j) => LINHA[col(j, 'posicao')])));
 console.log('por posição:', Object.fromEntries(contar(jogadores, (j) => col(j, 'posicao'))));
 console.log('plantel inicial (70–78):', jogadores.filter((j) => entre(j, 'overall', 70, 78)).length);
-console.log('jovens do draft (18–21 anos, 60–68):', jogadores.filter((j) => entre(j, 'idade', 18, 21) && entre(j, 'overall', 60, 68)).length);
-console.log('escolha extra do último (≤ 25 anos, 77–82):', jogadores.filter((j) => col(j, 'idade') <= 25 && entre(j, 'overall', 77, 82)).length);
-console.log('Jovens Talentos (< 23 anos, 79–81):', jogadores.filter((j) => col(j, 'idade') < 23 && entre(j, 'overall', 79, 81)).length);
-console.log('baralho do Mercado (70–88):', jogadores.filter((j) => entre(j, 'overall', 70, 88)).length);
+const criterio = (c) => (j) => entre(j, 'idade', ...c.idade) && entre(j, 'overall', ...c.overall);
+console.log('jovens do draft:', jogadores.filter(criterio(CONFIG.draft.jovem)).length);
+CONFIG.draft.extra.forEach((c, n) => console.log(`escolha extra do último (${n + 1}):`, jogadores.filter(criterio(c)).length));
+console.log('Jovens Talentos:', jogadores.filter(criterio(CONFIG.cartas.jovensTalentos)).length);
+for (const [n, f] of CONFIG.mercado.fases.entries()) if (f) console.log(`Mercado, faixa da fase ${n} (${f[0]}–${f[1]}):`, jogadores.filter((j) => entre(j, 'overall', ...f)).length);
 const valorTotal = jogadores.reduce((s, j) => s + valorMercado(col(j, 'overall'), col(j, 'idade')), 0);
 console.log(`valor de mercado de toda a base: ${valorTotal.toFixed(0)} M€`);
 if (avisos.length) console.log(`${avisos.length} avisos:`, avisos.slice(0, 10));

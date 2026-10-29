@@ -1,0 +1,566 @@
+/* The Gaffer: ecrã do jogo (janela de transferências), tabuleiro 2D e cartas de jogador. */
+
+/* --- Barra e grelha --- */
+.barra-jogo {
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  .barra-marca .barra-nome {
+    display: none;
+  }
+  .barra-info {
+    order: 5;
+    flex-basis: 100%;
+    font-size: 13px;
+  }
+  .barra-jogo {
+    gap: 6px 10px;
+  }
+}
+.barra-dinheiro {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 20px;
+  letter-spacing: 0.03em;
+  color: var(--destaque-2);
+  white-space: nowrap;
+}
+.barra-dinheiro strong {
+  font-weight: 400;
+}
+.barra-fase {
+  color: var(--muted);
+  margin-left: 6px;
+}
+.jogo-grelha {
+  display: grid;
+  gap: 14px;
+  padding: 14px 16px 24px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'acao' 'tabuleiro' 'lado';
+}
+.col-acao {
+  grid-area: acao;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.col-acao p {
+  margin: 0;
+}
+.col-tabuleiro {
+  grid-area: tabuleiro;
+  min-width: 0;
+  container-type: inline-size;
+}
+.casa-rotulo .curto {
+  display: none;
+}
+@container (max-width: 760px) {
+  .casa-rotulo .longo {
+    display: none;
+  }
+  .casa-rotulo .curto {
+    display: inline;
+  }
+  .casa {
+    border-top-width: 4px;
+    padding: 1px;
+  }
+}
+.col-lado {
+  grid-area: lado;
+  min-width: 0;
+}
+@media (min-width: 1100px) {
+  .jogo-grelha {
+    grid-template-columns: minmax(420px, 640px) minmax(340px, 1fr) minmax(300px, 380px);
+    grid-template-areas: 'tabuleiro acao lado';
+    align-items: start;
+    height: calc(100dvh - 56px);
+  }
+  .col-acao,
+  .col-lado {
+    max-height: calc(100dvh - 90px);
+    overflow-y: auto;
+  }
+}
+@media (min-width: 760px) and (max-width: 1099px) {
+  .jogo-grelha {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas: 'tabuleiro acao' 'lado lado';
+    align-items: start;
+  }
+}
+
+/* --- Tabuleiro --- */
+.tabuleiro {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  grid-template-rows: repeat(11, minmax(0, 1fr));
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2a1812, var(--castanho));
+  border: 1px solid var(--destaque-borda);
+  box-shadow: 0 20px 50px #0008;
+}
+.casa {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #f4ead8;
+  color: #2b1a0e;
+  padding: 2px;
+  border-top: 5px solid var(--cor-casa, #8a6a4f);
+}
+.casa-rotulo {
+  font-size: clamp(6px, 1.05vw, 10px);
+  font-weight: 800;
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+.casa-canto .casa-rotulo {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(8px, 1.4vw, 14px);
+}
+.casa-mercado { --cor-casa: #b07a46; }
+.casa-rede { --cor-casa: #2563eb; }
+.casa-empresario { --cor-casa: #7c3aed; }
+.casa-medico { --cor-casa: #16a34a; }
+.casa-patrocinio { --cor-casa: #ca8a04; }
+.casa-jovens { --cor-casa: #ea580c; }
+.casa-inicio { --cor-casa: #3d241d; background: #e9d5b5; }
+.fichas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.ficha {
+  width: clamp(7px, 1.4vw, 13px);
+  height: clamp(7px, 1.4vw, 13px);
+  border-radius: 50%;
+  background: var(--c1);
+  border: 2px solid var(--c2);
+  box-shadow: 0 1px 2px #0008;
+}
+.ficha-vez {
+  outline: 2px solid #111;
+  animation: pulsar 1.2s ease-in-out infinite;
+}
+.tabuleiro-centro {
+  grid-area: 2 / 2 / 11 / 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  border-radius: 10px;
+  background:
+    radial-gradient(70% 70% at 50% 45%, #1a5a37 0%, #0d2a1b 100%);
+  color: var(--text);
+  padding: 8px;
+}
+.centro-logo {
+  opacity: 0.85;
+}
+.centro-vez {
+  margin: 0;
+  font-size: clamp(11px, 1.8vw, 16px);
+}
+.dados {
+  display: flex;
+  gap: 10px;
+}
+.dado {
+  width: clamp(30px, 6vw, 48px);
+  height: clamp(30px, 6vw, 48px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 15%;
+  border-radius: 18%;
+  background: #fbf8ef;
+  box-shadow: inset 0 -3px 0 #0003, 0 4px 10px #0006;
+  animation: bater 0.3s ease-out;
+}
+.dado i.p {
+  width: 70%;
+  height: 70%;
+  margin: auto;
+  border-radius: 50%;
+  background: #2b1a0e;
+}
+
+/* --- Painel de ação --- */
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.opcao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.destaque-carta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.leilao-info {
+  flex: 1;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.valor-grande {
+  font-family: var(--display);
+  font-size: 36px;
+  line-height: 1;
+  color: var(--destaque-2);
+}
+.lance {
+  display: flex;
+  gap: 8px;
+}
+.lance .campo {
+  max-width: 140px;
+}
+.progresso {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.anfitriao {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+/* --- Listas de jogadores --- */
+.lista-jogadores {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.linha-jog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: #ffffff08;
+  cursor: pointer;
+  font-size: 13px;
+}
+.linha-jog:hover {
+  background: #ffffff12;
+}
+.linha-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linha-nome small {
+  color: var(--muted);
+  font-weight: 600;
+}
+.linha-sub {
+  display: none;
+}
+.linha-pos {
+  width: 34px;
+  flex: none;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--destaque-2);
+}
+.linha-valor {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.linha-tags {
+  display: flex;
+  gap: 3px;
+}
+.tag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: #ffffff14;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tag-onze {
+  background: var(--castanho);
+  color: var(--destaque-2);
+}
+.mini-ovr {
+  flex: none;
+  width: 28px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  font-family: var(--display);
+  font-size: 14px;
+  color: #2b1a0e;
+  background: #d8dde3;
+}
+.mini-bronze { background: linear-gradient(180deg, #e0a66c, #a8693a); }
+.mini-prata { background: linear-gradient(180deg, #eef1f4, #a7b0ba); }
+.mini-ouro { background: linear-gradient(180deg, #f7dc8a, #c8963a); }
+.mini-raro { background: linear-gradient(180deg, #c49a6c, #3d241d); color: #fbf3e6; }
+.linha-fecho input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--destaque);
+}
+
+/* --- Coluna lateral --- */
+.separadores {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.separador-btn {
+  flex: 1;
+  border: 1px solid #ffffff1f;
+  background: #00000040;
+  border-radius: 10px;
+  padding: 7px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.separador-btn[aria-selected='true'] {
+  border-color: var(--destaque);
+  background: var(--destaque-suave);
+}
+.equipa-lado {
+  border-radius: 10px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: #ffffff06;
+}
+.equipa-lado.eu {
+  box-shadow: inset 0 0 0 1px var(--destaque-borda);
+}
+.equipa-lado summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.equipa-lado summary::-webkit-details-marker {
+  display: none;
+}
+.equipa-lado .quem {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.equipa-lado .quem small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* --- Diálogos --- */
+.dialogo-jogador {
+  width: min(94vw, 640px);
+}
+.jogador-detalhe {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.jogador-acoes {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ficha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 14px;
+}
+.ficha dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ficha dd {
+  margin: 0;
+  font-weight: 700;
+}
+.troca-colunas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  max-height: 55dvh;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+@media (max-width: 520px) {
+  .jogador-detalhe,
+  .troca-colunas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .jogador-detalhe .carta {
+    margin: 0 auto;
+  }
+}
+
+/* --- Carta de jogador (estilo Ultimate Team) --- */
+.carta {
+  --largura: 168px;
+  position: relative;
+  width: var(--largura);
+  aspect-ratio: 0.7;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12% 9% 8%;
+  color: #2b1a0e;
+  clip-path: polygon(50% 0, 88% 4%, 100% 12%, 100% 86%, 50% 100%, 0 86%, 0 12%, 12% 4%);
+  background: linear-gradient(160deg, var(--c-claro), var(--c-escuro));
+  font-size: calc(var(--largura) / 14);
+  filter: drop-shadow(0 6px 14px #0008);
+}
+.carta::before {
+  content: '';
+  position: absolute;
+  inset: 3%;
+  clip-path: inherit;
+  border: 1px solid #ffffff66;
+  pointer-events: none;
+}
+.carta-pequena { --largura: 120px; }
+.carta-grande { --largura: 210px; }
+.carta-bronze { --c-claro: #e7b07a; --c-escuro: #8f5a32; }
+.carta-prata { --c-claro: #f4f6f8; --c-escuro: #9aa4ae; }
+.carta-ouro { --c-claro: #fbe39a; --c-escuro: #c08b35; }
+.carta-raro { --c-claro: #d9b48c; --c-escuro: #3d241d; color: #fbf3e6; }
+.carta-raro::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, #ffffff40 50%, transparent 65%);
+  background-size: 250% 100%;
+  animation: brilho-carta 3.5s linear infinite;
+  pointer-events: none;
+}
+.carta-topo {
+  position: absolute;
+  top: 13%;
+  left: 12%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.95;
+  z-index: 1;
+}
+.carta-ovr {
+  font-family: var(--display);
+  font-size: 2.3em;
+}
+.carta-pos {
+  font-weight: 800;
+  font-size: 0.95em;
+}
+.carta-marca {
+  margin-top: 3px;
+  font-size: 0.7em;
+  font-weight: 800;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: #0003;
+}
+.carta-foto {
+  width: 62%;
+  aspect-ratio: 1;
+  margin-left: 16%;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+}
+.carta-silhueta {
+  width: 82%;
+  fill: currentColor;
+  opacity: 0.35;
+}
+.carta-nome {
+  width: 100%;
+  text-align: center;
+  font-family: var(--display);
+  text-transform: uppercase;
+  font-size: 1.15em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+}
+.carta-facetas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10%;
+  width: 84%;
+  margin-top: 4%;
+  font-size: 0.82em;
+  font-weight: 600;
+}
+.carta-facetas b {
+  font-weight: 900;
+}
+.carta-rodape {
+  margin-top: auto;
+  text-align: center;
+  font-size: 0.6em;
+  font-weight: 700;
+  line-height: 1.15;
+  opacity: 0.85;
+  max-width: 80%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+@keyframes brilho-carta {
+  from { background-position: 150% 0; }
+  to { background-position: -100% 0; }
+}

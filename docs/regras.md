@@ -39,18 +39,21 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
 - Antes do tabuleiro, uma escolha de cada vez, pela **classificação invertida**. Na 1.ª época a ordem é aleatória e
   cada um tem uma escolha.
 - Em cada escolha aparecem **3 jogadores**. Fica-se com um e paga-se um preço abaixo do valor de mercado.
-- **Último classificado**: 2 escolhas, uma jovem promessa (18–21 anos) e um jogador até 82 de overall e até 25 anos.
-  Esse jogador entra no onze ou é vendido, e só à banca.
-- **Restantes**: 1 jovem promessa (18–21 anos).
+- **Jovem promessa**: até 21 anos (desde o mais novo da base, 16), overall 60–68.
+- **Último classificado**: 2 escolhas, uma jovem promessa e uma **escolha extra**, em que cada uma das 3 opções é:
+  - um veterano com **mais de 33 anos e overall 80–85**; ou
+  - um jogador com **21–23 anos e overall 78–82**.
+
+  O jogador da escolha extra entra no onze ou é vendido, e só à banca.
+- **Restantes**: 1 jovem promessa.
 
 ### 3.3 Formação (jovens)
-- Os jovens do draft são a formação do clube. Entram com overall 60–68 e um **potencial escondido entre 85 e 95**.
-- O plantel pode ter **um 12.º jogador**, desde que seja da formação.
+- Os jovens do draft são a formação do clube. Recebem um **potencial escondido entre 85 e 95**.
+- Os jovens da formação **podem ser titulares**: é a jogar que crescem.
+- O plantel pode ter **um 12.º jogador**, fora do onze, desde que seja da formação.
 - No fim de cada época crescem entre **+2** (quase não jogou) e **+8** (jogou quase tudo), proporcionalmente aos
   minutos e sem passar o potencial. O valor de mercado acompanha.
-- Com **mais de 21 anos e mais de 78 de overall**, o jovem passa para o plantel principal e o lugar da formação fica
-  livre.
-- **[A]** Um jovem que chegue com o lugar da formação ocupado conta como jogador normal no fecho da janela.
+- Com **mais de 21 anos e mais de 78 de overall**, o jovem passa para o plantel principal.
 
 ### 3.4 Tabuleiro de mercado (40 casas)
 
@@ -73,13 +76,13 @@ Totais: Mercado 17, Empresário 6, Rede 5, Patrocínio 5, Médico 3, Jovens Tale
 **[A]** Quem já completou as voltas continua na rotação, sem dados: só pode fazer propostas e usar o Empresário.
 
 **As casas:**
-- **Mercado**: sai uma carta de jogador do baralho. Compras pelo valor de mercado ou passas. Se passares, há
-  **leilão** entre todos. **[A]** O baralho só tem jogadores reais sem equipa, com overall entre 70 e 88 (a
-  configuração alarga este intervalo com o avançar das épocas).
+- **Mercado**: sai uma carta de jogador do baralho (jogadores reais sem equipa, ver 3.4.1). Compras pelo valor de
+  mercado ou passas. Se passares, há **leilão** entre todos, a partir do preço base.
 - **Rede de observação**: carta de uma liga que dá **20% de desconto** nos jogadores dessa liga que saiam no Mercado.
   Máximo **2 por treinador**: ao calhar a terceira, descarta-se uma.
-- **Jovens Talentos**: um jogador com **80 de overall e menos de 23 anos**. Com mais de 21 entra no plantel
-  principal; senão conta como formação.
+- **Jovens Talentos**: um jogador com **overall 78–82 e até 23 anos**. Compra-se pelo valor de mercado ou vai a
+  leilão, como no Mercado **[A]**. Com até 21 anos entra na formação (com potencial escondido); senão, no plantel
+  principal.
 - **Empresário**: carta guardada na mão, com três usos:
   - inflacionar a cláusula de um jogador teu para **2× o valor de mercado** (uma vez por jogador);
   - **anular** um Empresário usado contra ti;
@@ -87,6 +90,36 @@ Totais: Mercado 17, Empresário 6, Rede 5, Patrocínio 5, Médico 3, Jovens Tale
     leilão.
 - **Departamento médico**: carta guardada na mão para curar uma lesão.
 - **Patrocínio**: sai uma carta de marca ou patrocinador (ver secção 5). Aceitas ou recusas.
+
+#### 3.4.1 Baralho do Mercado: as fases
+O nível dos jogadores que saem no Mercado sobe ao longo da partida. Cada época tem uma **fase** (a mesma tabela de
+fases dos patrocínios), e cada fase tem uma **faixa principal** de overall. Cada carta sai:
+- **60%** da faixa principal;
+- **30%** de baixo (de 70 até à faixa);
+- **10%** de cima (da faixa até ao melhor da base).
+
+Por isso continua a ser possível calhar um jogador melhor ou pior do que a faixa.
+
+| Fase | Faixa principal | Jogadores na base |
+|---|---|---:|
+| 1 | 78–81 | 623 |
+| 2 | 80–83 | 373 |
+| 3 | 82–84 | 177 |
+| 4 | 83–86 | 150 |
+| 5 | 85–87 | 67 |
+| 6 | 86–89 | 54 |
+| 7 | 88 ou mais | 29 |
+
+| Partida | Fase de cada época | Faixa principal por época |
+|---|---|---|
+| 3 épocas | 1 · 4 · 7 | 78–81 · 83–86 · 88+ |
+| 5 épocas | 1 · 3 · 4 · 6 · 7 | 78–81 · 82–84 · 83–86 · 86–89 · 88+ |
+| 8 épocas | 1 · 2 · 3 · 4 · 4 · 5 · 6 · 7 | 78–81 · 80–83 · 82–84 · 83–86 · 83–86 · 85–87 · 86–89 · 88+ |
+| 10 épocas | 1 · 2 · 2 · 3 · 4 · 4 · 5 · 6 · 6 · 7 | 78–81 · 80–83 · 80–83 · 82–84 · 83–86 · 83–86 · 85–87 · 86–89 · 86–89 · 88+ |
+
+A subida é mais lenta do que "+4 por época" porque o topo da base é pequeno: só há 65 jogadores com 86 ou mais e 29
+com 88 ou mais. Se a faixa sorteada estiver vazia (todos com equipa), a carta sai da faixa mais próxima. Faixas,
+percentagens e fases estão em `CONFIG.mercado`.
 
 ### 3.5 Propostas e leilões
 - **Na tua vez** podes fazer uma proposta por **qualquer jogador de outra equipa**, exceto um que tenha sido comprado
@@ -104,8 +137,8 @@ Totais: Mercado 17, Empresário 6, Rede 5, Patrocínio 5, Médico 3, Jovens Tale
 
 ### 3.6 Fecho da janela
 - A janela fecha quando todos completaram as voltas e confirmaram **Fechar janela** (ou quando o anfitrião força).
-- Durante a janela o plantel não tem limite. No fecho, só podes ficar com **11 (+1 da formação)** e o onze tem de
-  encaixar na formação escolhida.
+- Durante a janela o plantel não tem limite. No fecho, só podes ficar com o **onze**, que tem de encaixar na formação
+  escolhida, e **um 12.º fora do onze, se for da formação**. O jogo sugere o melhor onze; podes mudá-lo.
 - **Posições a mais**: escolhes quem sai, e esse jogador é vendido à banca ao preço base.
 - **Posição em falta**: recebes um jogador emprestado de overall baixo até à próxima janela.
 - Quem não mudou de patrocínio nesta janela recebe o **prémio de extensão**.

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>The Gaffer</title>
+  <meta name="description" content="Cria o teu clube, compra e vende num tabuleiro de mercado e disputa a liga contra os teus amigos, época após época.">
+  <meta name="theme-color" content="#3d241d">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="The Gaffer">
+  <meta property="og:title" content="The Gaffer">
+  <meta property="og:description" content="Cria o teu clube, compra e vende num tabuleiro de mercado e disputa a liga contra os teus amigos, época após época.">
+  <!-- O Worker põe aqui o URL absoluto (o Discord não aceita caminhos relativos). -->
+  <meta property="og:image" content="/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fontes/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fontes/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/tema.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/jogo.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <div class="fundo" aria-hidden="true"><div class="fundo-circulo"></div></div>
+
+  <!-- Início -->
+  <main id="ecra-inicio" class="ecra ecra-centro" hidden>
+    <header class="marca">
+      <img class="logo" src="/favicon.svg" alt="" width="72" height="72">
+      <h1 class="titulo"><span>The</span> <span class="caramelo">Gaffer</span></h1>
+      <p class="subtitulo">Cria o teu clube, compra e vende num tabuleiro de mercado e disputa a liga contra os teus amigos, época após época.</p>
+    </header>
+    <section class="cartao">
+      <label class="rotulo" for="nome">O teu nome</label>
+      <input id="nome" class="campo" maxlength="16" placeholder="Ex.: Mister" autocomplete="nickname" spellcheck="false">
+      <button id="btn-criar" class="btn btn-principal" type="button"><span aria-hidden="true">＋</span> Criar sala</button>
+      <p class="separador">ou entra numa sala</p>
+      <form id="form-entrar" class="linha">
+        <input id="codigo" class="campo campo-codigo" maxlength="4" placeholder="CÓDIGO" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Código da sala">
+        <button class="btn btn-fantasma" type="submit">Entrar</button>
+      </form>
+      <p id="erro-inicio" class="erro" role="alert"></p>
+    </section>
+    <button class="btn btn-contorno" type="button" data-abrir="dialogo-como">Como jogar</button>
+  </main>
+
+  <!-- Entrada por link -->
+  <main id="ecra-nome" class="ecra ecra-centro" hidden>
+    <header class="marca marca-pequena">
+      <img class="logo" src="/favicon.svg" alt="" width="52" height="52">
+      <h1 class="titulo"><span>The</span> <span class="caramelo">Gaffer</span></h1>
+    </header>
+    <form id="form-nome" class="cartao">
+      <p class="rotulo">Sala <strong id="nome-codigo" class="codigo-inline"></strong></p>
+      <label class="rotulo" for="nome-link">O teu nome</label>
+      <input id="nome-link" class="campo" maxlength="16" placeholder="Ex.: Mister" autocomplete="nickname" spellcheck="false" required>
+      <button class="btn btn-principal" type="submit">Entrar na sala</button>
+      <a class="ligacao-voltar" href="/">Voltar ao início</a>
+    </form>
+  </main>
+
+  <!-- Lobby -->
+  <main id="ecra-lobby" class="ecra ecra-centro" hidden>
+    <header class="marca marca-pequena">
+      <img class="logo" src="/favicon.svg" alt="" width="52" height="52">
+      <h1 class="titulo"><span>The</span> <span class="caramelo">Gaffer</span></h1>
+    </header>
+    <div id="lobby" class="sala-grelha"></div>
+  </main>
+
+  <!-- Jogo -->
+  <div id="ecra-jogo" class="ecra" hidden>
+    <header class="barra-jogo">
+      <div class="barra-marca">
+        <img src="/favicon.svg" alt="" width="28" height="28">
+        <span class="barra-nome">The <span class="caramelo">Gaffer</span></span>
+      </div>
+      <p id="barra-info" class="barra-info"></p>
+      <p id="barra-dinheiro" class="barra-dinheiro"></p>
+      <button class="btn btn-mini" type="button" data-abrir="dialogo-como">Como jogar</button>
+      <button id="btn-sair" class="btn btn-mini" type="button">Sair</button>
+    </header>
+    <main class="jogo-grelha">
+      <section id="col-acao" class="col-acao painel" aria-live="polite"></section>
+      <section id="col-tabuleiro" class="col-tabuleiro"></section>
+      <aside class="col-lado painel">
+        <div class="separadores" role="tablist">
+          <button class="separador-btn" role="tab" data-separador="equipas" aria-selected="true">Equipas</button>
+          <button class="separador-btn" role="tab" data-separador="registo" aria-selected="false">Registo</button>
+        </div>
+        <div id="lado-equipas"></div>
+        <ol id="lado-registo" class="feed" hidden></ol>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="dialogo-jogador" class="dialogo dialogo-jogador"></dialog>
+  <dialog id="dialogo-troca" class="dialogo"></dialog>
+
+  <dialog id="dialogo-como" class="dialogo">
+    <h2 class="titulo titulo-medio"><span>Como</span> <span class="caramelo">jogar</span></h2>
+    <ol class="regras">
+      <li><span>Cada um é o <strong>treinador</strong> de uma equipa: começa com o mesmo orçamento, 11 jogadores (média 75), uma marca e dois patrocinadores.</span></li>
+      <li><span>Cada época tem duas <strong>janelas de transferências</strong> (verão e inverno), cada uma seguida de meio campeonato.</span></li>
+      <li><span>Na janela escolhes a <strong>formação</strong>, fazes o <strong>draft</strong> de um jogador (quem está em último escolhe primeiro) e jogas no <strong>tabuleiro</strong>: duas voltas no verão, uma no inverno.</span></li>
+      <li><span>No tabuleiro, as casas dão jogadores no <strong>Mercado</strong> (compras ou vai a leilão), cartas de <strong>Empresário</strong> e do <strong>Departamento médico</strong>, <strong>Redes de observação</strong> (20% de desconto numa liga), <strong>Jovens Talentos</strong> e <strong>Patrocínios</strong>.</span></li>
+      <li><span>Na tua vez podes fazer uma <strong>proposta</strong> por qualquer jogador de outro treinador: abre leilão para todos e o dono decide, exceto se bateres a cláusula (aí a venda é obrigatória). Clica num jogador para propor.</span></li>
+      <li><span>O <strong>Empresário</strong> inflaciona a cláusula de um jogador teu para 2×, anula outro Empresário usado contra ti, ou compra um jogador em exclusivo pela cláusula de 1×, sem leilão.</span></li>
+      <li><span>Vender à banca (preço base) e trocas diretas podem fazer-se a qualquer altura da janela.</span></li>
+      <li><span>No fecho da janela ficas com <strong>11 + 1 da formação</strong>, encaixados na formação escolhida. Os lugares vazios recebem um emprestado.</span></li>
+      <li><span>No fim das épocas escolhidas, ganha quem tiver <strong>mais campeonatos</strong>. O desempate é pelos pontos de todas as épocas.</span></li>
+      <li><span>Quem entra com a partida a decorrer fica a ver e joga a partir da <strong>janela seguinte</strong>.</span></li>
+    </ol>
+    <form method="dialog"><button class="btn btn-principal" type="submit">Percebi</button></form>
+  </dialog>
+
+  <div id="aviso-ligacao" class="aviso-ligacao" hidden>A ligar ao servidor…</div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</body>
+</html>

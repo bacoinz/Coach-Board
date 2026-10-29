@@ -41,13 +41,14 @@ npm run valores    # tabela de valores, para validar as fórmulas
 | Sorteio | Critério | Jogadores |
 |---|---|---:|
 | Plantel inicial | overall 70–78 | 4 575 |
-| Jovens do draft | 18–21 anos, overall 60–68 | 1 955 |
-| Escolha extra do último | ≤ 25 anos, overall 77–82 | 314 |
-| Jovens Talentos | < 23 anos, overall 79–81 | 34 |
-| Baralho do Mercado | overall 70–88 | 5 215 |
+| Jovens do draft | até 21 anos, overall 60–68 | 2 003 |
+| Escolha extra do último (A) | mais de 33 anos, overall 80–85 | 48 |
+| Escolha extra do último (B) | 21–23 anos, overall 78–82 | 96 |
+| Jovens Talentos | até 23 anos, overall 78–82 | 115 |
+| Baralho do Mercado | overall 70 ou mais, por fases (docs/regras.md, 3.4.1) | 5 215 |
 
-São só 34 jogadores com menos de 23 anos e overall à volta de 80. Chegam para uma partida, porque cada um só pode
-sair uma vez. Se faltarem, o intervalo alarga-se na configuração no passo 3.
+A base também guarda as 6 facetas de cada carta (VEL, REM, PAS, DRI, DEF, FÍS; nos guarda-redes MER, MÃO, PON, REF,
+VEL, POS), que aparecem nas cartas de jogador.
 
 ## Fórmulas (`src/config.js` → `valores`, `src/motor/valores.js`)
 - **Valor de mercado** = 8 M€ × e^(0,2 × (overall − 75)) × fator da idade. Cada ponto de overall vale ~22% mais.
