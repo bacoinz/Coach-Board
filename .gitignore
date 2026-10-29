@@ -1,0 +1,6 @@
+node_modules/
+.wrangler/
+.dev.vars
+dados/brutos/*
+!dados/brutos/.gitkeep
+*.gen.js

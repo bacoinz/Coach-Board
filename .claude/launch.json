@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "mockup", "runtimeExecutable": "node", "runtimeArgs": ["jogo/scripts/servir.mjs", "8791"], "port": 8791 }
+  ]
+}

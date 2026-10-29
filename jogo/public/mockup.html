@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>The Gaffer — mockup do tema</title>
+  <meta name="description" content="Mercado de transferências estilo Monopólio e campeonato entre amigos. Compra, vende, leiloa e ganha a liga.">
+  <meta name="theme-color" content="#3d241d">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="The Gaffer">
+  <meta property="og:title" content="The Gaffer">
+  <meta property="og:description" content="Mercado de transferências estilo Monopólio e campeonato entre amigos. Compra, vende, leiloa e ganha a liga.">
+  <meta property="og:image" content="/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fontes/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fontes/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/tema.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    /* Só do mockup: a barra para trocar de vista. */
+    .mockup-barra { position: fixed; top: 0; left: 0; right: 0; z-index: 70; display: flex; gap: 6px; padding: 6px 10px; background: #000c; overflow-x: auto; }
+    .mockup-barra button { flex: none; }
+    body.mockup { padding-top: 44px; }
+  </style>
+</head>
+<body class="mockup">
+  <div class="fundo" aria-hidden="true"><div class="fundo-circulo"></div></div>
+
+  <nav class="mockup-barra" aria-label="Vistas do mockup">
+    <button class="btn btn-mini" data-vista="inicio">Início</button>
+    <button class="btn btn-mini" data-vista="sala">Sala</button>
+    <button class="btn btn-mini" data-vista="placar">Classificação</button>
+    <button class="btn btn-mini" data-vista="final">Final</button>
+    <button class="btn btn-mini" data-abrir="dialogo-como">Como jogar</button>
+  </nav>
+
+  <!-- Início -->
+  <main id="vista-inicio" class="ecra ecra-centro" hidden>
+    <header class="marca">
+      <img class="logo" src="/favicon.svg" alt="" width="72" height="72">
+      <h1 class="titulo"><span>The</span> <span class="caramelo">Gaffer</span></h1>
+      <p class="subtitulo">Cria o teu clube, compra e vende num tabuleiro de mercado e disputa a liga contra os teus amigos, época após época.</p>
+    </header>
+    <section class="cartao">
+      <label class="rotulo" for="nome">O teu nome</label>
+      <input id="nome" class="campo" maxlength="16" placeholder="Ex.: Mister" autocomplete="nickname" spellcheck="false">
+      <button class="btn btn-principal" type="button"><span aria-hidden="true">＋</span> Criar sala</button>
+      <p class="separador">ou entra numa sala</p>
+      <form class="linha" onsubmit="return false">
+        <input class="campo campo-codigo" maxlength="4" placeholder="CÓDIGO" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Código da sala">
+        <button class="btn btn-fantasma" type="submit">Entrar</button>
+      </form>
+      <p class="erro" role="alert"></p>
+    </section>
+    <button class="btn btn-contorno" type="button" data-abrir="dialogo-como">Como jogar</button>
+  </main>
+
+  <!-- Sala -->
+  <main id="vista-sala" class="ecra ecra-centro" hidden>
+    <header class="marca marca-pequena">
+      <img class="logo" src="/favicon.svg" alt="" width="52" height="52">
+      <h1 class="titulo"><span>The</span> <span class="caramelo">Gaffer</span></h1>
+    </header>
+
+    <div class="sala-grelha">
+      <section class="cartao ocupa-tudo">
+        <div class="lobby-sala">
+          <div>
+            <p class="rotulo">Sala</p>
+            <p class="codigo-grande">KXRT</p>
+          </div>
+          <button class="btn btn-fantasma" type="button">Copiar link</button>
+        </div>
+        <p class="nota">Partilha o link no Discord. Quem entrar depois de a partida começar fica a ver até à janela seguinte.</p>
+      </section>
+
+      <section class="cartao">
+        <p class="rotulo">Treinadores <small>(3/8)</small></p>
+        <ul id="lista-equipas" class="lista-equipas"></ul>
+        <p class="rotulo">Bots</p>
+        <ul id="lista-bots" class="lista-equipas"></ul>
+      </section>
+
+      <section class="cartao lobby-config">
+        <p class="rotulo">Duração</p>
+        <div class="segmentos" role="radiogroup" aria-label="Duração">
+          <button class="segmento" role="radio" aria-checked="true">3 épocas<small>~3 h</small></button>
+          <button class="segmento" role="radio" aria-checked="false">5 épocas<small>~5 h</small></button>
+          <button class="segmento" role="radio" aria-checked="false">8 épocas<small>vários dias</small></button>
+          <button class="segmento" role="radio" aria-checked="false">10 épocas<small>vários dias</small></button>
+        </div>
+        <p class="rotulo">Equipas bot</p>
+        <div class="segmentos" role="radiogroup" aria-label="Número de bots">
+          <button class="segmento" role="radio" aria-checked="false">0</button>
+          <button class="segmento" role="radio" aria-checked="false">1</button>
+          <button class="segmento" role="radio" aria-checked="true">2</button>
+          <button class="segmento" role="radio" aria-checked="false">3</button>
+          <button class="segmento" role="radio" aria-checked="false">4</button>
+        </div>
+        <div class="segmentos" role="radiogroup" aria-label="Nível dos bots">
+          <button class="segmento" role="radio" aria-checked="true">Inferior<small>overall mais baixo</small></button>
+          <button class="segmento" role="radio" aria-checked="false">Equivalente<small>como os treinadores</small></button>
+        </div>
+        <p class="nota">Só o anfitrião muda a configuração. 3 treinadores + 2 bots = 8 jornadas por época.</p>
+      </section>
+
+      <section class="cartao ocupa-tudo">
+        <p class="rotulo">A tua equipa</p>
+        <div class="editor-equipa">
+          <div class="editor-previa">
+            <div id="previa-kit"></div>
+            <div class="emblema-vazio" role="button" tabindex="0">Carregar emblema</div>
+          </div>
+          <div class="lobby-config">
+            <input class="campo" maxlength="22" value="Sporting da Ribeira" aria-label="Nome da equipa">
+            <div class="cores">
+              <label class="cor"><input id="cor-1" type="color" value="#1d4ed8"> Principal</label>
+              <label class="cor"><input id="cor-2" type="color" value="#ffffff"> Secundária</label>
+            </div>
+            <div id="padroes" class="padroes" role="radiogroup" aria-label="Equipamento"></div>
+            <p class="rotulo">Contratos iniciais</p>
+            <div class="contratos">
+              <span class="contrato"><small>Marca</small>Larcatoni</span>
+              <span class="contrato"><small>Patrocínio</small>Café Central de Torres Novas</span>
+              <span class="contrato"><small>Patrocínio</small>Ping Doce</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cartao ocupa-tudo">
+        <button class="btn btn-principal" type="button">Começar partida</button>
+        <p class="nota centro">Todos os treinadores têm de marcar "Pronto".</p>
+      </section>
+    </div>
+  </main>
+
+  <!-- Classificação -->
+  <main id="vista-placar" class="ecra ecra-centro" hidden>
+    <section class="cartao cartao-largo">
+      <h2 class="titulo titulo-medio"><span>Época 2</span> <span class="caramelo">jornada 6</span></h2>
+      <table class="tabela tabela-liga">
+        <thead><tr><th>#</th><th>Equipa</th><th>J</th><th class="so-largo">V</th><th class="so-largo">E</th><th class="so-largo">D</th><th>DG</th><th class="so-largo">Forma</th><th>Pts</th></tr></thead>
+        <tbody id="corpo-liga"></tbody>
+      </table>
+      <p class="nota">Dinheiro de TV desta jornada: <strong>2,1 M€</strong> para todos. Salários descontados.</p>
+    </section>
+  </main>
+
+  <!-- Final -->
+  <main id="vista-final" class="ecra ecra-centro" hidden>
+    <section class="cartao cartao-largo final">
+      <h2 class="titulo titulo-medio"><span>Fim da</span> <span class="caramelo">partida</span></h2>
+      <ol class="podio">
+        <li class="degrau p2"><span class="quem"><span class="ponto" style="background:#ef4444"></span>Ana</span><span class="pts">1 título · 118 pts</span><div class="bloco">2</div></li>
+        <li class="degrau p1"><span class="quem"><span class="ponto" style="background:#3b82f6"></span>Rui</span><span class="pts">2 títulos · 131 pts</span><div class="bloco">1</div></li>
+        <li class="degrau p3"><span class="quem"><span class="ponto" style="background:#eab308"></span>Zé</span><span class="pts">0 títulos · 97 pts</span><div class="bloco">3</div></li>
+      </ol>
+      <p class="rotulo">Palmarés</p>
+      <ul class="palmares">
+        <li><span>Época 1</span><span>Sporting da Ribeira <span class="titulos">CAMPEÃO</span></span></li>
+        <li><span>Época 2</span><span>Atlético do Bairro <span class="titulos">CAMPEÃO</span></span></li>
+        <li><span>Época 3</span><span>Sporting da Ribeira <span class="titulos">CAMPEÃO</span></span></li>
+        <li><span>Jogador da partida</span><span>V. Gyökeres · 61 golos</span></li>
+      </ul>
+      <button class="btn btn-principal" type="button">Nova partida</button>
+    </section>
+  </main>
+
+  <dialog id="dialogo-como" class="dialogo">
+    <h2 class="titulo titulo-medio"><span>Como</span> <span class="caramelo">jogar</span></h2>
+    <ol class="regras">
+      <li><span>Cada um é o <strong>treinador</strong> de uma equipa: começa com o mesmo orçamento, 11 jogadores (média 75), uma marca e dois patrocinadores.</span></li>
+      <li><span>Cada época tem duas <strong>janelas de transferências</strong> (verão e inverno), cada uma seguida de meio campeonato.</span></li>
+      <li><span>Na janela escolhes a <strong>formação</strong>, fazes o <strong>draft</strong> de uma jovem promessa (quem está em último escolhe primeiro) e jogas no <strong>tabuleiro</strong>: duas voltas no verão, uma no inverno.</span></li>
+      <li><span>No tabuleiro, as casas dão jogadores no <strong>Mercado</strong> (compras ou vai a leilão), cartas de <strong>Empresário</strong> e de <strong>Departamento médico</strong>, <strong>Redes de observação</strong>, <strong>Jovens Talentos</strong> e <strong>Patrocínios</strong>.</span></li>
+      <li><span>Na tua vez podes fazer uma <strong>proposta</strong> por qualquer jogador. Abre leilão para todos e o dono decide, exceto se bateres a cláusula: aí a venda é obrigatória.</span></li>
+      <li><span>No fecho da janela ficas com <strong>11 + 1 da formação</strong>, encaixados na formação escolhida.</span></li>
+      <li><span>Antes de cada jogo escolhes em segredo uma <strong>carta de tática</strong>. Cada uma vence uma e perde com outra.</span></li>
+      <li><span>O jogo tem <strong>9 períodos</strong>: em cada um, cada equipa lança dois dados, somados à força, à tática e à química. Dados iguais tiram uma carta de acontecimento.</span></li>
+      <li><span>No fim das épocas escolhidas, ganha quem tiver <strong>mais campeonatos</strong>. O desempate é pelos pontos de todas as épocas.</span></li>
+      <li><span>Quem entra com a partida a decorrer fica a ver e joga a partir da <strong>janela seguinte</strong>.</span></li>
+    </ol>
+    <form method="dialog"><button class="btn btn-principal" type="submit">Percebi</button></form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script type="module">
+    import { equipamentoSVG, PADROES } from '/js/equipamento.js';
+
+    const equipas = [
+      { nome: 'Sporting da Ribeira', treinador: 'Rui', cor: '#3b82f6', kit: { padrao: 'riscas-v', principal: '#1d4ed8', secundaria: '#ffffff' }, eu: true, anfitriao: true, pronto: true },
+      { nome: 'Atlético do Bairro', treinador: 'Ana', cor: '#ef4444', kit: { padrao: 'metades', principal: '#b91c1c', secundaria: '#111827' }, pronto: true },
+      { nome: 'União Recreativa', treinador: 'Zé', cor: '#eab308', kit: { padrao: 'faixa', principal: '#fafafa', secundaria: '#ca8a04' } },
+    ];
+    const bots = [
+      { nome: 'FC Bot Vermelho', kit: { padrao: 'riscas-h', principal: '#dc2626', secundaria: '#fef2f2' } },
+      { nome: 'Desportivo Máquina', kit: { padrao: 'liso', principal: '#065f46', secundaria: '#a7f3d0' } },
+    ];
+
+    document.getElementById('lista-equipas').innerHTML = equipas.map((e) => `
+      <li class="linha-equipa${e.eu ? ' eu' : ''}">
+        ${equipamentoSVG({ ...e.kit, tamanho: 38 })}
+        <span class="quem"><strong>${e.nome}</strong><small><span class="ponto" style="display:inline-block;background:${e.cor}"></span> ${e.treinador}${e.anfitriao ? ' <span class="coroa" title="Anfitrião">👑</span>' : ''}</small></span>
+        <span class="etiqueta${e.pronto ? ' etiqueta-pronto' : ''}">${e.pronto ? 'Pronto' : 'A preparar'}</span>
+      </li>`).join('');
+    document.getElementById('lista-bots').innerHTML = bots.map((b) => `
+      <li class="linha-equipa">${equipamentoSVG({ ...b.kit, tamanho: 38 })}<span class="quem"><strong>${b.nome}</strong><small>Bot · inferior</small></span></li>`).join('');
+
+    // Editor: pré-visualização e padrões
+    let padrao = 'riscas-v';
+    const kit = () => ({ padrao, principal: document.getElementById('cor-1').value, secundaria: document.getElementById('cor-2').value });
+    function desenhar() {
+      document.getElementById('previa-kit').innerHTML = equipamentoSVG({ ...kit(), marca: 'Larcatoni', patrocinio: 'Ping Doce', tamanho: 112 });
+      document.getElementById('padroes').innerHTML = PADROES.map((p) => `
+        <button class="segmento" role="radio" aria-checked="${p.id === padrao}" data-padrao="${p.id}" title="${p.nome}">${equipamentoSVG({ ...kit(), padrao: p.id, tamanho: 34 })}<small>${p.curto}</small></button>`).join('');
+    }
+    document.getElementById('padroes').addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-padrao]');
+      if (b) { padrao = b.dataset.padrao; desenhar(); }
+    });
+    for (const id of ['cor-1', 'cor-2']) document.getElementById(id).addEventListener('input', desenhar);
+    desenhar();
+
+    // Classificação
+    const liga = [
+      ['Sporting da Ribeira', 6, 4, 1, 1, '+7', 'VVEVDV', 13, true],
+      ['Atlético do Bairro', 6, 4, 0, 2, '+5', 'VDVVVD', 12],
+      ['Desportivo Máquina', 6, 3, 1, 2, '+1', 'EVDVVD', 10],
+      ['União Recreativa', 6, 2, 1, 3, '-3', 'DDVEVD', 7],
+      ['FC Bot Vermelho', 6, 0, 1, 5, '-10', 'DEDDDD', 1],
+    ];
+    document.getElementById('corpo-liga').innerHTML = liga.map(([n, j, v, e, d, dg, f, p, eu], i) => `
+      <tr class="${eu ? 'eu' : ''}"><td>${i + 1}</td><td>${n}</td><td>${j}</td><td class="so-largo">${v}</td><td class="so-largo">${e}</td><td class="so-largo">${d}</td><td>${dg}</td>
+      <td class="so-largo"><span class="forma">${[...f.slice(-5)].map((c) => `<i class="${c.toLowerCase()}">${c}</i>`).join('')}</span></td><td class="pts">${p}</td></tr>`).join('');
+
+    // Troca de vistas (?vista=inicio|sala|placar|final, ?como)
+    const vistas = ['inicio', 'sala', 'placar', 'final'];
+    function mostrar(v) {
+      for (const x of vistas) document.getElementById(`vista-${x}`).hidden = x !== v;
+      history.replaceState(null, '', `?vista=${v}`);
+    }
+    document.querySelectorAll('[data-vista]').forEach((b) => b.addEventListener('click', () => mostrar(b.dataset.vista)));
+    document.querySelectorAll('[data-abrir]').forEach((b) => b.addEventListener('click', () => document.getElementById(b.dataset.abrir).showModal()));
+    const q = new URLSearchParams(location.search);
+    mostrar(vistas.includes(q.get('vista')) ? q.get('vista') : 'inicio');
+    if (q.has('como')) document.getElementById('dialogo-como').showModal();
+  </script>
+</body>
+</html>

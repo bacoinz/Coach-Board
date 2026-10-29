@@ -1,0 +1,246 @@
+/* The Gaffer: o que é próprio deste jogo (o tema partilhado está em tema.css). */
+
+/* A palavra em destaque do título ("Gaffer", "jogar", "final"). */
+.caramelo {
+  background: linear-gradient(180deg, var(--destaque-claro), var(--destaque));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 30px var(--destaque-brilho);
+}
+
+/* Sala: grelha com os treinadores e a configuração do anfitrião ao lado da equipa. */
+.sala-grelha {
+  width: min(100%, 880px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+.sala-grelha > .cartao {
+  width: 100%;
+}
+.sala-grelha .ocupa-tudo {
+  grid-column: 1 / -1;
+}
+@media (max-width: 760px) {
+  .sala-grelha {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.lista-equipas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.linha-equipa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #ffffff08;
+}
+.linha-equipa.eu {
+  background: var(--destaque-suave);
+  box-shadow: inset 0 0 0 1px var(--destaque-borda);
+}
+.linha-equipa .equipamento {
+  flex: none;
+}
+.linha-equipa .quem {
+  min-width: 0;
+  flex: 1;
+}
+.linha-equipa .quem strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linha-equipa .quem small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.etiqueta {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #ffffff12;
+  color: var(--muted);
+}
+.etiqueta-pronto {
+  background: var(--castanho);
+  color: var(--destaque-2);
+  box-shadow: inset 0 0 0 1px var(--destaque-borda);
+}
+
+/* Editor da equipa */
+.editor-equipa {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.editor-previa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 50% 35%, #ffffff14, transparent 70%);
+}
+.emblema-vazio {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1.5px dashed #ffffff40;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+  cursor: pointer;
+}
+.cores {
+  display: flex;
+  gap: 8px;
+}
+.cor {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid #ffffff1a;
+  background: #0000004d;
+  font-size: 13px;
+  font-weight: 700;
+}
+.cor input {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.padroes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.padroes .segmento {
+  padding: 6px 2px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.contratos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.contrato {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #ffffff0d;
+  border: 1px solid #ffffff14;
+}
+.contrato small {
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: 4px;
+}
+@media (max-width: 420px) {
+  .editor-equipa {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Classificação do campeonato (placar) */
+.tabela-liga td,
+.tabela-liga th {
+  text-align: center;
+  padding: 6px 4px;
+}
+.tabela-liga td:nth-child(2),
+.tabela-liga th:nth-child(2) {
+  text-align: left;
+}
+.tabela-liga td:first-child {
+  color: var(--muted);
+  width: 28px;
+}
+.tabela-liga tr.eu td {
+  background: var(--destaque-suave);
+}
+.tabela-liga .pts {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 17px;
+  color: #fff;
+}
+.tabela-liga .forma {
+  display: inline-flex;
+  gap: 2px;
+}
+.forma i {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  color: #06140d;
+}
+.forma .v { background: var(--verde); }
+.forma .e { background: #d6d3d1; }
+.forma .d { background: #fca5a5; }
+@media (max-width: 520px) {
+  .tabela-liga .so-largo {
+    display: none;
+  }
+}
+
+/* Palmarés */
+.palmares {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.palmares li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #ffffff08;
+  font-size: 14px;
+}
+.palmares .titulos {
+  color: var(--destaque-2);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}

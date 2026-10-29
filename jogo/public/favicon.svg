@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Quadro tático: prancheta castanha com um campo e as setas do treinador. -->
+  <rect x="10" y="8" width="44" height="52" rx="6" fill="#765340" stroke="#c49a6c" stroke-width="2"/>
+  <rect x="24" y="4" width="16" height="9" rx="3" fill="#3d241d" stroke="#c49a6c" stroke-width="2"/>
+  <rect x="16" y="17" width="32" height="37" rx="2" fill="#134a2c"/>
+  <path d="M16 35.5h32" stroke="#ffffff66" stroke-width="1.2"/>
+  <circle cx="32" cy="35.5" r="5" fill="none" stroke="#ffffff66" stroke-width="1.2"/>
+  <circle cx="24" cy="46" r="2.6" fill="#d7b48c"/>
+  <circle cx="40" cy="26" r="2.6" fill="#d7b48c"/>
+  <path d="M26 43 Q32 34 38 28" fill="none" stroke="#fff" stroke-width="1.8" stroke-dasharray="2.5 2" stroke-linecap="round"/>
+  <path d="M35.5 26.5l3.2 0.8-0.7 3.2" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
