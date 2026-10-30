@@ -4,6 +4,10 @@
 - Anton (Vernon Adams)
 - Inter (Rasmus Andersson)
 
+## Tabuleiro 3D — Three.js (https://threejs.org), licença MIT
+
+Copyright © 2010-2026 three.js authors. Em vendor/three.min.js, só com as partes usadas (ver scripts/three-entrada.mjs).
+
 ## Bandeiras — flag-icons (https://github.com/lipis/flag-icons), licença MIT
 
 ## Fotos dos jogadores

@@ -1,0 +1,23 @@
+// Só as partes do Three.js que o tabuleiro usa: `npm run vendor` gera public/vendor/three.min.js a partir daqui.
+export {
+  AmbientLight,
+  BoxGeometry,
+  CanvasTexture,
+  Color,
+  CylinderGeometry,
+  DirectionalLight,
+  Euler,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  MeshLambertMaterial,
+  PerspectiveCamera,
+  PlaneGeometry,
+  RepeatWrapping,
+  Quaternion,
+  Scene,
+  SphereGeometry,
+  SRGBColorSpace,
+  Vector3,
+  WebGLRenderer,
+} from 'three';

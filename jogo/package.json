@@ -14,7 +14,8 @@
     "contraste": "node scripts/contraste.mjs",
     "mockup": "node scripts/servir.mjs",
     "fotos": "node scripts/fotos.mjs",
-    "bandeiras": "node scripts/copiar-bandeiras.mjs"
+    "bandeiras": "node scripts/copiar-bandeiras.mjs",
+    "vendor": "esbuild scripts/three-entrada.mjs --bundle --minify --format=esm --outfile=public/vendor/three.min.js"
   },
   "devDependencies": {
     "flag-icons": "^7.6.0",

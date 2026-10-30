@@ -33,7 +33,7 @@
   gap: 14px;
   padding: 14px 16px 24px;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'acao' 'tabuleiro' 'lado';
+  grid-template-areas: 'tabuleiro' 'acao' 'lado';
 }
 .col-acao {
   grid-area: acao;
@@ -69,8 +69,13 @@
   grid-area: lado;
   min-width: 0;
 }
+/* No telemóvel o tabuleiro vai à frente, menos quando a decisão não tem nada a ver com ele. */
+.jogo-grelha.painel-primeiro {
+  grid-template-areas: 'acao' 'tabuleiro' 'lado';
+}
 @media (min-width: 1100px) {
-  .jogo-grelha {
+  .jogo-grelha,
+  .jogo-grelha.painel-primeiro {
     grid-template-columns: minmax(420px, 640px) minmax(340px, 1fr) minmax(300px, 380px);
     grid-template-areas: 'tabuleiro acao lado';
     align-items: start;
@@ -83,11 +88,50 @@
   }
 }
 @media (min-width: 760px) and (max-width: 1099px) {
-  .jogo-grelha {
+  .jogo-grelha,
+  .jogo-grelha.painel-primeiro {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     grid-template-areas: 'tabuleiro acao' 'lado lado';
     align-items: start;
   }
+}
+
+/* --- Tabuleiro 3D --- */
+.caixa-3d {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+.caixa-3d canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+.legenda-3d {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #06140dcc;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.legenda-3d:empty {
+  display: none;
+}
+.relvado-2d {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  border-radius: 12px;
 }
 
 /* --- Tabuleiro --- */

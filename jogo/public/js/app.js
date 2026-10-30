@@ -7,6 +7,7 @@ import { equipamentoSVG, PADROES } from './equipamento.js';
 import { cartaHTML, miniCartaHTML, posicao, nivel } from './carta.js';
 import { campoHTML } from './campo.js';
 import { tabuleiroHTML, dadoHTML } from './tabuleiro2d.js';
+import { Relvado } from './relvado.js';
 import { $, $$, esc, dinheiro, toast, identidade } from './util.js';
 
 const ID = identidade();
@@ -18,6 +19,10 @@ let separador = 'equipas';
 let fecho = null; // { manter: Set, jovem } enquanto se escolhe o plantel no fecho
 let lanceProposto = null;
 let equipaAberta = null; // a equipa mostrada no diálogo do onze
+let vista3d = null; // o tabuleiro 3D, quando já carregou
+let semWebgl = new URLSearchParams(location.search).has('2d'); // sem WebGL, fica o tabuleiro 2D
+let aCarregar3d = false;
+let relvado2d = null; // sem WebGL, o jogo desenha-se num canvas normal
 
 // --- Navegação ---
 
@@ -175,14 +180,67 @@ function desenharJogo() {
   $('#barra-dinheiro').innerHTML = e && !e.espera ? `<strong>${dinheiro(e.dinheiro)}</strong>` : '<small>A ver</small>';
 
   $('#col-acao').innerHTML = painelAcao();
+  desenharTabuleiro();
+  desenharLado();
+  if ($('#dialogo-equipa').open) desenharEquipa();
+}
+
+/** O 3D carrega só quando é preciso: até lá, e sem WebGL, fica o tabuleiro 2D. */
+function desenharTabuleiro() {
+  const j = S.janela;
+  const grelha = $('.jogo-grelha');
+  const painelPrimeiro = S.fase === 'fimEpoca' || S.fase === 'fim' || (S.fase === 'janela' && j?.fase !== 'tabuleiro');
+  // Quem acabou de confirmar lá em baixo tem de ver o tabuleiro a transformar-se.
+  if (grelha.classList.contains('painel-primeiro') && !painelPrimeiro) scrollTo({ top: 0, behavior: 'smooth' });
+  grelha.classList.toggle('painel-primeiro', painelPrimeiro);
+  const legenda = j?.fase === 'tabuleiro' ? `Vez de <strong>${nomeEquipa(j.ordem[j.vez])}</strong> · Ronda ${j.ronda}` : '';
+  if (vista3d) {
+    vista3d.atualizar(S, EU);
+    $('#legenda-3d').innerHTML = legenda;
+    return;
+  }
+  iniciar3d();
+  const jogos = S.campeonato?.jogos ?? [];
+  if (semWebgl && S.fase === 'campeonato' && jogos.length) return desenharJogoSem3d(jogos);
+  relvado2d = null;
   $('#col-tabuleiro').innerHTML = tabuleiroHTML({
     posicoes: j?.posicao ?? null,
     equipas: S.equipas,
     vez: j?.fase === 'tabuleiro' ? j.ordem[j.vez] : null,
     centro: centroTabuleiro(),
   });
-  desenharLado();
-  if ($('#dialogo-equipa').open) desenharEquipa();
+}
+
+/** Sem WebGL, o jogo aparece num canvas em vez do relvado 3D. */
+function desenharJogoSem3d(jogos) {
+  if (!relvado2d) {
+    $('#col-tabuleiro').innerHTML = '<canvas id="relvado-2d" class="relvado-2d"></canvas>';
+    relvado2d = new Relvado($('#relvado-2d'));
+    const passo = () => {
+      if (!relvado2d) return;
+      relvado2d.tick(performance.now());
+      setTimeout(passo, 66);
+    };
+    passo();
+  }
+  relvado2d.definirJogo(jogos.find((x) => x.lados.some((l) => l.equipa === EU?.equipa)) ?? jogos[0], S.equipas, performance.now());
+}
+
+async function iniciar3d() {
+  if (vista3d || semWebgl || aCarregar3d) return;
+  aCarregar3d = true;
+  try {
+    const teste = document.createElement('canvas');
+    if (!teste.getContext('webgl2') && !teste.getContext('webgl')) throw new Error('sem WebGL');
+    const { Tabuleiro3D } = await import('./tabuleiro3d.js');
+    $('#col-tabuleiro').innerHTML = '<div id="caixa-3d" class="caixa-3d"><p id="legenda-3d" class="legenda-3d"></p></div>';
+    vista3d = new Tabuleiro3D($('#caixa-3d'));
+    desenharTabuleiro();
+  } catch (e) {
+    console.warn('Sem tabuleiro 3D:', e);
+    semWebgl = true;
+    desenhar();
+  }
 }
 
 function centroTabuleiro() {
