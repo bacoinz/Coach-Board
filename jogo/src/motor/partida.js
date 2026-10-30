@@ -1,15 +1,15 @@
 // A partida: começar, passar de fase em fase e encaminhar as ações dos treinadores para o motor.
 import { CONFIG } from '../config.js';
-import { baralhar } from './aleatorio.js';
 import { erro, registar, equipasTreinadores } from './estado.js';
 import { prepararEquipa, criarBots } from './equipas.js';
 import { faltaParaComecar } from './sala-logica.js';
-import { abrirJanela, escolherFormacao, escolherDraft, prontoFechar, forcarFecho, fechar, verificarFecho } from './janela.js';
+import { abrirJanela, comprarEmprestado, escolherFormacao, escolherDraft, prontoFechar, forcarFecho, fechar, verificarFecho } from './janela.js';
 import { lancar, comprar, passar, descartarRede, terminarVez, forcarVez } from './tabuleiro.js';
 import {
   licitar, desistir, forcarFimLeilao, decidirProposta, propor, inflacionar, exclusividade, responderExclusividade,
   venderBanca, proporTroca, responderTroca,
 } from './negocios.js';
+import { escolherTatica, substituir, continuar, forcarCampeonato, ordenarTabela } from './campeonato.js';
 
 export function comecar(sala, ctx, id) {
   if (id !== sala.anfitriao) return erro('Só o anfitrião pode começar.');
@@ -47,31 +47,34 @@ function entrarEspectadores(sala, ctx, tipo) {
   }
 }
 
-/**
- * Passo 3: o campeonato ainda não se joga (chega no passo 4). O anfitrião avança: a classificação fica
- * provisoriamente ao acaso e abre a janela seguinte.
- */
-export function avancarCampeonato(sala, ctx, id) {
-  if (id !== sala.anfitriao) return erro('Só o anfitrião pode avançar.');
-  if (sala.fase !== 'campeonato') return erro('Não estamos no campeonato.');
-  sala.classificacao = baralhar(ctx.aleatorio, Object.keys(sala.equipas).filter((x) => !sala.equipas[x].espera));
-  // Sem jogos ainda, os efeitos "no próximo jogo" das cartas Mistério gastam-se aqui.
-  for (const e of Object.values(sala.equipas)) delete e.efeitos;
+/** Acabou uma volta do campeonato: abre a janela seguinte ou, no fim da época, regista o campeão e segue. */
+function fimDeVolta(sala, ctx) {
   if (sala.campeonato.volta === 1) {
     entrarEspectadores(sala, ctx, 'inverno');
     abrirJanela(sala, ctx, 'inverno');
-    return { ok: true };
+    return;
   }
-  sala.palmares.push({ epoca: sala.epoca, campeao: sala.classificacao[0] });
+  const tabela = ordenarTabela(sala.tabela);
+  sala.pontosTotais = sala.pontosTotais ?? {};
+  for (const l of tabela) sala.pontosTotais[l.equipa] = (sala.pontosTotais[l.equipa] ?? 0) + l.pts;
+  sala.palmares.push({ epoca: sala.epoca, campeao: tabela[0].equipa });
+  registar(sala, ctx, `${sala.equipas[tabela[0].equipa].nome} é campeão da época ${sala.epoca}!`, { tipo: 'fase' });
   if (sala.epoca >= sala.config.epocas) {
     sala.fase = 'fim';
     registar(sala, ctx, 'Fim da partida.', { tipo: 'fase' });
-    return { ok: true };
+    return;
   }
+  // O fim de época (idade, evolução, prémios) entra no passo 5.
   sala.epoca++;
   entrarEspectadores(sala, ctx, 'verao');
   abrirJanela(sala, ctx, 'verao');
-  return { ok: true };
+}
+
+/** Ranking final: mais campeonatos e, em caso de empate, mais pontos de todas as épocas. */
+export function rankingFinal(sala) {
+  const titulos = (id) => sala.palmares.filter((p) => p.campeao === id).length;
+  return Object.values(sala.equipas).filter((e) => !e.espera).map((e) => ({ equipa: e.id, titulos: titulos(e.id), pontos: sala.pontosTotais?.[e.id] ?? 0 }))
+    .sort((a, b) => b.titulos - a.titulos || b.pontos - a.pontos);
 }
 
 /** Ações do anfitrião (desbloquear quem não está). */
@@ -84,8 +87,11 @@ function acaoAnfitriao(sala, ctx, id, msg) {
       return forcarFimLeilao(sala, ctx);
     case 'forcar_fecho':
       return forcarFecho(sala, ctx);
-    case 'avancar':
-      return avancarCampeonato(sala, ctx, id);
+    case 'avancar': {
+      const r = forcarCampeonato(sala, ctx);
+      if (r.fimDeVolta) fimDeVolta(sala, ctx);
+      return r;
+    }
     default:
       return erro('Ação desconhecida.');
   }
@@ -120,6 +126,13 @@ export function agir(sala, ctx, id, msg) {
     case 'responder_troca': r = responderTroca(sala, ctx, eq, msg.troca, Boolean(msg.aceitar)); break;
     case 'pronto_fechar': r = prontoFechar(sala, ctx, eq, msg.pronto !== false); break;
     case 'fechar': r = fechar(sala, ctx, eq, { manter: msg.manter ?? [] }); break;
+    case 'comprar_emprestado': r = comprarEmprestado(sala, ctx, eq, msg.jogador); break;
+    case 'tatica': r = escolherTatica(sala, ctx, eq, msg.tatica); break;
+    case 'substituir': r = substituir(sala, ctx, eq, msg.sai); break;
+    case 'continuar':
+      r = continuar(sala, ctx, eq);
+      if (r.fimDeVolta) fimDeVolta(sala, ctx);
+      break;
     default: return erro('Ação desconhecida.');
   }
   if (!r.erro) verificarFecho(sala, ctx);

@@ -19,6 +19,7 @@ export const NOMES_CASAS = {
   jovens: 'Jovens Talentos',
   misterio: 'Mistério',
   investigacao: 'Investigação',
+  sad: 'SAD',
 };
 
 /** Casas a andar nesta janela (voltas × casas do tabuleiro). */
@@ -60,7 +61,9 @@ export function lancar(sala, ctx, equipaId) {
   if (j.pendente) return erro('Resolve primeiro a casa.');
   if (j.lancou) return erro('Já lançaste os dados nesta vez.');
   if (acabou(j, equipaId)) return erro('Já completaste as voltas.');
-  const dados = Array.from({ length: CONFIG.tabuleiro.dados }, () => dado(ctx.aleatorio));
+  const { dados: D } = CONFIG.tabuleiro;
+  const quantos = j.tipo === 'inverno' && j.andadas[equipaId] === 0 ? D.primeiroInverno : D[j.tipo];
+  const dados = Array.from({ length: quantos }, () => dado(ctx.aleatorio));
   const de = j.posicao[equipaId];
   andar(sala, ctx, equipaId, dados.reduce((s, d) => s + d, 0));
   j.lancou = true;
@@ -77,8 +80,7 @@ export function lancar(sala, ctx, equipaId) {
 }
 
 /**
- * Anda n casas, sem passar do fim das voltas. Ao passar pelo Início a meio (só acontece no verão), há a injeção
- * de capital da SAD; no fim da última volta já não há.
+ * Anda n casas, sem passar do fim das voltas. Na casa SAD, quem pára recebe o valor inteiro e quem passa recebe parte.
  */
 function andar(sala, ctx, equipaId, n) {
   const j = sala.janela;
@@ -86,17 +88,22 @@ function andar(sala, ctx, equipaId, n) {
   const depois = Math.min(antes + n, totalCasas(j));
   j.andadas[equipaId] = depois;
   j.posicao[equipaId] = depois % CASAS.length;
-  if (Math.floor(depois / CASAS.length) > Math.floor(antes / CASAS.length) && depois < totalCasas(j)) {
-    const valor = valorSAD(sala.epoca);
+  for (let i = antes + 1; i <= depois; i++) {
+    if (CASAS[i % CASAS.length] !== 'sad') continue;
+    const parou = i === depois;
+    const { aoPassar, inverno } = CONFIG.tabuleiro.injecaoSAD;
+    const valor = valorSAD(sala.epoca) * (j.tipo === 'inverno' ? inverno : 1) * (parou ? 1 : aoPassar);
     receber(sala, equipaId, valor);
-    registar(sala, ctx, `Injeção de capital da SAD: ${sala.equipas[equipaId].nome} recebe ${M(valor)}.`, { tipo: 'carta' });
+    registar(sala, ctx, `Injeção de capital da SAD: ${sala.equipas[equipaId].nome} ${parou ? 'pára na casa e' : 'passa e'} recebe ${M(valor)}.`, { tipo: 'carta' });
   }
 }
 
-/** A injeção da SAD duplica a cada época. */
+/** A injeção da SAD cresce a cada época, com o fator de cada escalão. */
 export function valorSAD(epoca) {
-  const { base, fator } = CONFIG.tabuleiro.injecaoSAD;
-  return base * fator ** (epoca - 1);
+  const { base, fatores } = CONFIG.tabuleiro.injecaoSAD;
+  let valor = base;
+  for (let e = 2; e <= epoca; e++) valor *= fatores.find((f) => e <= f.ate).fator;
+  return valor;
 }
 
 /**

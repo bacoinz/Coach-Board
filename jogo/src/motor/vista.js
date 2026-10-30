@@ -3,6 +3,9 @@
 import { jogador } from './estado.js';
 import { sugestaoFecho, precoOpcao } from './janela.js';
 import { faltaParaComecar } from './sala-logica.js';
+import { ordenarTabela } from './campeonato.js';
+import { modificador, podemSair } from './jogo.js';
+import { rankingFinal } from './partida.js';
 
 function vistaJogador(sala, ctx, id) {
   const j = jogador(sala, ctx, id);
@@ -26,6 +29,8 @@ function vistaJogador(sala, ctx, id) {
     equipa: j.equipa,
     formacao: j.formacao || undefined,
     emprestado: j.emprestado || undefined,
+    emprestadoLesao: j.emprestadoLesao || undefined,
+    lesionado: j.lesionado || undefined,
     soBanca: j.soBanca || undefined,
     inflacionada: j.inflacionada || undefined,
     compradoRonda: j.compradoRonda ?? undefined,
@@ -41,6 +46,46 @@ function jogadoresVisiveis(sala) {
   if (j?.pendente?.jogador) ids.add(j.pendente.jogador);
   if (j?.leilao) ids.add(j.leilao.jogador);
   return ids;
+}
+
+/** As táticas são secretas até os jogos começarem. */
+function vistaCampeonato(sala, ctx) {
+  const c = sala.campeonato;
+  if (!c) return null;
+  const emTaticas = c.fase === 'taticas';
+  const pares = sala.calendario[Math.min(c.jornada, sala.calendario.length - 1)] ?? [];
+  return {
+    volta: c.volta,
+    jornada: c.jornada,
+    jornadas: sala.calendario.length,
+    fase: c.fase,
+    prontos: emTaticas ? Object.keys(c.taticas) : c.prontos,
+    proximoPeriodo: c.proximoPeriodo,
+    calendario: pares.map(([a, b]) => (c.volta === 1 ? [a, b] : [b, a])),
+    jogos: c.jogos.map((jogo) => ({
+      periodo: jogo.periodo,
+      acabou: jogo.acabou,
+      homem: jogo.homem ?? null,
+      eventos: jogo.eventos,
+      lados: jogo.lados.map((l, i) => ({
+        equipa: l.equipa,
+        tatica: l.tatica,
+        golos: l.golos,
+        vermelhos: l.vermelhos,
+        modificador: Math.round(modificador(jogo, i) * 100) / 100,
+        onze: l.onze.map((x) => ({ jogador: x.jogador, nome: x.nome, posicao: x.posicao, overall: x.overall })),
+        suplente: l.suplente,
+        podemSair: podemSair(sala, ctx, l),
+        subPedida: l.subPedida,
+      })),
+    })),
+  };
+}
+
+function topEstatisticas(sala) {
+  const lista = Object.entries(sala.estatisticas ?? {}).map(([id, e]) => ({ id: Number(id), ...e }));
+  const top = (campo) => lista.filter((e) => e[campo] > 0).sort((a, b) => b[campo] - a[campo]).slice(0, 5);
+  return { marcadores: top('golos'), assistentes: top('assistencias') };
 }
 
 export function estadoPublico(sala, ctx) {
@@ -108,7 +153,10 @@ export function estadoPublico(sala, ctx) {
     equipas,
     jogadores,
     janela,
-    campeonato: sala.campeonato ?? null,
+    campeonato: vistaCampeonato(sala, ctx),
+    tabela: sala.tabela ? ordenarTabela(sala.tabela) : null,
+    estatisticas: topEstatisticas(sala),
+    ranking: sala.fase === 'fim' ? rankingFinal(sala) : null,
     classificacao: sala.classificacao,
     palmares: sala.palmares,
     log: sala.log.slice(-60),
@@ -119,7 +167,7 @@ export function estadoPublico(sala, ctx) {
 export function privado(sala, ctx, treinadorId) {
   const t = sala.treinadores.find((x) => x.id === treinadorId);
   if (!t) return null;
-  const r = { id: t.id, equipa: t.equipa };
+  const r = { id: t.id, equipa: t.equipa, tatica: sala.campeonato?.taticas?.[t.equipa] ?? null };
   const j = sala.janela;
   const e = sala.equipas[t.equipa];
   if (j?.fase === 'fecho' && e && !e.espera && !j.prontos.includes(e.id)) r.sugestaoFecho = sugestaoFecho(sala, ctx, e.id);

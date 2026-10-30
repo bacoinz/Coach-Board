@@ -7,6 +7,7 @@ import { opcoesDraft, tirarEmprestimo } from './cartas.js';
 import { iniciarTabuleiro, acabou, todosAcabaram } from './tabuleiro.js';
 import { prepararJovem } from './negocios.js';
 import { aplicarAberturaJanela } from './misterio.js';
+import { iniciarVolta } from './campeonato.js';
 import { precoBase, precoDraft } from './valores.js';
 
 const NOMES = { verao: 'de verão', inverno: 'de inverno' };
@@ -14,7 +15,9 @@ const NOMES = { verao: 'de verão', inverno: 'de inverno' };
 /** Abre a janela: devolve os emprestados, reinicia as marcas de ronda e pede a formação a todos. */
 export function abrirJanela(sala, ctx, tipo) {
   for (const [id, d] of Object.entries(sala.jogadores)) {
-    if (d.emprestado) transferir(sala, Number(id), null);
+    delete d.lesionado;
+    // O emprestado por lesão fica até à escolha da formação, para poder ser comprado (só por treinadores).
+    if (d.emprestado && !(d.emprestadoLesao && !sala.equipas[d.equipa]?.bot)) transferir(sala, Number(id), null);
     else if (d.compradoRonda != null) delete d.compradoRonda;
   }
   sala.descartados = [];
@@ -42,7 +45,26 @@ export function ordemJanela(sala, ctx) {
   return [...ids].sort((a, b) => (pos.get(b) ?? -1) - (pos.get(a) ?? -1));
 }
 
+/** Na abertura da janela, um jogador emprestado por lesão pode ser comprado ao valor de mercado. */
+export function comprarEmprestado(sala, ctx, equipaId, id) {
+  if (sala.fase !== 'janela' || sala.janela.fase !== 'formacao') return erro('Só na abertura da janela.');
+  const jg = jogador(sala, ctx, id);
+  if (!jg || jg.equipa !== equipaId || !jg.emprestadoLesao) return erro('Esse jogador não está emprestado a ti.');
+  if (sala.equipas[equipaId].dinheiro < jg.valor) return erro(`Precisas de ${M(jg.valor)}.`);
+  pagar(sala, equipaId, jg.valor);
+  const d = sala.jogadores[id];
+  delete d.emprestado;
+  delete d.emprestadoLesao;
+  registar(sala, ctx, `${sala.equipas[equipaId].nome} compra ${jg.curto}, que estava emprestado, por ${M(jg.valor)}.`, { tipo: 'transferencia' });
+  return { ok: true };
+}
+
+function devolverEmprestados(sala) {
+  for (const [id, d] of Object.entries(sala.jogadores)) if (d.emprestadoLesao) transferir(sala, Number(id), null);
+}
+
 function iniciarDraft(sala, ctx) {
+  devolverEmprestados(sala);
   const j = sala.janela;
   const ordem = ordemJanela(sala, ctx);
   const ultimo = sala.classificacao?.length ? ordem[0] : null;
@@ -210,7 +232,7 @@ function concluirJanela(sala, ctx) {
     e.onze = onze;
   }
   registar(sala, ctx, `A janela ${NOMES[sala.janela.tipo]} fecha.`, { tipo: 'fase' });
-  sala.fase = 'campeonato';
-  sala.campeonato = { volta: sala.janela.tipo === 'verao' ? 1 : 2 };
+  const volta = sala.janela.tipo === 'verao' ? 1 : 2;
   sala.janela = null;
+  iniciarVolta(sala, ctx, volta);
 }

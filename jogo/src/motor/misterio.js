@@ -150,7 +150,7 @@ export function tirarMisterio(sala, ctx, equipaId) {
   const carta = sala.janela.tipo === 'inverno' && base.inverno ? { ...base, ...base.inverno } : base;
   const e = sala.equipas[equipaId];
   const r = aplicar(sala, ctx, e, carta.efeito);
-  if (carta.bom) somarAjuda(e, carta.peso ?? 1);
+  if (carta.bom) somarAjuda(e, (carta.peso ?? 1) * CONFIG.investigacao.ajudaMisterio);
   const texto = r.texto ?? carta.texto;
   sala.janela.ultimaCarta = { equipa: equipaId, tipo: 'misterio', bom: carta.bom, titulo: carta.titulo, texto, detalhe: r.detalhe ?? null };
   registar(sala, ctx, `Mistério, ${e.nome}: ${carta.titulo}. ${texto}${r.detalhe ? ` (${r.detalhe})` : ''}`, { tipo: 'carta' });

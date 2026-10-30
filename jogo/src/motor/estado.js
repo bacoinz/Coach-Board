@@ -52,6 +52,9 @@ export function transferir(sala, id, equipaId, extra = {}) {
       delete d.multClausula;
       delete d.inflacionada;
       delete d.emprestado;
+      delete d.emprestadoLesao;
+      delete d.lesionado;
+      delete d.minutos;
       delete d.soBanca;
       delete d.compradoRonda;
       delete d.potencial;

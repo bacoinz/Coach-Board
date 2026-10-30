@@ -374,7 +374,8 @@ describe('fecho da janela', () => {
     expect(sala.fase).toBe('campeonato');
     const emprestados = e1.plantel.filter((id) => sala.jogadores[id].emprestado);
     expect(emprestados).toHaveLength(1);
-    ok(agir(sala, ctx, 't1', { t: 'avancar' }));
+    let i = 0;
+    while (sala.fase === 'campeonato' && i++ < 100) ok(agir(sala, ctx, 't1', { t: 'avancar' }));
     expect(sala.fase).toBe('janela');
     expect(sala.janela.tipo).toBe('inverno');
     expect(e1.plantel).not.toContain(emprestados[0]);

@@ -21,9 +21,9 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
   de verão.
 
 ## 2. Uma época
-1. **Janela de verão**: formação → draft → **duas voltas** ao tabuleiro → fecho.
+1. **Janela de verão**: formação → draft → **uma volta** ao tabuleiro, com um dado → fecho.
 2. **Primeira volta do campeonato.**
-3. **Janela de inverno**: formação → draft → **uma volta** ao tabuleiro → fecho.
+3. **Janela de inverno**: formação → draft → **uma volta** ao tabuleiro, com dois dados → fecho.
 4. **Segunda volta do campeonato.**
 5. **Fim de época.**
 
@@ -55,25 +55,28 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
   minutos e sem passar o potencial. O valor de mercado acompanha.
 - Com **mais de 21 anos e mais de 78 de overall**, o jovem passa para o plantel principal.
 
-### 3.4 Tabuleiro de mercado (40 casas)
+### 3.4 Tabuleiro de mercado (36 casas)
 
 | Casas | |
 |---|---|
-| 0–9 | **Início** · Mercado · Patrocínio · Mercado · Rede · **Mistério** · Patrocínio · Mercado · Empresário · Mercado |
-| 10–19 | **Jovens Talentos** · Médico · Mercado · Rede · Mercado · **Mistério** · Empresário · Patrocínio · Mercado · Empresário |
-| 20–29 | **Investigação** · Patrocínio · Mercado · Empresário · Mercado · **Mistério** · Rede · Médico · Mercado · Empresário |
-| 30–39 | **Jovens Talentos** · Rede · Mercado · Médico · Mercado · **Mistério** · Patrocínio · Empresário · Mercado · Rede |
+| 0–8 | **Início** · Mercado · Patrocínio · Mercado · **Jovens Talentos** · Rede · Mercado · Empresário · Mercado |
+| 9–17 | **Mistério** · Médico · Mercado · Rede · **Investigação** · Empresário · Mercado · Patrocínio · Mercado |
+| 18–26 | **SAD** · Patrocínio · Mercado · Empresário · **Jovens Talentos** · Rede · Mercado · Médico · Mercado |
+| 27–35 | **Mistério** · Rede · Mercado · Médico · **Jovens Talentos** · Patrocínio · Mercado · Empresário · Mercado |
 
-Totais: Mercado 13, Empresário 6, Rede 5, Patrocínio 5, Mistério 4, Médico 3, Jovens Talentos 2, Investigação 1,
+Totais: Mercado 13, Empresário 4, Rede 4, Patrocínio 4, Médico 3, Jovens Talentos 3, Mistério 2, Investigação 1, SAD 1,
 Início 1.
 
-**Início:** a meio das voltas do verão, ao passar pelo Início, há uma **injeção de capital da SAD**. Acaba por só
-acontecer uma vez por época: no fim da última volta e no inverno não há. Vale 3 M€ na época 1 e **duplica a cada
-época** (3, 6, 12, 24, 48…).
+Em cada janela dá-se **uma volta**: com **um dado no verão**; no **inverno**, o primeiro lançamento de cada treinador é
+com um dado e os seguintes com dois.
+
+**SAD:** quem pára na casa recebe uma **injeção de capital**; quem só passa recebe metade. No **inverno** vale metade do
+que vale no verão. Vale 3 M€ na época 1, duplica até
+à época 3, multiplica por 1,5 até à 7 e por 1,2 daí em diante: 3 · 6 · 12 · 18 · 27 · 40,5 · 60,8 · 72,9 · 87,5 · 105 M€.
 
 **Uma vez** **[A]** (pela ordem do draft):
 1. propostas, se quiseres (ver 3.5);
-2. lançar **um dado** e andar (nos jogos é que são dois);
+2. lançar o dado (no inverno, os dois, exceto no primeiro lançamento) e andar;
 3. resolver a casa;
 4. mais propostas, se quiseres;
 5. **Terminar vez**.
@@ -146,8 +149,8 @@ Castiga quem teve sorte a mais. A probabilidade de condenação é:
 
 **3% + 5% por campeonato ganho + 12% por cada ponto de ajuda**, até 85%.
 
-- Cada carta Mistério boa dá 1 ponto de ajuda. As que dão dinheiro na próxima janela dão mais: Clube comprado 3, Nome no
-  estádio e Mecenas anónimo 2.
+- Cada carta Mistério boa dá **1/3 de ponto** de ajuda. As que dão dinheiro na próxima janela dão mais: Clube comprado 1,
+  Nome no estádio e Mecenas anónimo 2/3.
 - Cada carta de **Empresário usada** dá 1 ponto (inflacionar, exclusividade ou anular).
 - Aceitar uma marca ou patrocinador **da lista "iniciais" que já se tornou grande** dá 1 ponto (entra com os patrocínios,
   no passo 5).
@@ -238,8 +241,9 @@ A mesma tática dos dois lados é neutra.
 ### 4.2 Modificador
 - **Defesa** = média do GR e dos defesas. **Ataque** = média dos médios e dos avançados.
 - **Força**: o teu Ataque menos a Defesa do adversário, ±1 por cada 3 pontos, entre −2 e +2.
-- **Tática**: +2 se a tua carta vence a do adversário.
-- **Química**: pequeno bónus por grupos de jogadores da mesma nacionalidade.
+- **Tática**: +1 se a tua carta vence a do adversário.
+- **Química**: +0,25 por cada grupo de 3 ou mais jogadores da mesma nacionalidade no onze, até +0,5. A parte decimal é a
+  probabilidade de +1 em cada lance.
 - **Vermelho**: −1 até ao fim do jogo.
 
 ### 4.3 Desenrolar
@@ -328,8 +332,8 @@ Abre com três coisas:
 - os emprestados por lesão podem ser comprados;
 - quem estava a ver entra.
 
-O resto decorre como no verão (formação, draft pela classificação atual invertida, tabuleiro e fecho), mas com
-**uma volta** ao tabuleiro.
+O resto decorre como no verão (formação, draft pela classificação atual invertida, tabuleiro e fecho), mas com **dois
+dados** no tabuleiro.
 
 ## 7. Fim de época
 - **Campeão** da época.

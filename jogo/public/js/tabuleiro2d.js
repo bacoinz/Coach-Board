@@ -1,4 +1,4 @@
-// Tabuleiro de mercado em 2D (40 casas à volta de uma grelha 11×11, como no Monopólio). O 3D chega no passo 6.
+// Tabuleiro de mercado em 2D (as casas à volta de uma grelha, como no Monopólio). O 3D chega no passo 6.
 import { CONFIG } from './comum/config.gen.js';
 import { esc } from './util.js';
 
@@ -13,16 +13,21 @@ const ROTULOS = {
   jovens: 'Jovens Talentos',
   misterio: 'Mistério',
   investigacao: 'Investigação',
+  sad: 'SAD',
 };
 // Para tabuleiros pequenos (telemóvel).
-const CURTOS = { inicio: 'Início', mercado: 'Merc.', rede: 'Rede', empresario: 'Emp.', medico: 'Méd.', patrocinio: 'Patr.', jovens: 'Jovens', misterio: 'Mist.', investigacao: 'Invest.' };
+const CURTOS = { inicio: 'Início', mercado: 'Merc.', rede: 'Rede', empresario: 'Emp.', medico: 'Méd.', patrocinio: 'Patr.', jovens: 'Jovens', misterio: 'Mist.', investigacao: 'Invest.', sad: 'SAD' };
 
-/** Linha e coluna (1–11) de uma casa: 0 no canto de baixo à direita, a andar no sentido dos ponteiros. */
+// Cada lado tem um canto e as casas até ao canto seguinte: 36 casas dão uma grelha de 10×10.
+const LADO = CASAS.length / 4;
+
+/** Linha e coluna de uma casa: 0 no canto de baixo à direita, a andar no sentido dos ponteiros. */
 function posicaoGrelha(i) {
-  if (i <= 10) return [11, 11 - i];
-  if (i <= 20) return [11 - (i - 10), 1];
-  if (i <= 30) return [1, i - 19];
-  return [i - 29, 11];
+  const n = LADO + 1;
+  if (i <= LADO) return [n, n - i];
+  if (i <= 2 * LADO) return [n - (i - LADO), 1];
+  if (i <= 3 * LADO) return [1, i - 2 * LADO + 1];
+  return [i - 3 * LADO + 1, n];
 }
 
 /**
@@ -40,7 +45,7 @@ export function tabuleiroHTML({ posicoes, equipas, vez, centro }) {
   }
   const casas = CASAS.map((tipo, i) => {
     const [linha, coluna] = posicaoGrelha(i);
-    const canto = i % 10 === 0 ? ' casa-canto' : '';
+    const canto = i % LADO === 0 ? ' casa-canto' : '';
     const aqui = (fichas.get(i) ?? [])
       .map((id) => {
         const e = equipas[id];
@@ -50,7 +55,7 @@ export function tabuleiroHTML({ posicoes, equipas, vez, centro }) {
     return `<div class="casa casa-${tipo}${canto}" style="grid-area:${linha}/${coluna}" title="${i}. ${ROTULOS[tipo]}">
       <span class="casa-rotulo"><span class="longo">${ROTULOS[tipo]}</span><span class="curto">${CURTOS[tipo]}</span></span><span class="fichas">${aqui}</span></div>`;
   }).join('');
-  return `<div class="tabuleiro">${casas}<div class="tabuleiro-centro">${centro}</div></div>`;
+  return `<div class="tabuleiro" style="--celas:${LADO + 1}">${casas}<div class="tabuleiro-centro">${centro}</div></div>`;
 }
 
 const PONTOS = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };

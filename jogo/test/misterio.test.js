@@ -18,34 +18,57 @@ function tirar(sala, ctx, eq, titulo) {
 }
 
 describe('tabuleiro', () => {
-  it('tem a disposição pedida: 40 casas e uma Mistério no centro de cada lado', () => {
+  it('tem a disposição pedida: 36 casas', () => {
     const casas = CONFIG.tabuleiro.casas;
     const conta = (t) => casas.filter((c) => c === t).length;
-    expect(casas).toHaveLength(40);
-    expect([5, 15, 25, 35].map((i) => casas[i])).toEqual(['misterio', 'misterio', 'misterio', 'misterio']);
-    expect([0, 10, 20, 30].map((i) => casas[i])).toEqual(['inicio', 'jovens', 'investigacao', 'jovens']);
-    expect({ m: conta('mercado'), p: conta('patrocinio'), r: conta('rede'), e: conta('empresario'), d: conta('medico'), j: conta('jovens') })
-      .toEqual({ m: 13, p: 5, r: 5, e: 6, d: 3, j: 2 });
+    expect(casas).toHaveLength(36);
+    expect([0, 9, 18, 27].map((i) => casas[i])).toEqual(['inicio', 'misterio', 'sad', 'misterio']);
+    expect([4, 13, 22, 31].map((i) => casas[i])).toEqual(['jovens', 'investigacao', 'jovens', 'jovens']);
+    expect({ m: conta('mercado'), p: conta('patrocinio'), r: conta('rede'), e: conta('empresario'), d: conta('medico') })
+      .toEqual({ m: 13, p: 4, r: 4, e: 4, d: 3 });
   });
-  it('a SAD paga ao passar pelo Início a meio do verão, e não no fim das voltas', () => {
+  it('dá-se uma volta em cada janela, com um dado no verão e dois no inverno', () => {
     const ctx = contexto();
     const sala = salaNoTabuleiro(2, {}, ctx);
+    expect(totalCasas(sala.janela)).toBe(36);
     const eq = vezDe(sala);
-    const e = sala.equipas[eq];
-    sala.janela.andadas[eq] = 39;
-    const antes = e.dinheiro;
     ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'lancar' }));
-    expect(e.dinheiro).toBeGreaterThanOrEqual(antes + valorSAD(1) - 15);
-    expect(sala.log.some((l) => l.texto.includes('SAD'))).toBe(true);
-
-    const outra = sala.equipas[sala.janela.ordem[1]];
-    sala.log = [];
-    sala.janela.andadas[outra.id] = totalCasas(sala.janela) - 1;
-    sala.janela.pendente = null;
-    sala.janela.lancou = true;
-    ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'terminar_vez' }));
-    ok(agir(sala, ctx, treinadorDe(sala, outra.id), { t: 'lancar' }));
-    expect(sala.log.some((l) => l.texto.includes('SAD'))).toBe(false);
+    expect(sala.janela.ultimoLance.dados).toHaveLength(1);
+    const inverno = salaNoTabuleiro(2, {}, ctx);
+    inverno.janela.tipo = 'inverno';
+    expect(totalCasas(inverno.janela)).toBe(36);
+    // No inverno, o 1.º lançamento é com um dado e os seguintes com dois.
+    const quem = vezDe(inverno);
+    ok(agir(inverno, ctx, treinadorDe(inverno, quem), { t: 'lancar' }));
+    expect(inverno.janela.ultimoLance.dados).toHaveLength(1);
+    inverno.janela.lancou = false;
+    inverno.janela.pendente = null;
+    inverno.janela.leilao = null;
+    ok(agir(inverno, ctx, treinadorDe(inverno, quem), { t: 'lancar' }));
+    expect(inverno.janela.ultimoLance.dados).toHaveLength(2);
+  });
+  it('a SAD paga o valor inteiro a quem pára e metade a quem passa; o Início não paga', () => {
+    const ctx = contexto();
+    const sala = salaNoTabuleiro(3, {}, ctx);
+    sala.epoca = 3;
+    const [a, b, c] = sala.janela.ordem.map((id) => sala.equipas[id]);
+    const correr = (e, ate, n) => {
+      sala.log = [];
+      sala.janela.vez = sala.janela.ordem.indexOf(e.id);
+      sala.janela.lancou = false;
+      sala.janela.pendente = null;
+      sala.janela.andadas[e.id] = ate;
+      const dadoFixo = () => (n - 1) / 6 + 0.01;
+      ok(agir(sala, { ...ctx, aleatorio: dadoFixo }, e.treinador, { t: 'lancar' }));
+      return sala.log.find((l) => l.texto.includes('SAD'))?.texto ?? null;
+    };
+    expect(correr(a, 17, 1)).toContain(`recebe 12,0 M€`);
+    expect(correr(b, 17, 3)).toContain(`recebe 6,0 M€`);
+    expect(correr(c, 35, 1)).toBeNull();
+    // No inverno vale metade (a meio da volta lançam-se dois dados).
+    sala.janela.tipo = 'inverno';
+    expect(correr(a, 16, 1)).toContain('recebe 6,0 M€');
+    expect(correr(b, 17, 1)).toContain('recebe 3,0 M€');
   });
 });
 
@@ -77,9 +100,9 @@ describe('baralho Mistério', () => {
     tirar(sala, ctx, eq, 'Multa da federação');
     expect(sala.equipas[eq].ajudas ?? 0).toBe(0);
     tirar(sala, ctx, eq, 'Herança de um sócio');
-    expect(sala.equipas[eq].ajudas).toBe(1);
+    expect(sala.equipas[eq].ajudas).toBeCloseTo(1 / 3);
     tirar(sala, ctx, eq, 'Clube comprado');
-    expect(sala.equipas[eq].ajudas).toBe(4);
+    expect(sala.equipas[eq].ajudas).toBeCloseTo(4 / 3);
   });
   it('o clube comprado só recebe na próxima janela; a penhora só desconta aí', () => {
     const ctx = contexto();
@@ -117,11 +140,11 @@ describe('baralho Mistério', () => {
     const ctx = contexto();
     const sala = salaNoTabuleiro(2, {}, ctx);
     const eq = vezDe(sala);
-    sala.janela.andadas[eq] = 5;
-    sala.janela.posicao[eq] = 5;
+    sala.janela.andadas[eq] = 4;
+    sala.janela.posicao[eq] = 4;
     sala.baralhoMisterio = [CARTAS.findIndex((x) => x.titulo === 'Telefonema importante')];
     resolverCasa(sala, ctx, eq, 'misterio');
-    expect(sala.janela.posicao[eq]).toBe(7);
+    expect(sala.janela.posicao[eq]).toBe(6);
     expect(sala.janela.pendente?.tipo).toBe('mercado');
   });
   it('amigo do presidente: 30% de desconto só na próxima compra', () => {
@@ -163,23 +186,9 @@ describe('baralho Mistério', () => {
 });
 
 describe('regras afinadas depois de jogar', () => {
-  it('no tabuleiro lança-se um só dado', () => {
-    const ctx = contexto();
-    const sala = salaNoTabuleiro(2, {}, ctx);
-    const eq = vezDe(sala);
-    ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'lancar' }));
-    expect(sala.janela.ultimoLance.dados).toHaveLength(1);
-    expect(sala.janela.andadas[eq]).toBe(sala.janela.ultimoLance.dados[0]);
-  });
-  it('a SAD duplica a cada época', () => {
-    expect([1, 2, 3, 4].map(valorSAD)).toEqual([3, 6, 12, 24]);
-    const ctx = contexto();
-    const sala = salaNoTabuleiro(2, {}, ctx);
-    const eq = vezDe(sala);
-    sala.epoca = 3;
-    sala.janela.andadas[eq] = 39;
-    ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'lancar' }));
-    expect(sala.log.some((l) => l.texto.includes('recebe 12,0 M€'))).toBe(true);
+  it('a SAD duplica até à época 3, depois 1,5× até à 7 e 1,2× daí em diante', () => {
+    const v = (e) => Math.round(valorSAD(e) * 100) / 100;
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v)).toEqual([3, 6, 12, 18, 27, 40.5, 60.75, 72.9, 87.48, 104.98]);
   });
   it('usar o Empresário soma pontos de ajuda: inflacionar, exclusividade e anular', () => {
     const ctx = contexto();
@@ -273,7 +282,7 @@ describe('Investigação', () => {
       return condenacoes / 300;
     };
     expect(contar(0)).toBeLessThan(0.1);
-    expect(contar(10)).toBeGreaterThan(0.7);
+    expect(contar(15)).toBeGreaterThan(0.7);
   });
   it('a condenação zera as ajudas e aplica a sanção', () => {
     const ctx = contexto(9);

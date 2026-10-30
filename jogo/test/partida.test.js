@@ -5,6 +5,7 @@ import { jogador } from '../src/motor/estado.js';
 import { sugestaoFecho } from '../src/motor/janela.js';
 import { estadoPublico, privado } from '../src/motor/vista.js';
 import { FORMACOES } from '../src/motor/formacao.js';
+import { acabou } from '../src/motor/tabuleiro.js';
 
 /** Um passo de jogo: quem tem de agir faz uma jogada ao acaso (mas válida, quase sempre). */
 function passo(sala, ctx) {
@@ -58,11 +59,11 @@ function passo(sala, ctx) {
   } else if (r < 0.1 && e.plantel.length > 13) {
     return agir(sala, ctx, t(eq), { t: 'vender_banca', jogador: acaso(e.plantel) });
   }
-  if (!j.lancou && j.andadas[eq] < 80 * 10) {
+  if (!j.lancou && !acabou(j, eq)) {
     const res = agir(sala, ctx, t(eq), { t: 'lancar' });
     if (!res.erro) return res;
   }
-  if (j.ordem.every((x) => j.andadas[x] >= (j.tipo === 'verao' ? 80 : 40))) {
+  if (j.ordem.every((x) => acabou(j, x))) {
     const falta = j.ordem.find((x) => !j.prontos.includes(x));
     if (falta) return agir(sala, ctx, t(falta), { t: 'pronto_fechar' });
   }

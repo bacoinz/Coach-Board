@@ -93,8 +93,8 @@
 /* --- Tabuleiro --- */
 .tabuleiro {
   display: grid;
-  grid-template-columns: repeat(11, minmax(0, 1fr));
-  grid-template-rows: repeat(11, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--celas), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--celas), minmax(0, 1fr));
   aspect-ratio: 1;
   width: 100%;
   max-width: 640px;
@@ -139,6 +139,7 @@
 .casa-patrocinio { --cor-casa: #ca8a04; }
 .casa-jovens { --cor-casa: #ea580c; }
 .casa-misterio { --cor-casa: #db2777; background: #fbe4ef; }
+.casa-sad { --cor-casa: #0f766e; background: #d9f0ec; }
 .casa-investigacao { --cor-casa: #991b1b; background: #f6dcd6; }
 .casa-inicio { --cor-casa: #3d241d; background: #e9d5b5; }
 .fichas {
@@ -159,7 +160,7 @@
   animation: pulsar 1.2s ease-in-out infinite;
 }
 .tabuleiro-centro {
-  grid-area: 2 / 2 / 11 / 11;
+  grid-area: 2 / 2 / var(--celas) / var(--celas);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -417,6 +418,54 @@
 }
 .evento-detalhe {
   font-weight: 800;
+}
+
+/* --- Campeonato --- */
+.placar-jogo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #ffffff0a;
+}
+.placar-equipa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 13px;
+}
+.placar-equipa span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.placar-equipa.fora {
+  justify-content: flex-end;
+  text-align: right;
+}
+.placar-golos {
+  font-family: var(--display);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--destaque-2);
+}
+.dados-jogo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  justify-items: center;
+}
+.dados-jogo .dado {
+  width: 34px;
+  height: 34px;
+}
+.relato {
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 /* --- Diálogo da equipa: o onze no campo --- */

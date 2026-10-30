@@ -32,6 +32,7 @@ function etiquetas(j) {
   return [
     j.formacao ? '<span class="carta-tag">Formação</span>' : '',
     j.emprestado ? '<span class="carta-tag">Emprestado</span>' : '',
+    j.lesionado ? '<span class="carta-tag">Lesionado</span>' : '',
     j.soBanca ? '<span class="carta-tag">Só banca</span>' : '',
   ].join('');
 }
@@ -59,7 +60,7 @@ export function miniCartaHTML(j) {
     <span class="mini-carta-ovr">${j.overall}</span>
     <div class="mini-carta-foto">${cara(j, 120)}</div>
     <span class="mini-carta-nome">${esc(j.curto)}</span>
-    ${j.formacao ? '<span class="mini-carta-tag">Form.</span>' : ''}
+    ${j.formacao ? '<span class="mini-carta-tag">Form.</span>' : j.lesionado ? '<span class="mini-carta-tag">Les.</span>' : j.emprestado ? '<span class="mini-carta-tag">Empr.</span>' : ''}
   </article>
   <span class="mini-carta-valor">${dinheiro(j.valor)}</span>`;
 }

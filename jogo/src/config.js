@@ -94,16 +94,28 @@ export const CONFIG = {
 
   // --- Tabuleiro (src/motor/tabuleiro.js) ---
   tabuleiro: {
+    // 36 casas: 4 lados de 9 (canto + 8), com os cantos em 0, 9, 18 e 27.
     casas: [
-      'inicio', 'mercado', 'patrocinio', 'mercado', 'rede', 'misterio', 'patrocinio', 'mercado', 'empresario', 'mercado',
-      'jovens', 'medico', 'mercado', 'rede', 'mercado', 'misterio', 'empresario', 'patrocinio', 'mercado', 'empresario',
-      'investigacao', 'patrocinio', 'mercado', 'empresario', 'mercado', 'misterio', 'rede', 'medico', 'mercado', 'empresario',
-      'jovens', 'rede', 'mercado', 'medico', 'mercado', 'misterio', 'patrocinio', 'empresario', 'mercado', 'rede',
+      'inicio', 'mercado', 'patrocinio', 'mercado', 'jovens', 'rede', 'mercado', 'empresario', 'mercado',
+      'misterio', 'medico', 'mercado', 'rede', 'investigacao', 'empresario', 'mercado', 'patrocinio', 'mercado',
+      'sad', 'patrocinio', 'mercado', 'empresario', 'jovens', 'rede', 'mercado', 'medico', 'mercado',
+      'misterio', 'rede', 'mercado', 'medico', 'jovens', 'patrocinio', 'mercado', 'empresario', 'mercado',
     ],
-    voltas: { verao: 2, inverno: 1 },
-    dados: 1,                       // dados lançados no tabuleiro (nos jogos são 2)
-    // Ao passar pelo Início (só acontece no verão, a meio das duas voltas): base × fator^(época − 1) M€.
-    injecaoSAD: { base: 3, fator: 2 },
+    voltas: { verao: 1, inverno: 1 },
+    // Dados lançados no tabuleiro (nos jogos são sempre 2). No inverno, o 1.º lançamento de cada treinador é com um dado.
+    dados: { verao: 1, inverno: 2, primeiroInverno: 1 },
+    // Casa SAD: quem pára lá recebe o valor inteiro; quem passa, recebe parte. Vale a base na época 1 e, em cada época
+    // seguinte, multiplica pelo fator do primeiro escalão em que época ≤ ate.
+    injecaoSAD: {
+      aoPassar: 0.5,
+      inverno: 0.5,                 // no inverno vale metade do verão
+      base: 3,
+      fatores: [
+        { ate: 3, fator: 2 },
+        { ate: 7, fator: 1.5 },
+        { ate: 99, fator: 1.2 },
+      ],
+    },
   },
 
   // --- Investigação (src/motor/misterio.js) ---
@@ -116,6 +128,7 @@ export const CONFIG = {
     porCampeonato: 0.05,
     porAjuda: 0.12,
     maximo: 0.85,
+    ajudaMisterio: 1 / 3,           // multiplica o peso de cada carta Mistério boa
     ajudaEmpresario: 1,             // por cada carta de Empresário usada
     ajudaInicialInvestida: 1,       // por aceitar uma marca ou patrocinador inicial já investido (passo 5)
     // A sanção é sorteada entre estas, com estes pesos.
@@ -290,6 +303,56 @@ export const CONFIG = {
   // --- Leilões e propostas ---
   leilao: {
     incrementoMinimo: 0.5,          // cada lance sobe pelo menos isto
+  },
+
+  // --- Motor dos jogos (src/motor/jogo.js) ---
+  jogo: {
+    // Cada tática vence a seguinte; a última vence a primeira.
+    taticas: ['Contra-ataque', 'Ataque Total', 'Autocarro', 'Posse de Bola', 'Pressão Alta'],
+    periodos: 9,
+    minutosPorPeriodo: 10,
+    segundosPorPeriodo: 4,          // no ecrã
+    forca: { pontosPorUnidade: 3, maximo: 2 }, // ±1 por cada 3 pontos de Ataque − Defesa, entre −2 e +2
+    bonusTatica: 1,
+    vermelho: 1,                    // −1 no modificador até ao fim
+    // Química: grupos de jogadores da mesma nacionalidade no onze. Uma parte decimal é a probabilidade de +1 em cada lance.
+    quimica: { tamanhoGrupo: 3, porGrupo: 0.25, maximo: 0.5 },
+    // Total (dados + modificador) → resultado: até este total, golo com este dado extra ou mais.
+    oportunidades: [
+      { ate: 5, nome: 'nada' },
+      { ate: 7, nome: 'baixa', dadoMinimo: 6 },
+      { ate: 9, nome: 'media', dadoMinimo: 5 },
+      { ate: 12, nome: 'alta', dadoMinimo: 4 },
+      { ate: 99, nome: 'certo', dadoMinimo: 0 },
+    ],
+    // Dados iguais: carta de acontecimento.
+    acontecimentos: {
+      leves: 2 / 3,
+      textosLeves: ['Amarelo', 'Bola ao poste', 'Grande defesa', 'Fora de jogo', 'Canto'],
+      fortes: { vermelho: 1, lesao: 1, penalti: 1, bolaParada: 1 },
+      penaltiMinimo: 3,             // um dado: golo com 3–6
+      bolaParadaMinimo: 4,          // um dado: golo com 4–6
+    },
+    // Peso de cada linha para marcar e assistir (multiplica pela finalização ou pelo passe).
+    pesoMarcar: { GR: 0.01, DEF: 0.35, MED: 1, AV: 2.5 },
+    pesoAssistir: { GR: 0.05, DEF: 0.6, MED: 1.3, AV: 1 },
+    probabilidadeAssistencia: 0.8,
+    // Quem substitui: lesão sem carta médica (15% de ser pelo menos tão bom) ou efeito de carta Mistério por um jogo.
+    emprestimoLesao: { probabilidadeIgualOuMelhor: 0.15, margemMelhor: 3, margemPior: 8 },
+    substitutoUmJogo: { overall: [60, 65] },
+  },
+
+  // --- Bots: podem ganhar títulos, mas tem de ser muito raro ---
+  // Modificador escondido em todos os jogos dos bots, conforme o nível escolhido no lobby.
+  bots: {
+    modificador: { inferior: -1.5, equivalente: -1 },
+  },
+
+  // --- Campeonato (src/motor/campeonato.js) ---
+  campeonato: {
+    vitoria: 3,
+    empate: 1,
+    tvEpoca: 40,                    // M€ de TV por época, iguais para todos e pagos por jornada
   },
 
   // --- Fecho da janela ---
