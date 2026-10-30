@@ -11,9 +11,11 @@ const ROTULOS = {
   medico: 'Médico',
   patrocinio: 'Patrocínio',
   jovens: 'Jovens Talentos',
+  misterio: 'Mistério',
+  investigacao: 'Investigação',
 };
 // Para tabuleiros pequenos (telemóvel).
-const CURTOS = { inicio: 'Início', mercado: 'Merc.', rede: 'Rede', empresario: 'Emp.', medico: 'Méd.', patrocinio: 'Patr.', jovens: 'Jovens' };
+const CURTOS = { inicio: 'Início', mercado: 'Merc.', rede: 'Rede', empresario: 'Emp.', medico: 'Méd.', patrocinio: 'Patr.', jovens: 'Jovens', misterio: 'Mist.', investigacao: 'Invest.' };
 
 /** Linha e coluna (1–11) de uma casa: 0 no canto de baixo à direita, a andar no sentido dos ponteiros. */
 function posicaoGrelha(i) {

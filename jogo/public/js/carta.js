@@ -1,5 +1,5 @@
-// Carta de jogador (estilo das cartas do Ultimate Team: escudo, overall, posição, foto, nome e 6 facetas)
-// e a linha compacta usada nas listas de plantéis.
+// Carta de jogador (retangular: a foto ocupa a carta e desvanece para a cor do nível; overall, posição, nome e 6 facetas)
+// e a carta pequena usada no campo (só cara, nome e overall). A liga e o clube ficam para o detalhe do jogador.
 import { CONFIG } from './comum/config.gen.js';
 import { esc, dinheiro } from './util.js';
 
@@ -9,54 +9,57 @@ const FACETAS_GR = ['MER', 'MÃO', 'PON', 'REF', 'VEL', 'POS'];
 
 export const posicao = (p) => NOMES_POS[p] ?? p;
 
-/** Nível da carta pela cor: bronze, prata, ouro e ouro raro. */
+/** Nível da carta: bronze até 69, prata até 77, ouro até 87 (a brilhar de 84 a 87) e ciano a brilhar a partir de 88. */
 export function nivel(overall) {
-  if (overall >= 85) return 'raro';
-  if (overall >= 75) return 'ouro';
-  if (overall >= 65) return 'prata';
+  if (overall >= 88) return 'ciano';
+  if (overall >= 84) return 'ouro-brilho';
+  if (overall >= 78) return 'ouro';
+  if (overall >= 70) return 'prata';
   return 'bronze';
 }
 
 const SILHUETA = `<svg class="carta-silhueta" viewBox="0 0 56 70" aria-hidden="true"><circle cx="28" cy="22" r="13"/><path d="M4 70C6 46 16 40 28 40s22 6 24 30z"/></svg>`;
 
+/** A cara do jogador: a foto do Commons por cima da silhueta (que fica à vista se não houver foto ou ela falhar). */
+function cara(j, largura) {
+  if (!j.foto) return SILHUETA;
+  const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(j.foto)}?width=${largura}`;
+  return `${SILHUETA}<img class="foto-jogador" src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
+}
+
+/** Etiquetas de estado do jogador: Formação, Emprestado, Só banca. */
+function etiquetas(j) {
+  return [
+    j.formacao ? '<span class="carta-tag">Formação</span>' : '',
+    j.emprestado ? '<span class="carta-tag">Emprestado</span>' : '',
+    j.soBanca ? '<span class="carta-tag">Só banca</span>' : '',
+  ].join('');
+}
+
 /**
  * @param {object} j jogador (vista do servidor)
- * @param {{ tamanho?: 'normal'|'grande'|'pequena', extra?: string }} o
+ * @param {{ tamanho?: 'normal'|'grande'|'pequena' }} o
  */
-export function cartaHTML(j, { tamanho = 'normal', extra = '' } = {}) {
+export function cartaHTML(j, { tamanho = 'normal' } = {}) {
   const nomes = j.posicao === 'GK' ? FACETAS_GR : FACETAS;
   const facetas = (j.facetas ?? []).map((v, i) => `<span><b>${v}</b> ${nomes[i]}</span>`).join('');
-  const marcas = [
-    j.formacao ? '<span class="carta-marca" title="Formação">F</span>' : '',
-    j.emprestado ? '<span class="carta-marca" title="Emprestado">E</span>' : '',
-    j.soBanca ? '<span class="carta-marca" title="Só pode ser vendido à banca">B</span>' : '',
-  ].join('');
   return `<article class="carta carta-${nivel(j.overall)} carta-${tamanho}" aria-label="${esc(j.nome)}, ${j.overall} ${posicao(j.posicao)}">
-  <div class="carta-topo"><span class="carta-ovr">${j.overall}</span><span class="carta-pos">${posicao(j.posicao)}</span>${marcas}</div>
-  <div class="carta-foto">${SILHUETA}</div>
+  <div class="carta-topo"><span class="carta-ovr">${j.overall}</span><span class="carta-pos">${posicao(j.posicao)}</span></div>
+  <div class="carta-foto">${cara(j, 240)}</div>
+  <div class="carta-tags">${etiquetas(j)}</div>
   <div class="carta-nome">${esc(j.curto)}</div>
   <div class="carta-facetas">${facetas}</div>
-  <div class="carta-rodape">${esc(j.nacao)}<br>${esc(j.liga)}</div>
-  ${extra}
+  <div class="carta-rodape">${j.bandeira ? `<img class="bandeira" src="/bandeiras/${esc(j.bandeira)}.svg" alt="" loading="lazy">` : ''}<span>${esc(j.nacao)}</span></div>
 </article>`;
 }
 
-/** Linha compacta de um jogador numa lista. */
-export function linhaJogador(j, { acoes = '', onze = null } = {}) {
-  const alt = j.alternativas?.length ? ` <small>${j.alternativas.map(posicao).join(' ')}</small>` : '';
-  const etiquetas = [
-    onze ? `<span class="tag tag-onze" title="No onze">${posicao(onze)}</span>` : '',
-    j.formacao ? '<span class="tag" title="Formação">Formação</span>' : '',
-    j.emprestado ? '<span class="tag" title="Emprestado">Emprestado</span>' : '',
-    j.soBanca ? '<span class="tag" title="Só pode ser vendido à banca">Só banca</span>' : '',
-    j.inflacionada ? '<span class="tag" title="Cláusula inflacionada pelo Empresário">2×</span>' : '',
-  ].join('');
-  return `<li class="linha-jog" data-jogador="${j.id}">
-  <span class="mini-ovr mini-${nivel(j.overall)}">${j.overall}</span>
-  <span class="linha-pos">${posicao(j.posicao)}</span>
-  <span class="linha-nome"><strong>${esc(j.curto)}</strong>${alt}<small class="linha-sub">${j.idade} anos · ${esc(j.nacao)}</small></span>
-  <span class="linha-tags">${etiquetas}</span>
-  <span class="linha-valor">${dinheiro(j.valor)}</span>
-  ${acoes}
-</li>`;
+/** Carta pequena do campo: cara, nome e overall, com o valor por baixo. */
+export function miniCartaHTML(j) {
+  return `<article class="mini-carta carta-${nivel(j.overall)}">
+    <span class="mini-carta-ovr">${j.overall}</span>
+    <div class="mini-carta-foto">${cara(j, 120)}</div>
+    <span class="mini-carta-nome">${esc(j.curto)}</span>
+    ${j.formacao ? '<span class="mini-carta-tag">Form.</span>' : ''}
+  </article>
+  <span class="mini-carta-valor">${dinheiro(j.valor)}</span>`;
 }

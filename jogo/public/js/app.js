@@ -4,7 +4,8 @@ import { Ligacao } from './ligacao.js';
 import { CONFIG } from './comum/config.gen.js';
 import { melhorOnze } from './comum/formacao.gen.js';
 import { equipamentoSVG, PADROES } from './equipamento.js';
-import { cartaHTML, linhaJogador, posicao } from './carta.js';
+import { cartaHTML, miniCartaHTML, posicao, nivel } from './carta.js';
+import { campoHTML } from './campo.js';
 import { tabuleiroHTML, dadoHTML } from './tabuleiro2d.js';
 import { $, $$, esc, dinheiro, toast, identidade } from './util.js';
 
@@ -16,6 +17,7 @@ let codigoSala = null;
 let separador = 'equipas';
 let fecho = null; // { manter: Set, jovem } enquanto se escolhe o plantel no fecho
 let lanceProposto = null;
+let equipaAberta = null; // a equipa mostrada no diálogo do onze
 
 // --- Navegação ---
 
@@ -165,7 +167,6 @@ function desenharJogo() {
   if (S.fase === 'janela') info += `Janela de ${j.tipo === 'verao' ? 'verão' : 'inverno'} · ${FASES[j.fase]}`;
   else if (S.fase === 'campeonato') info += `Campeonato · ${S.campeonato.volta}.ª volta`;
   else info += 'Fim da partida';
-  if (S.mercado) info += ` <small class="barra-fase" title="Faixa principal do baralho do Mercado">Mercado ${S.mercado.faixas.principal.join('–')}</small>`;
   $('#barra-info').innerHTML = info;
   $('#barra-dinheiro').innerHTML = e && !e.espera ? `<strong>${dinheiro(e.dinheiro)}</strong>` : '<small>A ver</small>';
 
@@ -177,6 +178,7 @@ function desenharJogo() {
     centro: centroTabuleiro(),
   });
   desenharLado();
+  if ($('#dialogo-equipa').open) desenharEquipa();
 }
 
 function centroTabuleiro() {
@@ -253,10 +255,10 @@ function painelLeilao(e) {
       </div>
       <div class="linha-botoes">
         ${[0, 1, 5].map((x) => `<button class="btn btn-mini" data-acao="lance-rapido" data-valor="${Math.round((minimo + x) * 10) / 10}">${dinheiro(minimo + x)}</button>`).join('')}
-        <button class="btn btn-contorno btn-mini" data-acao="desistir">Desistir</button>
+        <button class="btn btn-contorno btn-mini" data-acao="desistir">${l.origem === 'mesa' ? 'Passar' : 'Desistir'}</button>
       </div>`;
   } else if (souLider) acoes = '<p><strong>Tens o lance mais alto.</strong></p>';
-  else acoes = '<p class="nota">Não estás neste leilão.</p>';
+  else acoes = `<p class="nota">${l.desistiram.includes(e.id) ? 'Já passaste.' : 'Não podes licitar neste leilão.'}</p>`;
   return `<h2 class="painel-titulo">${origem}</h2>
     <div class="destaque-carta">${cartaHTML(jg)}
       <div class="leilao-info">
@@ -295,16 +297,19 @@ function painelTabuleiro(e) {
   if (p && (p.tipo === 'mercado' || p.tipo === 'jovens')) {
     const jg = jogador(p.jogador);
     const titulo = p.tipo === 'mercado' ? 'Mercado' : 'Jovens Talentos';
-    const preco = p.equipa === e.id ? (EU.precoCarta ?? p.preco) : p.preco;
+    const { preco } = p;
+    const sancionado = e.limiteContratacoes === 0;
     html += `<h2 class="painel-titulo">${titulo}</h2>
+      ${cartaEvento()}
       <div class="destaque-carta">${cartaHTML(jg)}
         <div class="leilao-info">
           <p class="rotulo">Preço</p><p class="valor-grande">${dinheiro(preco)}</p>
-          ${preco < jg.valor ? '<p class="nota">Com o desconto da Rede.</p>' : ''}
+          <p class="nota">Valor ${dinheiro(jg.valor)}. Se passares, vai a leilão a partir daí e já não podes licitar.</p>
           <p class="nota">${esc(jg.clube)} · ${jg.idade} anos</p>
         </div></div>
       ${p.equipa === e.id
-        ? `<div class="linha-botoes"><button class="btn btn-principal" data-acao="comprar" ${e.dinheiro < preco ? 'disabled' : ''}>Comprar</button><button class="btn btn-contorno" data-acao="passar">Passar (vai a leilão)</button></div>`
+        ? `<div class="linha-botoes"><button class="btn btn-principal" data-acao="comprar" ${e.dinheiro < preco || sancionado ? 'disabled' : ''}>Comprar</button><button class="btn btn-contorno" data-acao="passar">Passar</button></div>
+           ${sancionado ? '<p class="nota">Estás sancionado: já não podes contratar nesta janela.</p>' : ''}`
         : `<p class="nota">${nomeEquipa(p.equipa)} decide se compra.</p>`}`;
   } else if (p?.tipo === 'rede') {
     const todas = [...equipa(p.equipa).redes, p.liga];
@@ -312,7 +317,8 @@ function painelTabuleiro(e) {
       <p>Nova Rede: <strong>${esc(p.liga)}</strong>. Só podes ter ${CONFIG.cartas.maxRedes}: ${p.equipa === e.id ? 'escolhe a que descartas.' : `${nomeEquipa(p.equipa)} escolhe a que descarta.`}</p>
       ${p.equipa === e.id ? `<div class="linha-botoes">${todas.map((l) => `<button class="btn btn-fantasma btn-mini" data-acao="descartar_rede" data-liga="${esc(l)}">Descartar ${esc(l)}</button>`).join('')}</div>` : ''}`;
   } else {
-    html += `<h2 class="painel-titulo">${minha ? 'A tua vez' : `Vez de ${nomeEquipa(vez)}`}</h2>`;
+    html += `<h2 class="painel-titulo">${minha ? 'A tua vez' : `Vez de ${nomeEquipa(vez)}`}</h2>${cartaEvento()}`;
+    if (e.limiteContratacoes != null) html += `<p class="nota">Sanção: ${e.limiteContratacoes === 0 ? 'já não podes contratar' : `só podes fazer mais ${e.limiteContratacoes} ${e.limiteContratacoes === 1 ? 'contratação' : 'contratações'}`} nesta janela.</p>`;
     if (minha) {
       html += `<div class="linha-botoes">
         ${!j.lancou && !acabei ? '<button class="btn btn-principal" data-acao="lancar">Lançar os dados</button>' : ''}
@@ -336,6 +342,19 @@ function painelTabuleiro(e) {
       <button class="btn btn-mini btn-contorno" data-acao="forcar_fecho">Fechar a janela já</button></div></div>`;
   }
   return html;
+}
+
+/** A carta Mistério ou o resultado da Investigação que acabou de sair. */
+function cartaEvento() {
+  const c = S.janela.ultimaCarta;
+  if (!c) return '';
+  const etiqueta = c.tipo === 'misterio' ? 'Carta Mistério' : 'Investigação';
+  return `<div class="carta-evento ${c.bom ? 'evento-bom' : 'evento-mau'}">
+    <p class="rotulo">${etiqueta} · ${nomeEquipa(c.equipa)}</p>
+    <p class="evento-titulo">${esc(c.titulo)}</p>
+    <p>${esc(c.texto)}</p>
+    ${c.detalhe ? `<p class="evento-detalhe">${esc(c.detalhe)}</p>` : ''}
+  </div>`;
 }
 
 function painelTrocas(e) {
@@ -365,7 +384,7 @@ function painelFecho(e) {
   const vazios = onze.filter((l) => l.jogador == null).map((l) => posicao(l.posicao));
   const linhas = lista.map((jg) => `<li class="linha-jog linha-fecho">
       <input type="checkbox" data-fecho="${jg.id}" ${fecho.manter.has(jg.id) ? 'checked' : ''} aria-label="Manter ${esc(jg.curto)}">
-      <span class="mini-ovr mini-${jg.overall >= 85 ? 'raro' : jg.overall >= 75 ? 'ouro' : jg.overall >= 65 ? 'prata' : 'bronze'}">${jg.overall}</span>
+      <span class="mini-ovr mini-${nivel(jg.overall)}">${jg.overall}</span>
       <span class="linha-pos">${posicao(jg.posicao)}</span>
       <span class="linha-nome"><strong>${esc(jg.curto)}</strong>${jg.alternativas?.length ? ` <small>${jg.alternativas.map(posicao).join(' ')}</small>` : ''}</span>
       <span class="linha-tags">${lugar.has(jg.id) ? `<span class="tag tag-onze">${posicao(lugar.get(jg.id))}</span>` : ''}${sobram.includes(jg.id) ? `<span class="tag">${jg.formacao ? '12.º' : 'Não cabe'}</span>` : ''}${jg.formacao ? '<span class="tag">Formação</span>' : ''}</span>
@@ -391,23 +410,69 @@ function desenharLado() {
   $('#lado-equipas').hidden = separador !== 'equipas';
   $('#lado-registo').hidden = separador !== 'registo';
   for (const b of $$('[data-separador]')) b.setAttribute('aria-selected', String(b.dataset.separador === separador));
-  const abertas = new Set($$('#lado-equipas details[open]').map((d) => d.dataset.equipa));
   const ordem = Object.values(S.equipas).filter((e) => !e.espera).sort((a, b) => (b.id === EU.equipa) - (a.id === EU.equipa) || Boolean(a.bot) - Boolean(b.bot));
   $('#lado-equipas').innerHTML = ordem.map((e) => {
     const t = e.treinador ? treinador(e.treinador) : null;
-    const lugar = new Map((e.onze ?? []).filter((l) => l.jogador != null).map((l) => [l.jogador, l.posicao]));
-    const plantel = e.plantel.map(jogador).filter(Boolean).sort((a, b) => b.overall - a.overall);
-    const aberta = abertas.size ? abertas.has(e.id) : e.id === EU.equipa;
     const cartas = e.bot ? 'Bot' : `${dinheiro(e.dinheiro)} · Emp. ${e.cartas.empresario} · Méd. ${e.cartas.medico}`;
-    return `<details class="equipa-lado${e.id === EU.equipa ? ' eu' : ''}" data-equipa="${e.id}" ${aberta ? 'open' : ''}>
-      <summary>${kit(e, 30)}<span class="quem"><strong>${esc(e.nome)}</strong><small>${t ? esc(t.nome) + (t.ligado ? '' : ' (desligado)') + ' · ' : ''}${cartas}</small></span></summary>
-      ${e.redes?.length ? `<p class="nota">Redes: ${e.redes.map(esc).join(', ')}</p>` : ''}
-      ${e.marca ? `<p class="nota">${esc(e.marca)} · ${e.patrocinios.map(esc).join(' · ')}</p>` : ''}
-      <ul class="lista-jogadores">${plantel.map((jg) => linhaJogador(jg, { onze: lugar.get(jg.id) })).join('')}</ul>
-      ${e.treinador && e.id !== EU.equipa && S.fase === 'janela' && !minhaEquipa()?.espera ? `<button class="btn btn-mini btn-contorno" data-acao="abrir-troca" data-equipa="${e.id}">Propor troca</button>` : ''}
-    </details>`;
+    return `<button class="equipa-lado${e.id === EU.equipa ? ' eu' : ''}" type="button" data-ver-equipa="${e.id}">
+      ${kit(e, 30)}<span class="quem"><strong>${esc(e.nome)}</strong><small>${t ? esc(t.nome) + (t.ligado ? '' : ' (desligado)') + ' · ' : ''}${cartas}</small></span>
+    </button>`;
   }).join('');
   $('#lado-registo').innerHTML = [...S.log].reverse().map((l) => `<li class="${l.tipo === 'fase' ? 'forte' : ''}">${esc(l.texto)}</li>`).join('');
+}
+
+/** O onze a mostrar: o que ficou do fecho durante o campeonato; na janela, o melhor possível com o plantel atual. */
+function onzeDe(e) {
+  const formacao = e.formacao ?? '4-4-2';
+  if (S.fase !== 'janela' && e.onze) return { formacao, onze: e.onze };
+  return { formacao, onze: melhorOnze(e.plantel.map(jogador).filter((x) => x && !x.emprestado), formacao).onze };
+}
+
+const TEXTO_EFEITOS = {
+  craque: 'Um craque joga no próximo jogo',
+  lesao: 'falha o próximo jogo',
+  suspenso: 'fica de fora do próximo jogo',
+};
+
+function textoEfeito(ef) {
+  if (ef.efeito === 'modificador') return `${ef.valor > 0 ? '+' : '−'}${Math.abs(ef.valor)} no modificador do próximo jogo`;
+  const nome = ef.jogador != null ? `${jogador(ef.jogador)?.curto ?? '?'} ` : '';
+  return nome + TEXTO_EFEITOS[ef.efeito];
+}
+
+/** Até 6 numa fila; mais do que isso em 2 ou 3 filas, para o banco não empurrar o campo para fora da janela. */
+const colunasBanco = (n) => (n <= 6 ? n : Math.ceil(n / (n <= 14 ? 2 : 3)));
+
+/** O diálogo da equipa: o onze no campo, com o valor de cada jogador, e quem está fora dele. */
+function desenharEquipa() {
+  const e = equipa(equipaAberta);
+  if (!e) return;
+  const t = e.treinador ? treinador(e.treinador) : null;
+  const { formacao, onze } = onzeDe(e);
+  const noOnze = new Set(onze.map((l) => l.jogador));
+  const fora = e.plantel.map(jogador).filter((x) => x && !noOnze.has(x.id)).sort((a, b) => b.overall - a.overall);
+  const avisos = [
+    e.capitalProximaJanela ? `${e.capitalProximaJanela > 0 ? '+' : '−'}${dinheiro(Math.abs(e.capitalProximaJanela))} na próxima janela` : '',
+    e.descontoProxima ? `${Math.round(e.descontoProxima * 100)}% de desconto na próxima compra no Mercado` : '',
+    e.limiteContratacoes != null ? `Sanção: mais ${e.limiteContratacoes} contratações nesta janela` : '',
+    ...e.efeitos.map(textoEfeito),
+  ].filter(Boolean);
+  $('#dialogo-equipa').innerHTML = `
+    <div class="dialogo-cabecalho">
+      <div class="equipa-titulo">${kit(e, 40)}<div><h2 class="titulo titulo-medio">${esc(e.nome)}</h2>
+        <p class="nota">${t ? esc(t.nome) : 'Bot'} · ${formacao}${e.bot ? '' : ` · ${dinheiro(e.dinheiro)}`}</p></div></div>
+      <button class="btn-fechar" data-fechar aria-label="Fechar">×</button>
+    </div>
+    <div class="dialogo-corpo">
+      ${e.bot ? '' : `<p class="nota equipa-info">Empresário ${e.cartas.empresario} · Médico ${e.cartas.medico}${e.redes.length ? ` · Redes: ${e.redes.map(esc).join(', ')}` : ''}${e.marca ? ` · ${esc(e.marca)} · ${e.patrocinios.map(esc).join(' · ')}` : ''}</p>`}
+      ${avisos.length ? `<p class="avisos-equipa">${avisos.map(esc).join(' · ')}</p>` : ''}
+      <div class="campo-caixa">${campoHTML(formacao, onze, S.jogadores)}</div>
+      <div class="banco">
+        <p class="rotulo">${S.fase === 'janela' ? 'Fora do onze' : 'Suplente'}${fora.length ? '' : ': ninguém'}</p>
+        ${fora.length ? `<div class="fora-onze" style="--colunas:${colunasBanco(fora.length)}">${fora.map((j) => `<div class="lugar-fora" data-jogador="${j.id}">${miniCartaHTML(j)}</div>`).join('')}</div>` : ''}
+      </div>
+      ${e.treinador && e.id !== EU.equipa && S.fase === 'janela' && !minhaEquipa()?.espera ? `<button class="btn btn-contorno btn-mini" data-acao="abrir-troca" data-equipa="${e.id}">Propor troca</button>` : ''}
+    </div>`;
 }
 
 // --- Diálogo de um jogador: propostas, Empresário, banca ---
@@ -439,7 +504,7 @@ function abrirJogador(id) {
     <div class="dialogo-cabecalho"><h2 class="titulo titulo-medio">${esc(jg.nome)}</h2><button class="btn-fechar" data-fechar aria-label="Fechar">×</button></div>
     <div class="dialogo-corpo jogador-detalhe">
       ${cartaHTML(jg, { tamanho: 'grande' })}
-      <dl class="ficha">
+      <dl class="ficha-jogador">
         <dt>Equipa</dt><dd>${dono ? esc(dono.nome) : 'Livre'}</dd>
         <dt>Idade</dt><dd>${jg.idade} anos</dd>
         <dt>Posições</dt><dd>${[jg.posicao, ...(jg.alternativas ?? [])].map(posicao).join(', ')}</dd>
@@ -450,8 +515,19 @@ function abrirJogador(id) {
         <dt>Cláusula</dt><dd>${dinheiro(jg.clausula)}${jg.inflacionada ? ' (inflacionada)' : ''}</dd>
       </dl>
       <div class="jogador-acoes">${acoes}</div>
+      <p id="credito-foto" class="nota credito-foto"></p>
     </div>`;
   $('#dialogo-jogador').showModal();
+  if (jg.foto) mostrarCredito(id);
+}
+
+// Os créditos das fotos (autor e licença, do Commons) só se carregam quando se abre um jogador.
+let creditos = null;
+async function mostrarCredito(id) {
+  creditos ??= fetch('/dados/creditos-fotos.json').then((r) => r.json()).catch(() => ({}));
+  const c = (await creditos)[id];
+  const el = $('#credito-foto');
+  if (c && el) el.textContent = `Foto: ${c[0] || 'autor desconhecido'} · ${c[1]} · Wikimedia Commons`;
 }
 
 function abrirTroca(outraId) {
@@ -563,6 +639,12 @@ document.addEventListener('click', (ev) => {
   }
   const padrao = ev.target.closest('[data-padrao]');
   if (padrao) return enviar({ t: 'equipa', kit: { padrao: padrao.dataset.padrao } });
+  const verEquipa = ev.target.closest('[data-ver-equipa]');
+  if (verEquipa) {
+    equipaAberta = verEquipa.dataset.verEquipa;
+    desenharEquipa();
+    return $('#dialogo-equipa').showModal();
+  }
   const sep = ev.target.closest('[data-separador]');
   if (sep) {
     separador = sep.dataset.separador;
@@ -581,6 +663,9 @@ document.addEventListener('change', (ev) => {
     desenhar();
   } else if (t.matches('#nome-equipa, #cor-1, #cor-2')) enviarEquipa();
 });
+
+// Foto que não carrega: sai e fica a silhueta (o evento de erro das imagens não sobe, por isso apanha-se na captura).
+document.addEventListener('error', (ev) => ev.target.matches?.('.foto-jogador') && ev.target.remove(), true);
 
 $('#btn-criar').addEventListener('click', criarSala);
 $('#form-entrar').addEventListener('submit', entrarSala);

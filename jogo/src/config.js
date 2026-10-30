@@ -95,17 +95,166 @@ export const CONFIG = {
   // --- Tabuleiro (src/motor/tabuleiro.js) ---
   tabuleiro: {
     casas: [
-      'inicio', 'mercado', 'rede', 'mercado', 'empresario', 'patrocinio', 'mercado', 'medico', 'mercado', 'mercado',
-      'jovens', 'mercado', 'rede', 'empresario', 'mercado', 'patrocinio', 'mercado', 'empresario', 'mercado', 'medico',
-      'patrocinio', 'mercado', 'empresario', 'rede', 'mercado', 'mercado', 'mercado', 'patrocinio', 'empresario', 'mercado',
-      'jovens', 'rede', 'medico', 'mercado', 'patrocinio', 'mercado', 'mercado', 'empresario', 'rede', 'jovens',
+      'inicio', 'mercado', 'patrocinio', 'mercado', 'rede', 'misterio', 'patrocinio', 'mercado', 'empresario', 'mercado',
+      'jovens', 'medico', 'mercado', 'rede', 'mercado', 'misterio', 'empresario', 'patrocinio', 'mercado', 'empresario',
+      'investigacao', 'patrocinio', 'mercado', 'empresario', 'mercado', 'misterio', 'rede', 'medico', 'mercado', 'empresario',
+      'jovens', 'rede', 'mercado', 'medico', 'mercado', 'misterio', 'patrocinio', 'empresario', 'mercado', 'rede',
     ],
     voltas: { verao: 2, inverno: 1 },
+    dados: 1,                       // dados lançados no tabuleiro (nos jogos são 2)
+    // Ao passar pelo Início (só acontece no verão, a meio das duas voltas): base × fator^(época − 1) M€.
+    injecaoSAD: { base: 3, fator: 2 },
+  },
+
+  // --- Investigação (src/motor/misterio.js) ---
+  // Probabilidade de um clube ser condenado = base + porCampeonato × títulos + porAjuda × ajudas, até ao máximo.
+  // Ajudas (desde a última condenação): cartas Mistério boas (com o seu peso), cartas de Empresário usadas e
+  // contratos com marcas ou patrocinadores iniciais que entretanto se tornaram grandes.
+  // Quem não teve ajudas quase nunca é condenado.
+  investigacao: {
+    base: 0.03,
+    porCampeonato: 0.05,
+    porAjuda: 0.12,
+    maximo: 0.85,
+    ajudaEmpresario: 1,             // por cada carta de Empresário usada
+    ajudaInicialInvestida: 1,       // por aceitar uma marca ou patrocinador inicial já investido (passo 5)
+    // A sanção é sorteada entre estas, com estes pesos.
+    sancoes: { limite: 0.4, multa: 0.4, ambas: 0.2 },
+    limiteContratacoes: 2,          // contratações que ainda pode fazer nesta janela
+    multa: 0.2,                     // parte do orçamento atual que perde
+    multaMinima: 2,
+  },
+
+  // --- Baralho Mistério (src/motor/misterio.js): metade boas, metade más ---
+  // bom: true conta como "ajuda" para a Investigação, com o peso indicado (1 por omissão).
+  // ou: valor em M€ que se aplica quando o efeito não é possível (ex.: perder uma carta que não se tem).
+  // inverno: título e texto que a carta usa nas janelas de inverno.
+  misterio: {
+    // Razões do "Castigo interno": a frase é o nome do jogador seguido de uma destas.
+    // As de razoesCastigoAdultos nunca saem a jogadores com menos de 18 anos (a base tem reais de 16 e 17).
+    razoesCastigoAdultos: [
+      'foi apanhado a meter o dedo no cu dos jogadores no banho',
+      'foi apanhado a conduzir bêbado e ficou inibido de conduzir',
+      'foi apanhado a fumar ganzas atrás das balizas',
+      'foi apanhado a sniffar coca na casinha do roupeiro',
+      'apareceu bêbedo num treino',
+      'disse que se tinha aleijado mas foi só curtir o Carnaval com a irmã',
+      'fumava nites no intervalo',
+      'fumava ganza no intervalo e nem rodava',
+      'arrotou e cheirou a piça',
+    ],
+    razoesCastigo: [
+      'foi apanhado a sair à noite',
+      'minou as águas da equipa',
+      'proferiu a n-word a um colega',
+      'cuspiu na cara do treinador',
+      'fez birra pra acordar de manhã',
+      'votou num partido de extrema-direita',
+      'fez comentários desnecessários no Twitter sobre a mãe de outro jogador',
+      'cagou dentro das chuteiras dum colega',
+      'recusou-se a fazer perna no ginásio',
+      'disse que só jogava pra chegar ao golo 1000',
+      'despediu-se dos jogadores com um beijinho e eu não gosto cá dessas merdas',
+      'não se benzeu antes de entrar em campo',
+      'deu-lhe um grito "não!"',
+      'não sabia o que era um fora-de-jogo',
+      'não gostava de Coca-Cola com gelo',
+      'não gostava de bitoque',
+      'achava que delícias-do-mar era um peixe',
+      'achava que o árbitro era só um trabalhador da FootLocker',
+      'tinha como ídolo o Yannick Djaló',
+      'lançou um álbum de funk brasileiro',
+    ],
+    // Lesões: a frase é o nome do jogador seguido de uma destas. As adultas nunca saem a menores de 18.
+    lesoes: [
+      'tem uma rotura no posterior da coxa',
+      'fez uma entorse no tornozelo',
+      'distendeu a virilha',
+      'tem uma rotura na barriga da perna',
+      'fraturou um metatarso',
+      'tem uma pubalgia',
+      'sofreu uma concussão',
+      'deslocou o ombro',
+      'rasgou os ligamentos do joelho',
+      'está de caganeira depois de ter comido {comida}',
+      'bateu com o mindinho numa cómoda',
+      'tem uma unha encravada',
+      'tem hemorróidas',
+      'apanhou covid',
+      'teve um acidente de carro',
+      'está cego temporariamente',
+      'desmaiou no último treino',
+      'está a cagar sangue',
+      'está a urinar em pó',
+      'está temporariamente surdo',
+    ],
+    lesoesAdultas: [
+      'torceu o colhão',
+      'partiu a piça em Z',
+      'apanhou uma DST',
+      'tem uma borbulha na ponta da piça',
+      'está a jorrar leite pelo cu',
+      'está com dor de cabecinha',
+      'apanhou sífilis',
+      'teve um acidente com um dildo',
+      'perdeu a sensibilidade na ponta da piroca',
+      'rachou um colhão',
+      'está temporariamente teso',
+    ],
+    comidas: [
+      'sushi estragado', 'francesinha estragada', 'bitoque sem ovo', 'um pastel de nata da bomba de gasolina',
+      'uma bifana de roulotte às 5 da manhã', 'marisco de terça-feira', 'a sopa da sogra', 'um kebab duvidoso',
+      'um rissol do bar do estádio', 'um courato da feira', 'uma bola de Berlim da praia em outubro',
+    ],
+    cartas: [
+      { bom: true, titulo: 'Camisolas virais', texto: 'A camisola do clube tornou-se moda nas redes sociais.', efeito: { tipo: 'dinheiro', valor: 3 } },
+      { bom: true, titulo: 'Herança de um sócio', texto: 'O sócio n.º 7 deixou tudo ao clube.', efeito: { tipo: 'dinheiro', valor: 5 } },
+      { bom: true, titulo: 'Prémio de fair-play', texto: 'As contas estão em dia e alguém reparou.', efeito: { tipo: 'dinheiro', valor: 2 } },
+      { bom: true, titulo: 'Digressão pela Ásia', texto: 'Uma digressão de pré-época enche os cofres.', inverno: { titulo: 'Amigáveis nos EUA', texto: 'Uns amigáveis a meio da época enchem os cofres.' }, efeito: { tipo: 'dinheiro', valor: 4 } },
+      { bom: true, titulo: 'Patrocínio surpresa', texto: 'Uma empresa de que nunca ouviste falar paga adiantado.', efeito: { tipo: 'dinheiro', valor: 3 } },
+      { bom: true, peso: 3, titulo: 'Clube comprado', texto: 'Um fundo estrangeiro comprou o clube. O dinheiro só chega na próxima janela.', efeito: { tipo: 'proximaJanela', valor: 15 } },
+      { bom: true, peso: 2, titulo: 'Nome no estádio', texto: 'Venderam o nome do estádio. Recebes na próxima janela.', efeito: { tipo: 'proximaJanela', valor: 8 } },
+      { bom: true, peso: 2, titulo: 'Mecenas anónimo', texto: 'Alguém promete uma transferência bancária para a próxima janela.', efeito: { tipo: 'proximaJanela', valor: 5 } },
+      { bom: true, titulo: 'Super-empréstimo', texto: 'Um craque (86 ou mais) joga por ti no próximo jogo.', efeito: { tipo: 'jogo', efeito: 'craque', overall: [86, 99] } },
+      { bom: true, titulo: 'Estágio na montanha', texto: 'A equipa voa no próximo jogo: +1 no modificador.', efeito: { tipo: 'jogo', efeito: 'modificador', valor: 1 } },
+      { bom: true, titulo: 'Agente amigo', texto: 'Um velho conhecido oferece os seus serviços.', efeito: { tipo: 'carta', carta: 'empresario' } },
+      { bom: true, titulo: 'Clínica nova', texto: 'O clube inaugura um centro médico.', efeito: { tipo: 'carta', carta: 'medico' } },
+      { bom: true, titulo: 'Olheiro genial', texto: 'Contrataste um olheiro com faro: ganhas uma Rede.', efeito: { tipo: 'rede', ou: 2 } },
+      { bom: true, titulo: 'Amigo do presidente', texto: 'A tua próxima compra no Mercado tem 30% de desconto.', efeito: { tipo: 'desconto', fracao: 0.3 } },
+      { bom: true, titulo: 'Livre de luxo', texto: 'Um jogador sem clube quer assinar por ti, a custo zero.', efeito: { tipo: 'jogadorLivre', overall: [72, 77] } },
+      { bom: true, titulo: 'A academia explode', texto: 'O teu melhor jovem da formação ganha +3 de overall.', efeito: { tipo: 'overall', alvo: 'jovem', delta: 3, ou: 2 } },
+      { bom: true, titulo: 'Adjunto génio', texto: 'Um jogador ao acaso ganha +1 de overall.', efeito: { tipo: 'overall', alvo: 'acaso', delta: 1, ou: 1 } },
+      { bom: true, titulo: 'Voo fretado', texto: 'Lanças os dados outra vez.', efeito: { tipo: 'repetir' } },
+      { bom: true, titulo: 'Telefonema importante', texto: 'Avanças até ao próximo Mercado.', efeito: { tipo: 'avancar', casa: 'mercado' } },
+      { bom: true, titulo: 'Cláusula blindada', texto: 'A cláusula do teu melhor jogador passa a 2× o valor, sem gastar Empresário.', efeito: { tipo: 'blindar', ou: 2 } },
+
+      { bom: false, titulo: 'Multa da federação', texto: 'O castigo chegou por carta registada.', efeito: { tipo: 'dinheiro', valor: -4 } },
+      { bom: false, titulo: 'Obras no estádio', texto: 'A bancada central afinal precisava de pilares.', efeito: { tipo: 'dinheiro', valor: -3 } },
+      { bom: false, titulo: 'Erro do contabilista', texto: 'Havia um zero a mais nas contas.', efeito: { tipo: 'dinheiro', valor: -5 } },
+      { bom: false, titulo: 'Salários em atraso', texto: 'O plantel foi para tribunal e ganhou.', efeito: { tipo: 'dinheiro', valor: -2 } },
+      { bom: false, titulo: 'Balneário destruído', texto: 'A claque não gostou do último resultado.', efeito: { tipo: 'dinheiro', valor: -2 } },
+      { bom: false, titulo: 'Patrocinador furioso', texto: 'Um escândalo obriga a devolver dinheiro.', efeito: { tipo: 'dinheiro', valor: -3 } },
+      { bom: false, titulo: 'Penhora das Finanças', texto: 'Na próxima janela, 8 M€ ficam retidos.', efeito: { tipo: 'proximaJanela', valor: -8 } },
+      { bom: false, titulo: 'Dívida antiga', texto: 'Uma transferência de há dez anos ficou por pagar. Vence na próxima janela.', efeito: { tipo: 'proximaJanela', valor: -5 } },
+      { bom: false, titulo: 'Inspeção fiscal', texto: 'Perdes 10% do orçamento.', efeito: { tipo: 'percentagem', fracao: 0.1 } },
+      { bom: false, titulo: 'Diretor em fuga', texto: 'Levou 15% do orçamento numa mala.', efeito: { tipo: 'percentagem', fracao: 0.15 } },
+      { bom: false, titulo: 'Lesão no treino', texto: 'Um jogador ao acaso falha o próximo jogo, por uma das lesões da lista.', efeito: { tipo: 'jogo', efeito: 'lesao' } },
+      { bom: false, titulo: 'Castigo interno', texto: 'Um jogador ao acaso fica de fora do próximo jogo, por uma das razões de razoesCastigo.', efeito: { tipo: 'jogo', efeito: 'suspenso' } },
+      { bom: false, titulo: 'Balneário dividido', texto: 'Ninguém se fala: −1 no modificador do próximo jogo.', efeito: { tipo: 'jogo', efeito: 'modificador', valor: -1 } },
+      { bom: false, titulo: 'Noite de copos', texto: 'Um jogador ao acaso perde 1 de overall.', efeito: { tipo: 'overall', alvo: 'acaso', delta: -1, ou: -1 } },
+      { bom: false, titulo: 'Olheiro roubado', texto: 'Perdes uma Rede de observação.', efeito: { tipo: 'perderRede', ou: -2 } },
+      { bom: false, titulo: 'Empresário zangado', texto: 'Perdes uma carta de Empresário.', efeito: { tipo: 'perderCarta', carta: 'empresario', ou: -2 } },
+      { bom: false, titulo: 'Médico despedido', texto: 'Perdes uma carta do Departamento médico.', efeito: { tipo: 'perderCarta', carta: 'medico', ou: -1 } },
+      { bom: false, titulo: 'Papelada em atraso', texto: 'Perdes a próxima vez no tabuleiro.', efeito: { tipo: 'perderVez' } },
+      { bom: false, titulo: 'O craque quer sair', texto: 'Até à próxima janela, a cláusula do teu melhor jogador fica em 1× o valor.', efeito: { tipo: 'clausulaBaixa' } },
+      { bom: false, titulo: 'Farto disto tudo', texto: 'Um jogador ao acaso (fora dos 3 melhores) vai embora, ao preço base.', efeito: { tipo: 'vendaForcada' } },
+    ],
   },
 
   // --- Cartas ---
   cartas: {
-    redeDesconto: 0.2,              // 20% de desconto nos jogadores da liga
+    precoCasa: 0.8,                 // quem cai no Mercado ou em Jovens Talentos compra a 80% do valor
+    redeDesconto: 0.2,              // 20% de desconto nos jogadores da liga (soma-se ao anterior)
     maxRedes: 2,
     redeMinJogadores: 60,           // só há carta de Rede para ligas com pelo menos isto no baralho do Mercado
     jovensTalentos: { idade: [0, 23], overall: [78, 82] },

@@ -1,10 +1,11 @@
 // O tabuleiro de mercado: vezes, dados, casas e as decisões de cada casa.
 import { CONFIG } from '../config.js';
 import { dado } from './aleatorio.js';
-import { jogador, reservar, libertar, registar, erro, M } from './estado.js';
+import { jogador, reservar, libertar, receber, registar, erro, M } from './estado.js';
 import { tirarMercado, tirarJovemTalento, tirarRede } from './cartas.js';
 import { abrirLeilao, executarVenda, prepararJovem } from './negocios.js';
-import { precoBase, arredondar } from './valores.js';
+import { tirarMisterio, investigar, podeContratar } from './misterio.js';
+import { arredondar } from './valores.js';
 
 export const CASAS = CONFIG.tabuleiro.casas;
 
@@ -16,6 +17,8 @@ export const NOMES_CASAS = {
   medico: 'Departamento médico',
   patrocinio: 'Patrocínio',
   jovens: 'Jovens Talentos',
+  misterio: 'Mistério',
+  investigacao: 'Investigação',
 };
 
 /** Casas a andar nesta janela (voltas × casas do tabuleiro). */
@@ -57,29 +60,67 @@ export function lancar(sala, ctx, equipaId) {
   if (j.pendente) return erro('Resolve primeiro a casa.');
   if (j.lancou) return erro('Já lançaste os dados nesta vez.');
   if (acabou(j, equipaId)) return erro('Já completaste as voltas.');
-  const dados = [dado(ctx.aleatorio), dado(ctx.aleatorio)];
+  const dados = Array.from({ length: CONFIG.tabuleiro.dados }, () => dado(ctx.aleatorio));
   const de = j.posicao[equipaId];
-  const andadas = Math.min(j.andadas[equipaId] + dados[0] + dados[1], totalCasas(j));
-  j.andadas[equipaId] = andadas;
-  j.posicao[equipaId] = andadas % CASAS.length;
+  andar(sala, ctx, equipaId, dados.reduce((s, d) => s + d, 0));
   j.lancou = true;
   const casa = CASAS[j.posicao[equipaId]];
   j.ultimoLance = { equipa: equipaId, dados, de, para: j.posicao[equipaId] };
   const e = sala.equipas[equipaId];
   if (acabou(j, equipaId)) {
-    registar(sala, ctx, `${e.nome} lança ${dados[0]} + ${dados[1]} e completa as voltas.`, { tipo: 'dados' });
+    registar(sala, ctx, `${e.nome} lança ${dados.join(' + ')} e completa as voltas.`, { tipo: 'dados' });
     return { ok: true };
   }
-  registar(sala, ctx, `${e.nome} lança ${dados[0]} + ${dados[1]} e cai em ${NOMES_CASAS[casa]}.`, { tipo: 'dados' });
+  registar(sala, ctx, `${e.nome} lança ${dados.join(' + ')} e cai em ${NOMES_CASAS[casa]}.`, { tipo: 'dados' });
   resolverCasa(sala, ctx, equipaId, casa);
   return { ok: true };
 }
 
-/** Preço de uma carta do Mercado para esta equipa (com o desconto da Rede, se for da liga). */
+/**
+ * Anda n casas, sem passar do fim das voltas. Ao passar pelo Início a meio (só acontece no verão), há a injeção
+ * de capital da SAD; no fim da última volta já não há.
+ */
+function andar(sala, ctx, equipaId, n) {
+  const j = sala.janela;
+  const antes = j.andadas[equipaId];
+  const depois = Math.min(antes + n, totalCasas(j));
+  j.andadas[equipaId] = depois;
+  j.posicao[equipaId] = depois % CASAS.length;
+  if (Math.floor(depois / CASAS.length) > Math.floor(antes / CASAS.length) && depois < totalCasas(j)) {
+    const valor = valorSAD(sala.epoca);
+    receber(sala, equipaId, valor);
+    registar(sala, ctx, `Injeção de capital da SAD: ${sala.equipas[equipaId].nome} recebe ${M(valor)}.`, { tipo: 'carta' });
+  }
+}
+
+/** A injeção da SAD duplica a cada época. */
+export function valorSAD(epoca) {
+  const { base, fator } = CONFIG.tabuleiro.injecaoSAD;
+  return base * fator ** (epoca - 1);
+}
+
+/**
+ * Preço de uma carta do Mercado para quem caiu na casa: 80% do valor, com o desconto da Rede, se for da liga, e o
+ * da carta "Amigo do presidente", se o tiver.
+ */
 export function precoCarta(sala, ctx, equipaId, id) {
   const jg = jogador(sala, ctx, id);
-  const desconto = sala.equipas[equipaId].redes.includes(jg.liga) ? CONFIG.cartas.redeDesconto : 0;
-  return arredondar(jg.valor * (1 - desconto));
+  const e = sala.equipas[equipaId];
+  const rede = e.redes.includes(jg.liga) ? CONFIG.cartas.redeDesconto : 0;
+  return arredondar(jg.valor * CONFIG.cartas.precoCasa * (1 - rede) * (1 - (e.descontoProxima ?? 0)));
+}
+
+/** A carta Mistério pode mandar lançar outra vez ou avançar até à próxima casa de um tipo. */
+function resolverMisterio(sala, ctx, equipaId) {
+  const j = sala.janela;
+  const r = tirarMisterio(sala, ctx, equipaId);
+  if (r.repetir) j.lancou = false;
+  if (!r.avancar) return;
+  let passos = 1;
+  while (passos < CASAS.length && CASAS[(j.posicao[equipaId] + passos) % CASAS.length] !== r.avancar) passos++;
+  if (j.andadas[equipaId] + passos >= totalCasas(j)) return;
+  andar(sala, ctx, equipaId, passos);
+  resolverCasa(sala, ctx, equipaId, CASAS[j.posicao[equipaId]]);
 }
 
 export function resolverCasa(sala, ctx, equipaId, casa) {
@@ -97,7 +138,7 @@ export function resolverCasa(sala, ctx, equipaId, casa) {
       const id = tirarJovemTalento(sala, ctx);
       if (id == null) return registar(sala, ctx, 'Já não há Jovens Talentos.');
       reservar(sala, [id]);
-      j.pendente = { tipo: 'jovens', equipa: equipaId, jogador: id, preco: jogador(sala, ctx, id).valor };
+      j.pendente = { tipo: 'jovens', equipa: equipaId, jogador: id, preco: arredondar(jogador(sala, ctx, id).valor * CONFIG.cartas.precoCasa) };
       break;
     }
     case 'rede': {
@@ -121,6 +162,12 @@ export function resolverCasa(sala, ctx, equipaId, casa) {
       // As cartas de marca e patrocínio entram no passo 5.
       registar(sala, ctx, `${e.nome} cai em Patrocínio (as cartas de patrocínio ainda não estão no jogo).`, { tipo: 'carta' });
       break;
+    case 'misterio':
+      resolverMisterio(sala, ctx, equipaId);
+      break;
+    case 'investigacao':
+      investigar(sala, ctx, equipaId);
+      break;
     default:
       break;
   }
@@ -131,14 +178,17 @@ export function comprar(sala, ctx, equipaId) {
   const j = sala.janela;
   const p = j?.pendente;
   if (!p || p.equipa !== equipaId || !['mercado', 'jovens'].includes(p.tipo)) return erro('Não há nada para comprar.');
-  if (sala.equipas[equipaId].dinheiro < p.preco) return erro(`Precisas de ${M(p.preco)}.`);
+  const e = sala.equipas[equipaId];
+  if (e.dinheiro < p.preco) return erro(`Precisas de ${M(p.preco)}.`);
+  if (!podeContratar(e)) return erro('Estás sancionado: já não podes contratar nesta janela.');
   j.pendente = null;
   executarVenda(sala, ctx, p.jogador, equipaId, p.preco);
+  if (p.tipo === 'mercado') delete e.descontoProxima;
   if (p.tipo === 'jovens') prepararJovem(sala, ctx, p.jogador);
   return { ok: true };
 }
 
-/** Passar a carta: vai a leilão entre todos os treinadores, a partir do preço base. */
+/** Passar a carta: vai a leilão entre os outros treinadores, a partir do valor de mercado. Quem passou já não licita. */
 export function passar(sala, ctx, equipaId) {
   const j = sala.janela;
   const p = j?.pendente;
@@ -146,7 +196,7 @@ export function passar(sala, ctx, equipaId) {
   j.pendente = null;
   const jg = jogador(sala, ctx, p.jogador);
   registar(sala, ctx, `${sala.equipas[equipaId].nome} passa ${jg.curto}. Vai a leilão.`, { tipo: 'leilao' });
-  abrirLeilao(sala, ctx, { jogador: p.jogador, origem: 'mesa', minimo: precoBase(jg.valor), formacao: p.tipo === 'jovens' });
+  abrirLeilao(sala, ctx, { jogador: p.jogador, origem: 'mesa', minimo: jg.valor, excluir: equipaId, formacao: p.tipo === 'jovens' });
   return { ok: true };
 }
 
@@ -170,14 +220,22 @@ export function terminarVez(sala, ctx, equipaId) {
   const j = sala.janela;
   if (j.pendente) return erro('Resolve primeiro a casa.');
   if (!j.lancou && !acabou(j, equipaId)) return erro('Ainda não lançaste os dados.');
-  passarVez(sala);
+  passarVez(sala, ctx);
   return { ok: true };
 }
 
-function passarVez(sala) {
+function passarVez(sala, ctx) {
   const j = sala.janela;
-  j.vez = (j.vez + 1) % j.ordem.length;
-  if (j.vez === 0) j.ronda++;
+  j.ultimaCarta = null;
+  // Quem tirou "Papelada em atraso" perde esta vez (se ainda tiver casas para andar).
+  for (let i = 0; i < j.ordem.length; i++) {
+    j.vez = (j.vez + 1) % j.ordem.length;
+    if (j.vez === 0) j.ronda++;
+    const e = sala.equipas[j.ordem[j.vez]];
+    if (!e.saltarVez) break;
+    delete e.saltarVez;
+    registar(sala, ctx, `${e.nome} perde a vez.`, { tipo: 'carta' });
+  }
   j.lancou = false;
 }
 
@@ -194,7 +252,7 @@ export function forcarVez(sala, ctx) {
     j.pendente = null;
   }
   registar(sala, ctx, `O anfitrião passou a vez de ${sala.equipas[equipaId].nome}.`);
-  passarVez(sala);
+  passarVez(sala, ctx);
   return { ok: true };
 }
 

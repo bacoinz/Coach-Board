@@ -6,6 +6,7 @@ import { FORMACOES, melhorOnze } from './formacao.js';
 import { opcoesDraft, tirarEmprestimo } from './cartas.js';
 import { iniciarTabuleiro, acabou, todosAcabaram } from './tabuleiro.js';
 import { prepararJovem } from './negocios.js';
+import { aplicarAberturaJanela } from './misterio.js';
 import { precoBase, precoDraft } from './valores.js';
 
 const NOMES = { verao: 'de verão', inverno: 'de inverno' };
@@ -16,9 +17,11 @@ export function abrirJanela(sala, ctx, tipo) {
     if (d.emprestado) transferir(sala, Number(id), null);
     else if (d.compradoRonda != null) delete d.compradoRonda;
   }
+  sala.descartados = [];
   sala.fase = 'janela';
   sala.janela = { tipo, fase: 'formacao', prontos: [], ronda: 0, trocas: [] };
   registar(sala, ctx, `Época ${sala.epoca}: abre a janela ${NOMES[tipo]}. Escolham a formação.`, { tipo: 'fase' });
+  aplicarAberturaJanela(sala, ctx);
 }
 
 export function escolherFormacao(sala, ctx, equipaId, formacao) {

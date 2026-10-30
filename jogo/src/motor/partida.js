@@ -55,6 +55,8 @@ export function avancarCampeonato(sala, ctx, id) {
   if (id !== sala.anfitriao) return erro('Só o anfitrião pode avançar.');
   if (sala.fase !== 'campeonato') return erro('Não estamos no campeonato.');
   sala.classificacao = baralhar(ctx.aleatorio, Object.keys(sala.equipas).filter((x) => !sala.equipas[x].espera));
+  // Sem jogos ainda, os efeitos "no próximo jogo" das cartas Mistério gastam-se aqui.
+  for (const e of Object.values(sala.equipas)) delete e.efeitos;
   if (sala.campeonato.volta === 1) {
     entrarEspectadores(sala, ctx, 'inverno');
     abrirJanela(sala, ctx, 'inverno');

@@ -3,7 +3,7 @@
 // fica no estado de cada equipa, com o id do jogador.
 
 /** Ordem das colunas de cada jogador na base. */
-export const COLUNAS = ['id', 'nome', 'curto', 'idade', 'nacao', 'liga', 'clube', 'posicao', 'alternativas', 'overall', 'finalizacao', 'passe', 'facetas'];
+export const COLUNAS = ['id', 'nome', 'curto', 'idade', 'nacao', 'liga', 'clube', 'posicao', 'alternativas', 'overall', 'finalizacao', 'passe', 'facetas', 'foto'];
 
 /** Converte a base em colunas num Map id → jogador, com os nomes das tabelas já resolvidos. */
 export function lerBase(base) {
@@ -16,6 +16,7 @@ export function lerBase(base) {
       curto: l[i.curto],
       idade: l[i.idade],
       nacao: base.nacoes[l[i.nacao]],
+      bandeira: base.bandeiras[l[i.nacao]],
       liga: base.ligas[l[i.liga]],
       clube: base.clubes[l[i.clube]],
       posicao: l[i.posicao],
@@ -24,6 +25,7 @@ export function lerBase(base) {
       finalizacao: l[i.finalizacao],
       passe: l[i.passe],
       facetas: l[i.facetas],
+      foto: l[i.foto],
     });
   }
   return { edicao: base.edicao, snapshot: base.snapshot, jogadores, ligas: base.ligas, nacoes: base.nacoes };

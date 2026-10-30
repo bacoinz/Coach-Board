@@ -1,0 +1,13 @@
+# Licenças de terceiros incluídas no The Gaffer
+
+## Fontes — SIL Open Font License 1.1
+- Anton (Vernon Adams)
+- Inter (Rasmus Andersson)
+
+## Bandeiras — flag-icons (https://github.com/lipis/flag-icons), licença MIT
+
+## Fotos dos jogadores
+Wikimedia Commons: o autor e a licença de cada foto aparecem no detalhe do jogador.
+
+## Dados dos jogadores
+EA SPORTS FC 27 Player Ratings (Kaggle, MikeDPad). Os dados e os nomes pertencem à Electronic Arts; projeto não comercial.

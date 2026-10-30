@@ -12,9 +12,12 @@
     "valores": "node scripts/tabela-valores.mjs",
     "simular": "node scripts/simular.mjs",
     "contraste": "node scripts/contraste.mjs",
-    "mockup": "node scripts/servir.mjs"
+    "mockup": "node scripts/servir.mjs",
+    "fotos": "node scripts/fotos.mjs",
+    "bandeiras": "node scripts/copiar-bandeiras.mjs"
   },
   "devDependencies": {
+    "flag-icons": "^7.6.0",
     "three": "^0.186.1",
     "vitest": "^5.0.5",
     "wrangler": "^4.156.0"

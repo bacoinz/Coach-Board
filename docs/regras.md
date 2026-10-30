@@ -59,16 +59,21 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
 
 | Casas | |
 |---|---|
-| 0–9 | **Início** · Mercado · Rede · Mercado · Empresário · Patrocínio · Mercado · Médico · Mercado · Mercado |
-| 10–19 | **Jovens Talentos** · Mercado · Rede · Empresário · Mercado · Patrocínio · Mercado · Empresário · Mercado · Médico |
-| 20–29 | **Patrocínio** · Mercado · Empresário · Rede · Mercado · Mercado · Mercado · Patrocínio · Empresário · Mercado |
-| 30–39 | **Jovens Talentos** · Rede · Médico · Mercado · Patrocínio · Mercado · Mercado · Empresário · Rede · Jovens Talentos |
+| 0–9 | **Início** · Mercado · Patrocínio · Mercado · Rede · **Mistério** · Patrocínio · Mercado · Empresário · Mercado |
+| 10–19 | **Jovens Talentos** · Médico · Mercado · Rede · Mercado · **Mistério** · Empresário · Patrocínio · Mercado · Empresário |
+| 20–29 | **Investigação** · Patrocínio · Mercado · Empresário · Mercado · **Mistério** · Rede · Médico · Mercado · Empresário |
+| 30–39 | **Jovens Talentos** · Rede · Mercado · Médico · Mercado · **Mistério** · Patrocínio · Empresário · Mercado · Rede |
 
-Totais: Mercado 17, Empresário 6, Rede 5, Patrocínio 5, Médico 3, Jovens Talentos 3, Início 1.
+Totais: Mercado 13, Empresário 6, Rede 5, Patrocínio 5, Mistério 4, Médico 3, Jovens Talentos 2, Investigação 1,
+Início 1.
+
+**Início:** a meio das voltas do verão, ao passar pelo Início, há uma **injeção de capital da SAD**. Acaba por só
+acontecer uma vez por época: no fim da última volta e no inverno não há. Vale 3 M€ na época 1 e **duplica a cada
+época** (3, 6, 12, 24, 48…).
 
 **Uma vez** **[A]** (pela ordem do draft):
 1. propostas, se quiseres (ver 3.5);
-2. lançar dois dados e andar;
+2. lançar **um dado** e andar (nos jogos é que são dois);
 3. resolver a casa;
 4. mais propostas, se quiseres;
 5. **Terminar vez**.
@@ -76,12 +81,14 @@ Totais: Mercado 17, Empresário 6, Rede 5, Patrocínio 5, Médico 3, Jovens Tale
 **[A]** Quem já completou as voltas continua na rotação, sem dados: só pode fazer propostas e usar o Empresário.
 
 **As casas:**
-- **Mercado**: sai uma carta de jogador do baralho (jogadores reais sem equipa, ver 3.4.1). Compras pelo valor de
-  mercado ou passas. Se passares, há **leilão** entre todos, a partir do preço base.
+- **Mercado**: sai uma carta de jogador do baralho (jogadores reais sem equipa, ver 3.4.1). Quem cai na casa compra a
+  **80% do valor** ou passa. Se passar, já não pode licitar: há **leilão** entre os outros, a partir do **valor de
+  mercado**. Cada um licita ou passa e, se todos passarem, a carta é **descartada** (**[A]** não volta a sair até à
+  próxima janela). A Rede soma-se aos 80%: 64% do valor.
 - **Rede de observação**: carta de uma liga que dá **20% de desconto** nos jogadores dessa liga que saiam no Mercado.
   Máximo **2 por treinador**: ao calhar a terceira, descarta-se uma.
-- **Jovens Talentos**: um jogador com **overall 78–82 e até 23 anos**. Compra-se pelo valor de mercado ou vai a
-  leilão, como no Mercado **[A]**. Com até 21 anos entra na formação (com potencial escondido); senão, no plantel
+- **Jovens Talentos**: um jogador com **overall 78–82 e até 23 anos**. Compra-se a 80% do valor ou vai a leilão, como
+  no Mercado **[A]**. Com até 21 anos entra na formação (com potencial escondido); senão, no plantel
   principal.
 - **Empresário**: carta guardada na mão, com três usos:
   - inflacionar a cláusula de um jogador teu para **2× o valor de mercado** (uma vez por jogador);
@@ -90,6 +97,68 @@ Totais: Mercado 17, Empresário 6, Rede 5, Patrocínio 5, Médico 3, Jovens Tale
     leilão.
 - **Departamento médico**: carta guardada na mão para curar uma lesão.
 - **Patrocínio**: sai uma carta de marca ou patrocinador (ver secção 5). Aceitas ou recusas.
+- **Mistério**: tiras uma carta, com efeito imediato (ver 3.4.2).
+- **Investigação**: o clube é investigado e pode ser sancionado (ver 3.4.3).
+
+#### 3.4.2 Cartas Mistério
+40 cartas, **20 boas e 20 más**, num baralho que se volta a baralhar quando acaba. Texto, valores e efeitos em
+`CONFIG.misterio`.
+
+| Boas | Efeito |
+|---|---|
+| Camisolas virais · Herança de um sócio · Prémio de fair-play · Digressão pela Ásia · Patrocínio surpresa | +3 · +5 · +2 · +4 · +3 M€ |
+| Clube comprado · Nome no estádio · Mecenas anónimo | +15 · +8 · +5 M€, só na próxima janela |
+| Super-empréstimo | um craque (86 ou mais) joga por ti no próximo jogo |
+| Estágio na montanha | +1 no modificador do próximo jogo |
+| Agente amigo · Clínica nova | uma carta de Empresário · do Departamento médico |
+| Olheiro genial | uma Rede de observação (+2 M€ se já tiveres 2) |
+| Amigo do presidente | 30% de desconto na próxima compra no Mercado |
+| Livre de luxo | um jogador de overall 72–77, a custo zero |
+| A academia explode | +3 de overall ao melhor jovem da formação (+2 M€ se não houver) |
+| Adjunto génio | +1 de overall a um jogador ao acaso |
+| Voo fretado | lanças os dados outra vez |
+| Telefonema importante | avanças até ao próximo Mercado |
+| Cláusula blindada | a cláusula do teu melhor jogador passa a 2× (+2 M€ se já estiverem todas) |
+
+| Más | Efeito |
+|---|---|
+| Multa da federação · Obras no estádio · Erro do contabilista · Salários em atraso · Balneário destruído · Patrocinador furioso | −4 · −3 · −5 · −2 · −2 · −3 M€ |
+| Penhora das Finanças · Dívida antiga | −8 · −5 M€, só na próxima janela |
+| Inspeção fiscal · Diretor em fuga | perdes 10% · 15% do orçamento |
+| Lesão no treino · Castigo interno | um jogador ao acaso falha o próximo jogo, com uma razão sorteada |
+| Balneário dividido | −1 no modificador do próximo jogo |
+| Noite de copos | −1 de overall a um jogador ao acaso |
+| Olheiro roubado · Empresário zangado · Médico despedido | perdes essa carta (−2 · −2 · −1 M€ se não a tiveres) |
+| Papelada em atraso | perdes a próxima vez no tabuleiro |
+| O craque quer sair | a cláusula do teu melhor jogador fica em 1× até à próxima janela |
+| Farto disto tudo | um jogador ao acaso, fora dos 3 melhores, vai embora ao preço base |
+
+A Digressão pela Ásia só sai assim no verão: no inverno a mesma carta é **Amigáveis nos EUA**.
+
+As razões dos castigos e das lesões, e as comidas da caganeira, estão em `CONFIG.misterio`. As mais adultas nunca saem a
+jogadores com menos de 18 anos, porque a base tem jogadores reais de 16 e 17 anos.
+
+**[A]** Uma carta má nunca deixa o orçamento negativo: tira só o que houver. Os efeitos no próximo jogo ficam guardados
+e só têm efeito quando os jogos existirem (passo 4).
+
+#### 3.4.3 Investigação
+Castiga quem teve sorte a mais. A probabilidade de condenação é:
+
+**3% + 5% por campeonato ganho + 12% por cada ponto de ajuda**, até 85%.
+
+- Cada carta Mistério boa dá 1 ponto de ajuda. As que dão dinheiro na próxima janela dão mais: Clube comprado 3, Nome no
+  estádio e Mecenas anónimo 2.
+- Cada carta de **Empresário usada** dá 1 ponto (inflacionar, exclusividade ou anular).
+- Aceitar uma marca ou patrocinador **da lista "iniciais" que já se tornou grande** dá 1 ponto (entra com os patrocínios,
+  no passo 5).
+- **[A]** A injeção da SAD não conta, porque todos a recebem.
+- Quem não teve ajudas nem títulos tem só 3%.
+
+Se for condenado, a sanção é sorteada: **limite de contratações** (40%), **multa** (40%) ou **as duas** (20%).
+- **Limite:** **[A]** só pode fazer mais 2 contratações nesta janela (compras, leilões, propostas, Empresário e trocas
+  contam, e fica de fora dos leilões quando chega a 0).
+- **Multa:** 20% do orçamento atual, no mínimo 2 M€.
+- **[A]** Depois de condenado, as ajudas voltam a zero: já pagou.
 
 #### 3.4.1 Baralho do Mercado: as fases
 O nível dos jogadores que saem no Mercado sobe ao longo da partida. Cada época tem uma **fase** (a mesma tabela de

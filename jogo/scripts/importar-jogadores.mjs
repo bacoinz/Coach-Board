@@ -2,13 +2,15 @@
 // public/dados/jogadores.bin = JSON com gzip, em colunas, que o Durable Object carrega pela binding ASSETS.
 // Só entram jogadores masculinos com overall ≥ CONFIG.dados.overallMinimo. A idade é a da data de referência.
 //   node scripts/importar-jogadores.mjs [caminho-do-csv]
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONFIG } from '../src/config.js';
 import { idadeEm, valorMercado } from '../src/motor/valores.js';
 import { COLUNAS } from '../src/motor/base.js';
+import { lerRegistos } from './csv.mjs';
+import { PAISES } from './paises.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const origem = process.argv[2] ?? join(raiz, '..', 'dados', 'brutos', 'players.csv');
@@ -16,38 +18,11 @@ const destino = join(raiz, 'public', 'dados', 'jogadores.bin');
 
 const POSICOES = new Set(['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST']);
 
-/** CSV com aspas (RFC 4180): devolve linhas de campos. */
-function lerCsv(texto) {
-  const linhas = [];
-  let linha = [];
-  let campo = '';
-  let aspas = false;
-  for (let i = 0; i < texto.length; i++) {
-    const c = texto[i];
-    if (aspas) {
-      if (c === '"') {
-        if (texto[i + 1] === '"') {
-          campo += '"';
-          i++;
-        } else aspas = false;
-      } else campo += c;
-    } else if (c === '"') aspas = true;
-    else if (c === ',') {
-      linha.push(campo);
-      campo = '';
-    } else if (c === '\n') {
-      linha.push(campo.replace(/\r$/, ''));
-      linhas.push(linha);
-      linha = [];
-      campo = '';
-    } else campo += c;
-  }
-  if (campo || linha.length) linhas.push([...linha, campo]);
-  return linhas;
-}
+const registos = lerRegistos(readFileSync(origem, 'utf8').replace(/^\uFEFF/, ''));
 
-const [cabecalho, ...linhas] = lerCsv(readFileSync(origem, 'utf8').replace(/^﻿/, ''));
-const registos = linhas.filter((l) => l.length === cabecalho.length).map((l) => Object.fromEntries(cabecalho.map((k, i) => [k, l[i]])));
+// As fotos do Wikimedia Commons (scripts/fotos.mjs): id → nome do ficheiro.
+const ficheiroFotos = join(raiz, '..', 'dados', 'fotos.json');
+const fotos = existsSync(ficheiroFotos) ? JSON.parse(readFileSync(ficheiroFotos, 'utf8')) : {};
 
 // Tabelas de nomes repetidos (nações, ligas, clubes) guardam-se uma vez e os jogadores levam o índice.
 const tabelas = { nacoes: [], ligas: [], clubes: [] };
@@ -66,6 +41,12 @@ const facetas = (r) =>
     ? [r.goalkeeping_diving, r.goalkeeping_handling, r.goalkeeping_kicking, r.goalkeeping_reflexes, r.movement_sprint_speed, r.goalkeeping_positioning]
     : [r.pace, r.shooting, r.passing, r.dribbling, r.defending, r.physicality]
   ).map(Number);
+
+/** Nome em português e bandeira. Um país novo no dataset tem de ser acrescentado a paises.mjs. */
+function paisDe(nome) {
+  if (!PAISES[nome]) throw new Error(`País sem tradução em scripts/paises.mjs: ${nome}`);
+  return PAISES[nome];
+}
 
 const avisos = [];
 const jogadores = [];
@@ -91,7 +72,7 @@ for (const r of registos) {
     nome,
     curto,
     idade,
-    indice('nacoes', r.nationality),
+    indice('nacoes', paisDe(r.nationality)[0]),
     indice('ligas', r.league),
     indice('clubes', r.club),
     r.position,
@@ -100,6 +81,7 @@ for (const r of registos) {
     Number(r.attacking_finishing),
     Number(r.attacking_short_passing),
     facetas(r),
+    fotos[r.player_id] ?? null,
   ]);
 }
 jogadores.sort((a, b) => b[COLUNAS.indexOf('overall')] - a[COLUNAS.indexOf('overall')]);
@@ -110,6 +92,7 @@ const base = {
   dataReferencia: CONFIG.dados.dataReferencia,
   colunas: COLUNAS,
   ...tabelas,
+  bandeiras: tabelas.nacoes.map((nome) => Object.values(PAISES).find(([pt]) => pt === nome)[1]),
   jogadores,
 };
 const json = JSON.stringify(base);

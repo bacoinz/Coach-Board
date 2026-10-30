@@ -6,7 +6,7 @@ import { jogador, transferir } from '../src/motor/estado.js';
 import { resolverCasa, totalCasas, precoCarta } from '../src/motor/tabuleiro.js';
 import { precoBase, precoDraft } from '../src/motor/valores.js';
 import { livresQue, faseMercado, faixasMercado, tirarMercado } from '../src/motor/cartas.js';
-import { sugestaoFecho } from '../src/motor/janela.js';
+import { sugestaoFecho, abrirJanela } from '../src/motor/janela.js';
 
 const dentro = (x, [a, b]) => x >= a && x <= b;
 
@@ -68,8 +68,8 @@ describe('tabuleiro', () => {
     expect(agir(sala, ctx, treinadorDe(sala, outro), { t: 'lancar' }).erro).toMatch(/vez/);
     expect(agir(sala, ctx, treinadorDe(sala, eq), { t: 'terminar_vez' }).erro).toMatch(/lançaste/);
     ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'lancar' }));
-    const [a, b] = sala.janela.ultimoLance.dados;
-    expect(sala.janela.andadas[eq]).toBe(a + b);
+    const lance = sala.janela.ultimoLance.dados.reduce((s, d) => s + d, 0);
+    expect(sala.janela.andadas[eq]).toBe(lance);
     expect(agir(sala, ctx, treinadorDe(sala, eq), { t: 'lancar' }).erro).toBeTruthy();
   });
   it('no verão dão-se duas voltas e quem acaba para no Início', () => {
@@ -91,7 +91,8 @@ describe('tabuleiro', () => {
     resolverCasa(sala, ctx, eq, 'mercado');
     const p = sala.janela.pendente;
     expect(p.tipo).toBe('mercado');
-    sala.equipas[eq].dinheiro = 500;
+    for (const e of Object.values(sala.equipas)) e.dinheiro = 500;
+    expect(p.preco).toBeCloseTo(jogador(sala, ctx, p.jogador).valor * CONFIG.cartas.precoCasa, 0);
     ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'comprar' }));
     expect(sala.equipas[eq].dinheiro).toBeCloseTo(500 - p.preco);
     expect(sala.equipas[eq].plantel).toContain(p.jogador);
@@ -100,20 +101,20 @@ describe('tabuleiro', () => {
     const carta = sala.janela.pendente.jogador;
     ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'passar' }));
     const l = sala.janela.leilao;
-    expect(l.participantes).toHaveLength(3);
-    expect(l.minimo).toBeCloseTo(precoBase(jogador(sala, ctx, carta).valor));
-    const [e1, e2, e3] = l.participantes;
+    expect(l.participantes).toHaveLength(2);
+    expect(l.participantes).not.toContain(eq);
+    expect(l.minimo).toBeCloseTo(jogador(sala, ctx, carta).valor);
+    expect(agir(sala, ctx, treinadorDe(sala, eq), { t: 'licitar', valor: l.minimo }).erro).toMatch(/Não estás/);
+    const [e2, e3] = l.participantes;
     ok(agir(sala, ctx, treinadorDe(sala, e2), { t: 'licitar', valor: l.minimo }));
     expect(agir(sala, ctx, treinadorDe(sala, e3), { t: 'licitar', valor: l.minimo }).erro).toMatch(/mínimo/);
     ok(agir(sala, ctx, treinadorDe(sala, e3), { t: 'licitar', valor: l.minimo + 1 }));
-    ok(agir(sala, ctx, treinadorDe(sala, e1), { t: 'desistir' }));
-    expect(sala.janela.leilao).not.toBeNull();
     ok(agir(sala, ctx, treinadorDe(sala, e2), { t: 'desistir' }));
     expect(sala.janela.leilao).toBeNull();
     expect(sala.equipas[e3].plantel).toContain(carta);
     verificarInvariantes(sala);
   });
-  it('leilão sem lances devolve a carta ao baralho', () => {
+  it('se todos passarem, a carta é descartada até à próxima janela', () => {
     const ctx = contexto();
     const sala = salaNoTabuleiro(2, {}, ctx);
     const eq = vezDe(sala);
@@ -124,6 +125,9 @@ describe('tabuleiro', () => {
     expect(sala.janela.leilao).toBeNull();
     expect(sala.reservados).not.toContain(carta);
     expect(sala.jogadores[carta]?.equipa).toBeFalsy();
+    expect(livresQue(sala, ctx, {})).not.toContain(carta);
+    abrirJanela(sala, ctx, 'inverno');
+    expect(livresQue(sala, ctx, {})).toContain(carta);
   });
   it('as cartas do Mercado seguem as faixas da fase da época', () => {
     const ctx = contexto(3);
@@ -154,8 +158,8 @@ describe('tabuleiro', () => {
     // Desconto: uma carta da liga custa 80%.
     const daLiga = livresQue(sala, ctx, { liga: nova, overall: [75, 80] })[0];
     const deFora = livresQue(sala, ctx, { overall: [75, 80] }).find((id) => !sala.equipas[eq].redes.includes(jogador(sala, ctx, id).liga));
-    expect(precoCarta(sala, ctx, eq, daLiga)).toBeCloseTo(jogador(sala, ctx, daLiga).valor * (1 - CONFIG.cartas.redeDesconto), 1);
-    expect(precoCarta(sala, ctx, eq, deFora)).toBeCloseTo(jogador(sala, ctx, deFora).valor);
+    expect(precoCarta(sala, ctx, eq, daLiga)).toBeCloseTo(jogador(sala, ctx, daLiga).valor * CONFIG.cartas.precoCasa * (1 - CONFIG.cartas.redeDesconto), 1);
+    expect(precoCarta(sala, ctx, eq, deFora)).toBeCloseTo(jogador(sala, ctx, deFora).valor * CONFIG.cartas.precoCasa, 1);
   });
   it('Jovens Talentos dá um jogador da faixa e, se tiver até 21 anos, entra na formação', () => {
     const ctx = contexto(11);

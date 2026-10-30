@@ -1,6 +1,7 @@
 // Leilões, propostas, Empresário, vendas à banca e trocas diretas (durante a janela de transferências).
 import { CONFIG } from '../config.js';
 import { jogador, transferir, mudarJogador, pagar, receber, registar, equipaDe, equipasTreinadores, libertar, erro, M } from './estado.js';
+import { podeContratar, contarContratacao, somarAjuda } from './misterio.js';
 import { clausula, precoBase, arredondar } from './valores.js';
 
 const naJanela = (sala) => sala.fase === 'janela';
@@ -39,6 +40,7 @@ function tuaVezLivre(sala, equipaId) {
 
 export function executarVenda(sala, ctx, id, compradorId, valor) {
   const vendedorId = sala.jogadores[id]?.equipa ?? null;
+  contarContratacao(sala.equipas[compradorId]);
   pagar(sala, compradorId, valor);
   if (vendedorId) receber(sala, vendedorId, valor);
   const formacao = sala.jogadores[id]?.formacao;
@@ -56,8 +58,9 @@ export function executarVenda(sala, ctx, id, compradorId, valor) {
  * Abre um leilão. origem 'mesa' (carta do Mercado ou Jovens Talentos que ninguém comprou) ou 'proposta'.
  * Numa proposta, o proponente começa como líder com o valor proposto.
  */
-export function abrirLeilao(sala, ctx, { jogador: id, origem, vendedor = null, proponente = null, minimo, obrigatorio = false, formacao = false }) {
-  const participantes = equipasTreinadores(sala).map((e) => e.id).filter((x) => x !== vendedor);
+export function abrirLeilao(sala, ctx, { jogador: id, origem, vendedor = null, proponente = null, minimo, excluir = null, obrigatorio = false, formacao = false }) {
+  // Fora do leilão: o dono, quem passou a carta e quem está sancionado e já não pode contratar.
+  const participantes = equipasTreinadores(sala).filter((e) => e.id !== vendedor && e.id !== excluir && podeContratar(e)).map((e) => e.id);
   sala.janela.leilao = {
     jogador: id,
     origem,
@@ -117,7 +120,9 @@ function verificarFimLeilao(sala, ctx) {
   if (ativos.length) return;
   if (!l.lider) {
     libertar(sala, [l.jogador]);
-    registar(sala, ctx, `Ninguém licitou por ${nome(sala, ctx, l.jogador)}: volta ao baralho.`);
+    // Descartada: não volta a sair até à próxima janela.
+    sala.descartados = [...(sala.descartados ?? []), l.jogador];
+    registar(sala, ctx, `Ninguém licitou por ${nome(sala, ctx, l.jogador)}: a carta é descartada.`);
     sala.janela.leilao = null;
     return;
   }
@@ -155,6 +160,7 @@ export function propor(sala, ctx, equipaId, id, valor) {
   if (bloqueio) return erro(bloqueio);
   valor = arredondar(Number(valor));
   if (!(valor >= CONFIG.valores.minimo)) return erro('Valor inválido.');
+  if (!podeContratar(sala.equipas[equipaId])) return erro('Estás sancionado: já não podes contratar nesta janela.');
   if (sala.equipas[equipaId].dinheiro < valor) return erro('Não tens dinheiro para essa proposta.');
   const j = jogador(sala, ctx, id);
   const obrigatorio = valor >= j.clausula;
@@ -174,6 +180,7 @@ export function inflacionar(sala, ctx, equipaId, id) {
   if (j.inflacionada) return erro('A cláusula desse jogador já foi inflacionada.');
   if (j.emprestado) return erro('Esse jogador está emprestado.');
   e.cartas.empresario--;
+  somarAjuda(e, CONFIG.investigacao.ajudaEmpresario);
   mudarJogador(sala, id, { multClausula: CONFIG.valores.clausulaInflacionada, inflacionada: true });
   registar(sala, ctx, `${e.nome} usa o Empresário: a cláusula de ${j.curto} passa a ${M(clausula(j.valor, CONFIG.valores.clausulaInflacionada))}.`, { tipo: 'empresario' });
   return { ok: true };
@@ -185,10 +192,12 @@ export function exclusividade(sala, ctx, equipaId, id) {
   if (bloqueio) return erro(bloqueio);
   const e = sala.equipas[equipaId];
   if (e.cartas.empresario < 1) return erro('Não tens carta de Empresário.');
+  if (!podeContratar(e)) return erro('Estás sancionado: já não podes contratar nesta janela.');
   const j = jogador(sala, ctx, id);
   const preco = clausula(j.valor, CONFIG.valores.clausulaEmpresario);
   if (e.dinheiro < preco) return erro(`Precisas de ${M(preco)}.`);
   e.cartas.empresario--;
+  somarAjuda(e, CONFIG.investigacao.ajudaEmpresario);
   registar(sala, ctx, `${e.nome} usa o Empresário para comprar ${j.curto} em exclusivo por ${M(preco)}.`, { tipo: 'empresario' });
   if (sala.equipas[j.equipa].cartas.empresario > 0) {
     sala.janela.contestacao = { atacante: equipaId, vendedor: j.equipa, jogador: id, preco };
@@ -206,6 +215,7 @@ export function responderExclusividade(sala, ctx, equipaId, anular) {
   sala.janela.contestacao = null;
   if (anular) {
     sala.equipas[equipaId].cartas.empresario--;
+    somarAjuda(sala.equipas[equipaId], CONFIG.investigacao.ajudaEmpresario);
     registar(sala, ctx, `${nomeEquipa(sala, equipaId)} anula o Empresário com outro Empresário.`, { tipo: 'empresario' });
   } else executarVenda(sala, ctx, c.jogador, c.atacante, c.preco);
   return { ok: true };
@@ -255,6 +265,10 @@ export function responderTroca(sala, ctx, equipaId, trocaId, aceitar) {
     return { ok: true };
   }
   if (!t.dar.every((id) => trocavel(sala, ctx, id, t.de)) || !t.receber.every((id) => trocavel(sala, ctx, id, t.para))) return erro('A troca já não é possível.');
+  const [de, para] = [sala.equipas[t.de], sala.equipas[t.para]];
+  if (!podeContratar(de, t.receber.length) || !podeContratar(para, t.dar.length)) return erro('Um dos clubes está sancionado e não pode contratar tantos jogadores.');
+  contarContratacao(de, t.receber.length);
+  contarContratacao(para, t.dar.length);
   const ronda = sala.janela.ronda;
   for (const id of t.dar) transferir(sala, id, t.para, { compradoRonda: ronda });
   for (const id of t.receber) transferir(sala, id, t.de, { compradoRonda: ronda });

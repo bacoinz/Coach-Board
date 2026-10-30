@@ -2,8 +2,6 @@
 // Os plantéis e as cartas na mão são públicos; ficam de fora os tokens e o potencial escondido dos jovens.
 import { jogador } from './estado.js';
 import { sugestaoFecho, precoOpcao } from './janela.js';
-import { precoCarta } from './tabuleiro.js';
-import { faseMercado, faixasMercado } from './cartas.js';
 import { faltaParaComecar } from './sala-logica.js';
 
 function vistaJogador(sala, ctx, id) {
@@ -15,12 +13,14 @@ function vistaJogador(sala, ctx, id) {
     curto: j.curto,
     idade: j.idade,
     nacao: j.nacao,
+    bandeira: j.bandeira,
     liga: j.liga,
     clube: j.clube,
     posicao: j.posicao,
     alternativas: j.alternativas,
     overall: j.overall,
     facetas: j.facetas,
+    foto: j.foto ?? undefined,
     valor: j.valor,
     clausula: j.clausula,
     equipa: j.equipa,
@@ -68,6 +68,10 @@ export function estadoPublico(sala, ctx) {
       redes: e.redes,
       marca: e.marca,
       patrocinios: e.patrocinios,
+      efeitos: e.efeitos ?? [],
+      limiteContratacoes: e.limiteContratacoes ?? null,
+      capitalProximaJanela: e.capitalProximaJanela ?? 0,
+      descontoProxima: e.descontoProxima ?? 0,
     }]),
   );
   let janela = null;
@@ -83,6 +87,7 @@ export function estadoPublico(sala, ctx) {
       andadas: j.andadas ?? null,
       posicao: j.posicao ?? null,
       ultimoLance: j.ultimoLance ?? null,
+      ultimaCarta: j.ultimaCarta ?? null,
       pendente: j.pendente ?? null,
       leilao: j.leilao ?? null,
       contestacao: j.contestacao ?? null,
@@ -92,7 +97,6 @@ export function estadoPublico(sala, ctx) {
         : null,
     };
   }
-  const fase = sala.epoca ? faseMercado(sala) : null;
   return {
     codigo: sala.codigo,
     fase: sala.fase,
@@ -100,7 +104,6 @@ export function estadoPublico(sala, ctx) {
     config: sala.config,
     anfitriao: sala.anfitriao,
     faltaParaComecar: sala.fase === 'lobby' ? faltaParaComecar(sala) : null,
-    mercado: fase ? { fase, faixas: faixasMercado(fase) } : null,
     treinadores: sala.treinadores.map((t) => ({ id: t.id, nome: t.nome, cor: t.cor, ligado: t.ligado, pronto: t.pronto, equipa: t.equipa, saiu: t.saiu || undefined })),
     equipas,
     jogadores,
@@ -120,6 +123,5 @@ export function privado(sala, ctx, treinadorId) {
   const j = sala.janela;
   const e = sala.equipas[t.equipa];
   if (j?.fase === 'fecho' && e && !e.espera && !j.prontos.includes(e.id)) r.sugestaoFecho = sugestaoFecho(sala, ctx, e.id);
-  if (j?.pendente?.equipa === t.equipa && j.pendente.jogador) r.precoCarta = precoCarta(sala, ctx, t.equipa, j.pendente.jogador);
   return r;
 }

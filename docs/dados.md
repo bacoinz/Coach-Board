@@ -96,3 +96,13 @@ VEL, POS), que aparecem nas cartas de jogador.
 
 Um plantel inicial (11 jogadores com média 75) vale à volta de 90–110 M€, conforme as idades. O orçamento inicial, o dinheiro de TV e os prémios de
 patrocínio vão para a configuração no passo 3 e afinam-se com a simulação do passo 4.
+
+## Fotos
+`node scripts/fotos.mjs` liga os jogadores às fotos do **Wikimedia Commons** através da Wikidata (imagem P18). Só há foto
+quando a data de nascimento é exatamente a mesma e o nome bate; em caso de dúvida fica a silhueta. Depois corre-se
+`npm run dados`, que põe o ficheiro de cada jogador na base.
+
+- Resultado: **7029 de 17 016 jogadores (41%)**; entre os que têm overall 80 ou mais, cerca de 95%.
+- As imagens vêm diretamente do Commons, em tamanho reduzido. O autor e a licença de cada uma aparecem no detalhe do
+  jogador (`public/dados/creditos-fotos.json`), como as licenças CC pedem.
+- As fotos são as que existem: nem todas são caras de frente. Não há outra fonte de licença livre com mais cobertura.
