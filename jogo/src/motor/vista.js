@@ -5,7 +5,7 @@ import { sugestaoFecho, precoOpcao } from './janela.js';
 import { faltaParaComecar } from './sala-logica.js';
 import { ordenarTabela } from './campeonato.js';
 import { modificador, podemSair } from './jogo.js';
-import { rankingFinal } from './partida.js';
+import { rankingFinal, rankingAtual } from './partida.js';
 import { topTaca } from './fim-epoca.js';
 
 function vistaJogador(sala, ctx, id) {
@@ -63,7 +63,6 @@ function vistaCampeonato(sala, ctx) {
     jornadas: sala.calendario.length,
     fase: c.fase,
     prontos: emTaticas ? Object.keys(c.taticas) : c.prontos,
-    proximoPeriodo: c.proximoPeriodo,
     calendario: c.pares ?? pares.map(([a, b]) => (c.volta === 1 ? [a, b] : [b, a])),
     jogos: c.jogos.map((jogo) => ({
       periodo: jogo.periodo,
@@ -71,6 +70,7 @@ function vistaCampeonato(sala, ctx) {
       homem: jogo.homem ?? null,
       penaltis: jogo.penaltis ?? null,
       vencedor: jogo.vencedor ?? null,
+      vezLance: jogo.vezLance ?? 0,
       eventos: jogo.eventos,
       lados: jogo.lados.map((l, i) => ({
         equipa: l.equipa,
@@ -78,7 +78,8 @@ function vistaCampeonato(sala, ctx) {
         golos: l.golos,
         vermelhos: l.vermelhos,
         modificador: Math.round(modificador(jogo, i) * 100) / 100,
-        onze: l.onze.map((x) => ({ jogador: x.jogador, nome: x.nome, posicao: x.posicao, overall: x.overall })),
+        onze: l.onze.map((x) => ({ jogador: x.jogador, nome: x.nome, posicao: x.posicao, overall: x.overall, lesionado: x.lesionado || undefined })),
+        lesionados: l.lesionados ?? [],
         suplente: l.suplente,
         podemSair: podemSair(sala, ctx, l),
         subPedida: l.subPedida,
@@ -113,6 +114,8 @@ export function estadoPublico(sala, ctx) {
       plantel: e.plantel,
       formacao: e.formacao,
       onze: e.onze,
+      escolhaOnze: e.escolhaOnze ?? null,
+      emprestadosNovos: e.emprestadosNovos ?? [],
       suplente: e.suplente ?? null,
       cartas: e.cartas,
       redes: e.redes,
@@ -144,6 +147,8 @@ export function estadoPublico(sala, ctx) {
       leilao: j.leilao ?? null,
       contestacao: j.contestacao ?? null,
       trocas: j.trocas ?? [],
+      compras: j.compras ?? {},
+      roubos: j.roubos ?? [],
       draft: j.draft
         ? { escolhas: j.draft.escolhas, i: j.draft.i, opcoes: j.draft.opcoes.map((id) => ({ id, preco: precoOpcao(sala, ctx, id) })) }
         : null,
@@ -165,6 +170,7 @@ export function estadoPublico(sala, ctx) {
     estatisticas: topEstatisticas(sala),
     estatisticasTaca: sala.estatisticasTaca ? topTaca(sala, 5) : null,
     ranking: sala.fase === 'fim' ? rankingFinal(sala) : null,
+    rankingAtual: sala.fase === 'lobby' ? null : rankingAtual(sala),
     premios: sala.premios ?? [],
     fimEpoca: sala.fase === 'fimEpoca' ? sala.fimEpoca : null,
     classificacao: sala.classificacao,

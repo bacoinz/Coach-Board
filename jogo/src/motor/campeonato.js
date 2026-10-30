@@ -2,7 +2,7 @@
 import { CONFIG } from '../config.js';
 import { baralhar, dado, escolher } from './aleatorio.js';
 import { jogador, erro, registar, equipasTreinadores, receber } from './estado.js';
-import { CICLO_TATICAS, criarJogo, jogarPeriodo, pedirSubstituicao } from './jogo.js';
+import { CICLO_TATICAS, criarJogo, jogarPeriodo, jogarLance, pedirSubstituicao, usarMedico, suplentePorLesao, ficarLesionado, lesaoPorDecidir, resolverLesoes } from './jogo.js';
 import { descontar } from './misterio.js';
 import { salarioJornada } from './valores.js';
 
@@ -48,7 +48,7 @@ export function iniciarVolta(sala, ctx, volta) {
   }
   for (const id of equipasNoCampeonato(sala)) sala.tabela[id] ??= novaLinha(id);
   sala.fase = 'campeonato';
-  sala.campeonato = { volta, jornada: 0, fase: 'taticas', taticas: {}, jogos: [], prontos: [], proximoPeriodo: null };
+  sala.campeonato = { volta, jornada: 0, fase: 'taticas', taticas: {}, jogos: [], prontos: [] };
   abrirJornada(sala, ctx);
 }
 
@@ -67,7 +67,6 @@ function abrirJornada(sala, ctx) {
   c.taticas = {};
   c.jogos = [];
   c.prontos = [];
-  c.proximoPeriodo = null;
   for (const [a, b] of jogosDaJornada(sala)) {
     for (const id of [a, b]) if (sala.equipas[id].bot) c.taticas[id] = escolher(ctx.aleatorio, CICLO_TATICAS);
   }
@@ -92,31 +91,53 @@ function verificarTaticas(sala, ctx) {
   const c = sala.campeonato;
   c.jogos = jogosDaJornada(sala).map(([a, b]) => criarJogo(sala, ctx, a, b, c.taticas));
   c.fase = 'jogos';
-  c.proximoPeriodo = (ctx.agora ?? 0) + J.segundosPorPeriodo * 1000;
+  // Se a casa for um bot, o primeiro lance é logo dele.
+  for (const jogo of c.jogos) if (humanos(sala, jogo).length) lancesDosBots(sala, ctx, jogo);
 }
 
-/** Avança os períodos cujo tempo já passou. Devolve true se algo mudou. */
-export function avancarTempo(sala, ctx) {
+const humanos = (sala, jogo) => jogo.lados.map((l) => l.equipa).filter((id) => !sala.equipas[id].bot);
+
+/** Enquanto a vez for de um bot, ele lança sozinho. */
+function lancesDosBots(sala, ctx, jogo) {
+  while (!jogo.acabou && sala.equipas[jogo.lados[jogo.vezLance].equipa].bot) jogarLance(sala, ctx, jogo);
+}
+
+/** O lance de quem tem a vez; os jogos só de bots acompanham o mais adiantado; e vê se a jornada acabou. */
+function jogarVez(sala, ctx, jogo) {
   const c = sala.campeonato;
-  if (sala.fase !== 'campeonato' || c?.fase !== 'jogos' || c.proximoPeriodo == null) return false;
-  let mudou = false;
-  while (c.fase === 'jogos' && ctx.agora >= c.proximoPeriodo) {
-    jogarTodosUmPeriodo(sala, ctx);
-    c.proximoPeriodo += J.segundosPorPeriodo * 1000;
-    mudou = true;
+  jogarLance(sala, ctx, jogo);
+  lancesDosBots(sala, ctx, jogo);
+  const adiantado = Math.max(...c.jogos.map((j) => j.periodo));
+  for (const j of c.jogos) {
+    if (!humanos(sala, j).length) while (j.periodo < adiantado && !j.acabou) jogarPeriodo(sala, ctx, j);
   }
-  return mudou;
-}
-
-function jogarTodosUmPeriodo(sala, ctx) {
-  const c = sala.campeonato;
-  for (const jogo of c.jogos) jogarPeriodo(sala, ctx, jogo);
   if (c.jogos.every((j) => j.acabou)) concluirJornada(sala, ctx);
 }
 
-/** O prazo do próximo período, para o alarme do Durable Object. */
-export function proximoPrazo(sala) {
-  return sala.fase === 'campeonato' && sala.campeonato?.fase === 'jogos' ? sala.campeonato.proximoPeriodo : null;
+/** Os jogos são à vez: cada treinador lança os dados, vê a sua jogada, e segue-se o outro. */
+export function lancarRonda(sala, ctx, equipaId) {
+  const c = sala.campeonato;
+  if (sala.fase !== 'campeonato' || c.fase !== 'jogos') return erro('Não há jogos a decorrer.');
+  const jogo = c.jogos.find((j) => j.lados.some((l) => l.equipa === equipaId));
+  if (!jogo) return erro('Não tens jogo nesta jornada.');
+  if (jogo.acabou) return erro('O teu jogo já acabou.');
+  if (jogo.lados[jogo.vezLance].equipa !== equipaId) return erro('Não é a tua vez de lançar.');
+  if (lesaoPorDecidir(jogo.lados[jogo.vezLance])) return erro('Decide primeiro o que fazer com o lesionado.');
+  jogarVez(sala, ctx, jogo);
+  return { ok: true };
+}
+
+/** O anfitrião lança por quem não está a lançar. */
+export function forcarRonda(sala, ctx) {
+  const c = sala.campeonato;
+  if (sala.fase !== 'campeonato' || c.fase !== 'jogos') return erro('Não há jogos a decorrer.');
+  for (const jogo of c.jogos) {
+    if (c.fase !== 'jogos' || jogo.acabou || !humanos(sala, jogo).length) continue;
+    // Quem não está a decidir deixa o lesionado em campo.
+    for (const lado of jogo.lados.filter(lesaoPorDecidir)) ficarLesionado(sala, ctx, jogo, lado.equipa);
+    jogarVez(sala, ctx, jogo);
+  }
+  return { ok: true };
 }
 
 /** Homem do jogo: nota com golos, assistências e resultado. */
@@ -134,6 +155,8 @@ function homemDoJogo(jogo) {
 
 function concluirJornada(sala, ctx) {
   const c = sala.campeonato;
+  for (const e of Object.values(sala.equipas)) delete e.emprestadosNovos;
+  for (const jogo of c.jogos) resolverLesoes(sala, ctx, jogo);
   if (c.pares) return concluirRondaTaca(sala, ctx);
   for (const jogo of c.jogos) {
     const [a, b] = jogo.lados;
@@ -182,7 +205,6 @@ function concluirJornada(sala, ctx) {
   }
   sala.classificacao = ordenarTabela(sala.tabela).map((l) => l.equipa);
   c.fase = 'resultados';
-  c.proximoPeriodo = null;
   c.prontos = [];
 }
 
@@ -214,7 +236,7 @@ export function participantesTaca(sala) {
 export function iniciarTaca(sala, ctx) {
   sala.fase = 'campeonato';
   sala.estatisticasTaca = {};
-  sala.campeonato = { volta: 2, jornada: 0, competicao: 'taca', restantes: participantesTaca(sala), pares: [], fase: 'taticas', taticas: {}, jogos: [], prontos: [], proximoPeriodo: null };
+  sala.campeonato = { volta: 2, jornada: 0, competicao: 'taca', restantes: participantesTaca(sala), pares: [], fase: 'taticas', taticas: {}, jogos: [], prontos: [] };
   registar(sala, ctx, `Começa a Taça da época ${sala.epoca}.`, { tipo: 'fase' });
   abrirRondaTaca(sala, ctx);
 }
@@ -270,8 +292,29 @@ function concluirRondaTaca(sala, ctx) {
   c.restantes = [...new Set(c.restantes.map((id) => vencedores.get(id) ?? id))];
   if (c.restantes.length === 1) receber(sala, c.restantes[0], CONFIG.taca.premioVencedor);
   c.fase = 'resultados';
-  c.proximoPeriodo = null;
   c.prontos = [];
+}
+
+/** Decisões do treinador sobre uma lesão, durante o jogo. */
+function jogoDe(sala, equipaId) {
+  const c = sala.campeonato;
+  if (sala.fase !== 'campeonato' || c.fase !== 'jogos') return null;
+  return c.jogos.find((j) => j.lados.some((l) => l.equipa === equipaId)) ?? null;
+}
+
+export function fichaLesao(sala, ctx, equipaId, id) {
+  const jogo = jogoDe(sala, equipaId);
+  return jogo ? usarMedico(sala, ctx, jogo, equipaId, id) : erro('Não há jogos a decorrer.');
+}
+
+export function lesaoSuplente(sala, ctx, equipaId, id) {
+  const jogo = jogoDe(sala, equipaId);
+  return jogo ? suplentePorLesao(sala, ctx, jogo, equipaId, id) : erro('Não há jogos a decorrer.');
+}
+
+export function lesaoFicar(sala, ctx, equipaId, id) {
+  const jogo = jogoDe(sala, equipaId);
+  return jogo ? ficarLesionado(sala, ctx, jogo, equipaId, id) : erro('Não há jogos a decorrer.');
 }
 
 /** Treinador pede a substituição do jovem durante os jogos. */
@@ -318,7 +361,10 @@ export function forcarCampeonato(sala, ctx) {
     return { ok: true };
   }
   if (c.fase === 'jogos') {
-    while (c.fase === 'jogos') jogarTodosUmPeriodo(sala, ctx);
+    while (c.fase === 'jogos') {
+      for (const jogo of c.jogos) if (!jogo.acabou) jogarPeriodo(sala, ctx, jogo);
+      if (c.jogos.every((j) => j.acabou)) concluirJornada(sala, ctx);
+    }
     return { ok: true };
   }
   return seguir(sala, ctx);

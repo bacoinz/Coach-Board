@@ -1,22 +1,12 @@
 // Tabuleiro de mercado em 2D (as casas à volta de uma grelha, como no Monopólio). O 3D chega no passo 6.
 import { CONFIG } from './comum/config.gen.js';
 import { esc } from './util.js';
+import { CASA } from './casas.js';
 
 const CASAS = CONFIG.tabuleiro.casas;
-const ROTULOS = {
-  inicio: 'Início',
-  mercado: 'Mercado',
-  rede: 'Rede',
-  empresario: 'Empresário',
-  medico: 'Médico',
-  patrocinio: 'Patrocínio',
-  jovens: 'Jovens Talentos',
-  misterio: 'Mistério',
-  investigacao: 'Investigação',
-  sad: 'SAD',
-};
+const ROTULOS = Object.fromEntries(Object.entries(CASA).map(([tipo, { nome, rotulo }]) => [tipo, rotulo ?? nome]));
 // Para tabuleiros pequenos (telemóvel).
-const CURTOS = { inicio: 'Início', mercado: 'Merc.', rede: 'Rede', empresario: 'Emp.', medico: 'Méd.', patrocinio: 'Patr.', jovens: 'Jovens', misterio: 'Mist.', investigacao: 'Invest.', sad: 'SAD' };
+const CURTOS = { inicio: 'Balneário', mercado: 'Merc.', rede: 'Rede', empresario: 'Agente', medico: 'Dep. méd.', patrocinio: 'Patr.', jovens: 'Jovens', misterio: 'Mist.', investigacao: 'Invest.', sad: 'SAD' };
 
 // Cada lado tem um canto e as casas até ao canto seguinte: 36 casas dão uma grelha de 10×10.
 const LADO = CASAS.length / 4;

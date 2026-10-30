@@ -29,7 +29,7 @@ const MAIORIDADE = 18;
 
 /**
  * "Nome + razão." de um castigo ou de uma lesão. O humor adulto não sai a menores: a base tem jogadores reais de
- * 16 e 17 anos. O motor dos jogos usa a mesma função para as lesões em campo.
+ * 16 e 17 anos.
  */
 export function frase(rng, j, tipo) {
   const { razoesCastigo, razoesCastigoAdultos, lesoes, lesoesAdultas, comidas } = CONFIG.misterio;
@@ -110,7 +110,8 @@ function aplicar(sala, ctx, e, efeito) {
       const ef = { ...resto };
       let detalhe;
       if (ef.efeito === 'lesao' || ef.efeito === 'suspenso') {
-        const j = escolher(rng, emCampo(sala, ctx, e));
+        // Os guarda-redes não se lesionam.
+        const j = escolher(rng, emCampo(sala, ctx, e).filter((x) => ef.efeito !== 'lesao' || x.posicao !== 'GK'));
         if (!j) return {};
         ef.jogador = j.id;
         detalhe = j.curto;
@@ -218,7 +219,8 @@ export function investigar(sala, ctx, equipaId) {
   }
   e.ajudas = 0;
   const detalhe = partes.join(' e ');
-  sala.janela.ultimaCarta = { equipa: equipaId, tipo: 'investigacao', bom: false, titulo: 'Clube condenado', texto: 'A investigação encontrou irregularidades.', detalhe };
+  const acusacao = escolher(ctx.aleatorio, I.acusacoes);
+  sala.janela.ultimaCarta = { equipa: equipaId, tipo: 'investigacao', bom: false, titulo: 'Clube condenado', texto: 'A investigação encontrou irregularidades.', detalhe, acusacao };
   registar(sala, ctx, `${e.nome} foi investigado e condenado: ${detalhe}.`, { tipo: 'carta' });
 }
 

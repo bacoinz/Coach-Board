@@ -18,7 +18,7 @@ export function valorMercado(overall, idade) {
   return Math.max(V.minimo, arredondar(bruto));
 }
 
-/** Cláusula de rescisão: 1,5× o valor, ou o multiplicador do Empresário. */
+/** Cláusula de rescisão: 1,5× o valor, ou o multiplicador do Agente. */
 export function clausula(valor, multiplicador = V.clausula) {
   return arredondar(valor * multiplicador);
 }

@@ -2,6 +2,7 @@
 import { CONFIG } from '../config.js';
 import { comPeso, escolher, amostra } from './aleatorio.js';
 import { livre } from './estado.js';
+import { valorMercado } from './valores.js';
 
 const dentro = (x, [a, b]) => x >= a && x <= b;
 
@@ -11,8 +12,8 @@ function atual(sala, j) {
   return d ? { overall: d.overall ?? j.overall, idade: d.idade ?? j.idade } : j;
 }
 
-/** Ids dos jogadores livres que cumprem um critério ({ idade?, overall?, posicao?, liga? }). */
-export function livresQue(sala, ctx, { idade, overall, posicao, liga } = {}) {
+/** Ids dos jogadores livres que cumprem um critério ({ idade?, overall?, posicao?, liga?, valorMaximo? }). */
+export function livresQue(sala, ctx, { idade, overall, posicao, liga, valorMaximo } = {}) {
   const r = [];
   for (const j of ctx.base.values()) {
     if (posicao && j.posicao !== posicao) continue;
@@ -20,6 +21,7 @@ export function livresQue(sala, ctx, { idade, overall, posicao, liga } = {}) {
     const a = atual(sala, j);
     if (overall && !dentro(a.overall, overall)) continue;
     if (idade && !dentro(a.idade, idade)) continue;
+    if (valorMaximo != null && valorMercado(a.overall, a.idade) > valorMaximo) continue;
     if (!livre(sala, j.id)) continue;
     r.push(j.id);
   }

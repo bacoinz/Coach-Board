@@ -40,12 +40,12 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
 - Antes do tabuleiro, uma escolha de cada vez, pela **classificação invertida**. Na 1.ª época a ordem é aleatória e
   cada um tem uma escolha.
 - Em cada escolha aparecem **3 jogadores**. Fica-se com um e paga-se um preço abaixo do valor de mercado.
-- **Jovem promessa**: até 21 anos (desde o mais novo da base, 16), overall 60–68.
-- **Último classificado**: 2 escolhas, uma jovem promessa e uma **escolha extra**, em que cada uma das 3 opções é:
-  - um veterano com **mais de 33 anos e overall 80–85**; ou
-  - um jogador com **21–23 anos e overall 78–82**.
-
-  O jogador da escolha extra entra no onze ou é vendido, e só à banca.
+- **Jovem promessa**: até 21 anos (desde o mais novo da base, 16), overall 60–68 na 1.ª época. Cada época sobe 1 nos
+  dois limites (61–69 na 2.ª, 69–77 na 10.ª).
+- **Na 1.ª janela** de verão ainda não há classificação: todos têm só uma escolha.
+- **Último classificado**, a partir daí: 2 escolhas, uma jovem promessa e uma **segunda escolha**, de um jogador com
+  limite de overall e de valor: na 1.ª época até **80** e **5 M€**; cada época sobe 1 de overall até **82** e 1 M€ até
+  **7 M€**. **[A]** As opções saem a menos de 6 pontos do limite. Esse jogador entra no onze ou é vendido, e só à banca.
 - **Restantes**: 1 jovem promessa.
 
 ### 3.3 Formação (jovens)
@@ -60,12 +60,12 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
 
 | Casas | |
 |---|---|
-| 0–8 | **Início** · Mercado · Patrocínio · Mercado · **Jovens Talentos** · Rede · Mercado · Empresário · Mercado |
-| 9–17 | **Mistério** · Médico · Mercado · Rede · **Investigação** · Empresário · Mercado · Patrocínio · Mercado |
-| 18–26 | **SAD** · Patrocínio · Mercado · Empresário · **Jovens Talentos** · Rede · Mercado · Médico · Mercado |
-| 27–35 | **Mistério** · Rede · Mercado · Médico · **Jovens Talentos** · Patrocínio · Mercado · Empresário · Mercado |
+| 0–8 | **Balneário** · Mercado · Patrocinadores · Mercado · **Jovens Talentos** · Rede de observação · Mercado · Agente · Mercado |
+| 9–17 | **Mistério** · Departamento médico · Mercado · Rede de observação · **Investigação** · Agente · Mercado · Patrocinadores · Mercado |
+| 18–26 | **Reunião com a SAD** · Patrocinadores · Mercado · Agente · **Jovens Talentos** · Rede de observação · Mercado · Departamento médico · Mercado |
+| 27–35 | **Mistério** · Rede de observação · Mercado · Departamento médico · **Jovens Talentos** · Patrocinadores · Mercado · Agente · Mercado |
 
-Totais: Mercado 13, Empresário 4, Rede 4, Patrocínio 4, Médico 3, Jovens Talentos 3, Mistério 2, Investigação 1, SAD 1,
+Totais: Mercado 13, Agente 4, Rede de observação 4, Patrocinadores 4, Departamento médico 3, Jovens Talentos 3, Mistério 2, Investigação 1, Reunião com a SAD 1,
 Início 1.
 
 Em cada janela dá-se **uma volta**: com **um dado no verão**; no **inverno**, o primeiro lançamento de cada treinador é
@@ -82,7 +82,7 @@ que vale no verão. Vale 3 M€ na época 1, duplica até
 4. mais propostas, se quiseres;
 5. **Terminar vez**.
 
-**[A]** Quem já completou as voltas continua na rotação, sem dados: só pode fazer propostas e usar o Empresário.
+**[A]** Quem já completou as voltas continua na rotação, sem dados: só pode fazer propostas e usar o Agente.
 
 **As casas:**
 - **Mercado**: sai uma carta de jogador do baralho (jogadores reais sem equipa, ver 3.4.1). Quem cai na casa compra a
@@ -94,9 +94,9 @@ que vale no verão. Vale 3 M€ na época 1, duplica até
 - **Jovens Talentos**: um jogador com **overall 78–82 e até 23 anos**. Compra-se a 80% do valor ou vai a leilão, como
   no Mercado **[A]**. Com até 21 anos entra na formação (com potencial escondido); senão, no plantel
   principal.
-- **Empresário**: carta guardada na mão, com três usos:
+- **Agente**: carta guardada na mão, com três usos:
   - inflacionar a cláusula de um jogador teu para **2× o valor de mercado** (uma vez por jogador);
-  - **anular** um Empresário usado contra ti;
+  - **anular** um Agente usado contra ti;
   - **exclusividade**: a cláusula de um jogador de outra equipa desce para **1× o valor de mercado** e compras sem
     leilão.
 - **Departamento médico**: carta guardada na mão para curar uma lesão.
@@ -114,7 +114,7 @@ que vale no verão. Vale 3 M€ na época 1, duplica até
 | Clube comprado · Nome no estádio · Mecenas anónimo | +15 · +8 · +5 M€, só na próxima janela |
 | Super-empréstimo | um craque (86 ou mais) joga por ti no próximo jogo |
 | Estágio na montanha | +1 no modificador do próximo jogo |
-| Agente amigo · Clínica nova | uma carta de Empresário · do Departamento médico |
+| Agente amigo · Clínica nova | uma carta de Agente · do Departamento médico |
 | Olheiro genial | uma Rede de observação (+2 M€ se já tiveres 2) |
 | Amigo do presidente | 30% de desconto na próxima compra no Mercado |
 | Livre de luxo | um jogador de overall 72–77, a custo zero |
@@ -132,7 +132,7 @@ que vale no verão. Vale 3 M€ na época 1, duplica até
 | Lesão no treino · Castigo interno | um jogador ao acaso falha o próximo jogo, com uma razão sorteada |
 | Balneário dividido | −1 no modificador do próximo jogo |
 | Noite de copos | −1 de overall a um jogador ao acaso |
-| Olheiro roubado · Empresário zangado · Médico despedido | perdes essa carta (−2 · −2 · −1 M€ se não a tiveres) |
+| Olheiro roubado · Agente zangado · Médico despedido | perdes essa carta (−2 · −2 · −1 M€ se não a tiveres) |
 | Papelada em atraso | perdes a próxima vez no tabuleiro |
 | O craque quer sair | a cláusula do teu melhor jogador fica em 1× até à próxima janela |
 | Farto disto tudo | um jogador ao acaso, fora dos 3 melhores, vai embora ao preço base |
@@ -158,14 +158,14 @@ Castiga quem teve sorte a mais. A probabilidade de condenação é:
 
 - Cada carta Mistério boa dá **1/3 de ponto** de ajuda. As que dão dinheiro na próxima janela dão mais: Clube comprado 1,
   Nome no estádio e Mecenas anónimo 2/3.
-- Cada carta de **Empresário usada** dá 1 ponto (inflacionar, exclusividade ou anular).
+- Cada carta de **Agente usada** dá 1 ponto (inflacionar, exclusividade ou anular).
 - Aceitar uma marca ou patrocinador **da lista "iniciais" que já se tornou grande** dá 1 ponto (entra com os patrocínios,
   no passo 5).
 - **[A]** A injeção da SAD não conta, porque todos a recebem.
 - Quem não teve ajudas nem títulos tem só 3%.
 
 Se for condenado, a sanção é sorteada: **limite de contratações** (40%), **multa** (40%) ou **as duas** (20%).
-- **Limite:** **[A]** só pode fazer mais 2 contratações nesta janela (compras, leilões, propostas, Empresário e trocas
+- **Limite:** **[A]** só pode fazer mais 2 contratações nesta janela (compras, leilões, propostas, Agente e trocas
   contam, e fica de fora dos leilões quando chega a 0).
 - **Multa:** 20% do orçamento atual, no mínimo 2 M€.
 - **[A]** Depois de condenado, as ajudas voltam a zero: já pagou.
@@ -208,7 +208,11 @@ percentagens e fases estão em `CONFIG.mercado`.
 - **Abaixo da cláusula**: no fim, **decide o dono**. Aceita a melhor oferta ou recusa, e o jogador fica.
 - **Igual ou acima da cláusula** ("bater a cláusula"): há leilão na mesma, mas **o dono não pode impedir a venda**.
   Recebe o valor final.
-- Com o **Empresário** (exclusividade), não há leilão. O dono pode anular com outro Empresário.
+- Com o **Agente** (exclusividade), não há leilão: compra-se pelo valor da cláusula. O dono pode anular com outro Agente.
+- **Em cada janela não se compram mais de 2 jogadores ao mesmo treinador.** **[A]** Contam propostas, leilões de
+  propostas, Agente e trocas.
+- **Antes de cada jogo, e durante a janela, o treinador escolhe o onze** no Plantel: troca jogadores de lugar e com o
+  banco, mas só nas suas posições. **[A]** No fecho, a escolha só cede se impedir alguém de ficar no plantel.
 - A qualquer altura da janela:
   - **vender à banca**, sempre ao **preço base** (baixo);
   - **trocas diretas** acordadas entre os dois treinadores, sem leilão.
@@ -279,14 +283,18 @@ A mesma tática dos dois lados é neutra.
 - Objetivo de equilíbrio: duas equipas equivalentes marcam ~2 golos cada (3-2, 2-2, 4-1 são normais; 5 ou mais é
   raro). Com modificador 0, a conta dá ~1,96 golos por equipa nos lances normais e ~0,15 nas cartas fortes.
 
+**Os lances são à vez**: em cada ronda de 10 minutos lança primeiro a equipa da casa, vê-se a jogada e o registo, e só depois lança a visitante. Os bots lançam sozinhos.
+
 ### 4.4 Lesões
-- **Com carta do Departamento médico**: usa-se e o jogador recupera. **[A]** É usada automaticamente (há uma opção
-  para desligar), para o jogo não parar.
-- **Sem carta**: o jogador fica lesionado até à próxima janela, e tira-se do baralho do Mercado um jogador da mesma
-  posição, **emprestado**.
-  - Esse jogador tem **15%** de hipótese de ter overall igual ou superior ao do lesionado.
-  - **[A]** Entra logo nesse jogo.
-  - Pode ser comprado na abertura da janela seguinte, ao valor de mercado. Se não for comprado, volta ao baralho.
+- Em campo só há lesões de jogo, e **os guarda-redes não se lesionam**.
+- **O jogo pára até o treinador decidir**, e o adversário é avisado. As opções:
+  - **Ficha do Departamento médico**: o jogador recupera e continua em campo.
+  - **Substituição**: entra o suplente. Fora das suas posições, joga com **−3** de overall até ao fim do jogo.
+  - **Fica em campo** com **−10** de overall até ao fim do jogo. Sem ficha nem substituição, é o que acontece.
+- Se não foi tratado com uma ficha, o jogador fica de fora até à próxima janela. **O emprestado só joga a partir da
+  jornada seguinte**, nunca no jogo da lesão, e a carta dele é mostrada ao treinador no início dessa jornada.
+- O **emprestado** é um jogador da mesma posição que **nunca é melhor nem tem mais valor de mercado** do que o lesionado.
+  Pode ser comprado na abertura da janela seguinte, ao valor de mercado. Se não for comprado, volta ao baralho.
 
 ### 4.5 Taça
 - Joga-se nas últimas épocas da partida (ver 3.4.2), no fim da época, depois da liga e antes da janela de verão.

@@ -18,13 +18,19 @@ export const LUGARES = {
  * @param {string} formacao
  * @param {{ posicao: string, jogador: number|null }[]} onze os 11 lugares, pela ordem da formação
  * @param {Record<number, object>} jogadores
+ * @param {{ editavel?: boolean, selecionado?: number|null, validos?: Set<number> }} o na edição, cada lugar é um alvo de troca
  */
-export function campoHTML(formacao, onze, jogadores) {
+export function campoHTML(formacao, onze, jogadores, { editavel = false, selecionado = null, validos = null } = {}) {
   const coordenadas = LUGARES[formacao] ?? LUGARES['4-4-2'];
   const lugares = onze.map((l, i) => {
     const [x, y] = coordenadas[i];
     const j = l.jogador != null ? jogadores[l.jogador] : null;
     const conteudo = j ? miniCartaHTML(j) : `<div class="mini-carta mini-vazia">${posicao(l.posicao)}</div>`;
+    if (editavel) {
+      const classes = [i === selecionado ? 'selecionado' : '', validos?.has(i) ? 'valido' : '', validos && !validos.has(i) && i !== selecionado ? 'invalido' : ''].join(' ');
+      const penalizado = j && l.overall != null && l.overall < j.overall ? `<span class="lugar-alt">${l.overall}</span>` : '';
+      return `<button type="button" class="lugar lugar-editavel ${classes}" style="left:${x}%;top:${y}%" data-lugar="${i}">${conteudo}${penalizado}<span class="lugar-pos">${posicao(l.posicao)}</span></button>`;
+    }
     return `<div class="lugar" style="left:${x}%;top:${y}%" ${j ? `data-jogador="${j.id}"` : ''}>${conteudo}</div>`;
   }).join('');
   return `<div class="campo-jogo">

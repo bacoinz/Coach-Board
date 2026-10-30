@@ -11,16 +11,16 @@ import { arredondar } from './valores.js';
 export const CASAS = CONFIG.tabuleiro.casas;
 
 export const NOMES_CASAS = {
-  inicio: 'Início',
+  inicio: 'Balneário',
   mercado: 'Mercado',
   rede: 'Rede de observação',
-  empresario: 'Empresário',
+  empresario: 'Agente',
   medico: 'Departamento médico',
-  patrocinio: 'Patrocínio',
+  patrocinio: 'Patrocinadores',
   jovens: 'Jovens Talentos',
   misterio: 'Mistério',
   investigacao: 'Investigação',
-  sad: 'SAD',
+  sad: 'Reunião com a SAD',
 };
 
 /** Casas a andar nesta janela (voltas × casas do tabuleiro). */
@@ -51,7 +51,7 @@ function validarVez(sala, equipaId) {
   if (sala.fase !== 'janela' || j?.fase !== 'tabuleiro') return 'Não estamos no tabuleiro.';
   if (j.ordem[j.vez] !== equipaId) return 'Não é a tua vez.';
   if (j.leilao) return 'Há um leilão a decorrer.';
-  if (j.contestacao) return 'Há um Empresário por responder.';
+  if (j.contestacao) return 'Há um Agente por responder.';
   return null;
 }
 
@@ -154,16 +154,19 @@ export function resolverCasa(sala, ctx, equipaId, casa) {
       if (!liga) return registar(sala, ctx, 'Não há mais Redes de observação.');
       if (e.redes.length < CONFIG.cartas.maxRedes) {
         e.redes.push(liga);
+        j.ultimaCarta = { equipa: equipaId, tipo: 'rede', bom: true, titulo: 'Rede de observação', texto: `20% de desconto nos jogadores da liga ${liga}.`, detalhe: null, liga };
         registar(sala, ctx, `${e.nome} ganha a Rede de observação de ${liga}: 20% de desconto nos jogadores dessa liga.`, { tipo: 'carta' });
       } else j.pendente = { tipo: 'rede', equipa: equipaId, liga };
       break;
     }
     case 'empresario':
       e.cartas.empresario++;
-      registar(sala, ctx, `${e.nome} ganha uma carta de Empresário.`, { tipo: 'carta' });
+      j.ultimaCarta = { equipa: equipaId, tipo: 'empresario', bom: true, titulo: 'Agente', texto: 'Inflaciona a cláusula de um jogador teu, anula um Agente usado contra ti ou compra um jogador em exclusivo.', detalhe: null };
+      registar(sala, ctx, `${e.nome} ganha uma carta de Agente.`, { tipo: 'carta' });
       break;
     case 'medico':
       e.cartas.medico++;
+      j.ultimaCarta = { equipa: equipaId, tipo: 'medico', bom: true, titulo: 'Departamento médico', texto: 'Trata uma lesão: o jogador não falha o jogo.', detalhe: null };
       registar(sala, ctx, `${e.nome} ganha uma carta do Departamento médico.`, { tipo: 'carta' });
       break;
     case 'patrocinio':
@@ -178,6 +181,15 @@ export function resolverCasa(sala, ctx, equipaId, casa) {
     default:
       break;
   }
+}
+
+/** Quem tirou a carta confirma que a viu: até aí, todos a têm no ecrã. */
+export function confirmarCarta(sala, ctx, equipaId) {
+  const c = sala.janela?.ultimaCarta;
+  if (!c) return erro('Não há carta para confirmar.');
+  if (c.equipa !== equipaId) return erro('Só quem tirou a carta a confirma.');
+  c.confirmada = true;
+  return { ok: true };
 }
 
 /** Comprar a carta da casa (Mercado ou Jovens Talentos) pelo preço pedido. */
@@ -234,23 +246,27 @@ export function terminarVez(sala, ctx, equipaId) {
 function passarVez(sala, ctx) {
   const j = sala.janela;
   j.ultimaCarta = null;
+  j.lancou = false;
+  // Quando já todos deram a volta, não há mais vezes: só falta irem para o campeonato.
+  if (todosAcabaram(j)) return;
+  // Quem deu a volta já só termina a vez uma última vez e sai da rotação.
   // Quem tirou "Papelada em atraso" perde esta vez (se ainda tiver casas para andar).
   for (let i = 0; i < j.ordem.length; i++) {
     j.vez = (j.vez + 1) % j.ordem.length;
     if (j.vez === 0) j.ronda++;
+    if (acabou(j, j.ordem[j.vez])) continue;
     const e = sala.equipas[j.ordem[j.vez]];
     if (!e.saltarVez) break;
     delete e.saltarVez;
     registar(sala, ctx, `${e.nome} perde a vez.`, { tipo: 'carta' });
   }
-  j.lancou = false;
 }
 
 /** O anfitrião força a vez de quem não está a jogar: a carta da casa volta ao baralho e a vez passa. */
 export function forcarVez(sala, ctx) {
   const j = sala.janela;
   if (sala.fase !== 'janela' || j?.fase !== 'tabuleiro') return erro('Não estamos no tabuleiro.');
-  if (j.leilao || j.contestacao) return erro('Há um leilão ou um Empresário por resolver: usa "Fechar leilão".');
+  if (j.leilao || j.contestacao) return erro('Há um leilão ou um Agente por resolver: usa "Fechar leilão".');
   const equipaId = j.ordem[j.vez];
   // Quem não está tem de andar na mesma, senão a janela nunca fecha: lança por ele e a carta da casa perde-se.
   if (!j.pendente && !j.lancou && !acabou(j, equipaId)) lancar(sala, ctx, equipaId);

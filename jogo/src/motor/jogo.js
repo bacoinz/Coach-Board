@@ -4,7 +4,7 @@ import { comPeso, dado, escolher, inteiro } from './aleatorio.js';
 import { jogador, transferir, registar } from './estado.js';
 import { livresQue, tirarEmprestimo } from './cartas.js';
 import { overallNaPosicao } from './formacao.js';
-import { frase, fimDePartida } from './misterio.js';
+import { fimDePartida } from './misterio.js';
 
 const J = CONFIG.jogo;
 const LINHA = CONFIG.posicoes.linha;
@@ -74,6 +74,7 @@ export function criarJogo(sala, ctx, casa, fora, taticas = {}) {
     // Nas últimas épocas a Força conta menos, para haver mais surpresas.
     forcaMaxima: fimDePartida(sala) ? CONFIG.misterio.fimDePartida.forcaMaxima : J.forca.maximo,
     periodo: 0,
+    vezLance: 0, // em cada ronda, cada lado lança à vez: primeiro a casa
     acabou: false,
     eventos: [],
   };
@@ -126,35 +127,129 @@ function golo(jogo, ctx, i, minuto, tipo) {
 
 // --- Lesões ---
 
-/** Lesão sem carta: fica de fora até à próxima janela; vem um emprestado da mesma posição (15% de ser igual ou melhor). */
+/**
+ * Um emprestado da mesma posição fica no lugar do lesionado até à próxima janela. Nunca é melhor nem tem mais
+ * valor de mercado do que ele. Devolve a entrada do emprestado ou null, se não houver ninguém.
+ */
+function emprestarPara(sala, ctx, lado, lesionado, posicao) {
+  const rng = ctx.aleatorio;
+  const e = sala.equipas[lado.equipa];
+  const { overall, valor } = jogador(sala, ctx, lesionado);
+  const limite = { posicao, valorMaximo: valor };
+  const id = escolher(rng, livresQue(sala, ctx, { ...limite, overall: [overall - J.emprestimoLesao.margemPior, overall] }))
+    ?? escolher(rng, livresQue(sala, ctx, { ...limite, overall: [0, overall] }))
+    ?? tirarEmprestimo(sala, ctx, posicao);
+  if (id == null) return null;
+  transferir(sala, id, lado.equipa, { emprestado: true, emprestadoLesao: true });
+  const novo = entrada(sala, ctx, id, posicao);
+  e.onze = (e.onze ?? []).map((l) => (l.jogador === lesionado ? { posicao: l.posicao, jogador: id, overall: novo.overall } : l));
+  return novo;
+}
+
+/**
+ * Lesão: nos bots e nos jogadores temporários entra logo um emprestado. Nos treinadores, o jogo pára até o treinador
+ * decidir: usar uma ficha médica, fazer entrar o suplente ou deixá-lo em campo, diminuído. Sem ficha nem suplente, só
+ * lhe resta confirmar que ele fica.
+ */
 function lesionar(sala, ctx, jogo, i, minuto) {
   const lado = jogo.lados[i];
   const rng = ctx.aleatorio;
-  const alvo = escolher(rng, lado.onze);
+  // Os guarda-redes não se lesionam.
+  const candidatos = lado.onze.filter((l) => !l.lesionado && l.posicao !== 'GK');
+  const alvo = candidatos.length ? escolher(rng, candidatos) : null;
   if (!alvo) return;
   const e = sala.equipas[lado.equipa];
-  const texto = frase(rng, jogador(sala, ctx, alvo.jogador), 'lesao');
-  if (e.cartas?.medico > 0 && !e.bot && !alvo.temp) {
-    e.cartas.medico--;
-    jogo.eventos.push({ minuto, lado: i, tipo: 'lesao', texto: `${texto} O Departamento médico resolve.` });
-    return;
-  }
-  const { probabilidadeIgualOuMelhor: p, margemMelhor, margemPior } = J.emprestimoLesao;
-  const ov = alvo.overall;
-  const faixa = rng() < p ? [ov, ov + margemMelhor] : [ov - margemPior, ov - 1];
-  const id = escolher(rng, livresQue(sala, ctx, { posicao: alvo.posicao, overall: faixa })) ?? tirarEmprestimo(sala, ctx, alvo.posicao);
-  if (id == null) return;
-  if (!alvo.temp) {
+  const texto = `${alvo.nome} ${escolher(rng, J.lesoesEmCampo)}.`;
+  if (!e.bot && !alvo.temp) {
+    alvo.lesionado = true;
+    alvo.overall -= J.lesao.penalizacao;
+    lado.lesionados = [...(lado.lesionados ?? []), { jogador: alvo.jogador, nome: alvo.nome, posicao: alvo.posicao, overall: alvo.overall + J.lesao.penalizacao, pendente: true, texto }];
     const d = sala.jogadores[alvo.jogador];
     if (d) d.lesionado = true;
+    jogo.eventos.push({ minuto, lado: i, tipo: 'lesao', texto, jogador: alvo.nome });
+    registar(sala, ctx, `Lesão em ${e.nome}: ${texto}`, { tipo: 'lesao' });
+    return;
   }
-  transferir(sala, id, lado.equipa, { emprestado: true, emprestadoLesao: true });
-  const novo = entrada(sala, ctx, id, alvo.posicao);
+  const novo = emprestarPara(sala, ctx, lado, alvo.jogador, alvo.posicao);
+  if (!novo) return;
   lado.onze[lado.onze.indexOf(alvo)] = novo;
-  // O emprestado fica no onze até à próxima janela.
-  e.onze = (e.onze ?? []).map((l) => (l.jogador === alvo.jogador ? { posicao: l.posicao, jogador: id, overall: novo.overall } : l));
   jogo.eventos.push({ minuto, lado: i, tipo: 'lesao', texto: `${texto} Entra ${novo.nome}, emprestado.` });
   registar(sala, ctx, `Lesão em ${e.nome}: ${texto} Entra ${novo.nome}, emprestado.`, { tipo: 'lesao' });
+}
+
+const ladoDe = (jogo, equipaId) => jogo.lados.find((l) => l.equipa === equipaId);
+const podeEntrarSuplente = (lado) => !lado.subUsada && lado.suplente != null;
+
+/** Há alguma lesão à espera da decisão do treinador deste lado? */
+export const lesaoPorDecidir = (lado) => (lado.lesionados ?? []).some((l) => l.pendente);
+
+/** A ficha do Departamento médico: o jogador recupera e continua em campo. */
+export function usarMedico(sala, ctx, jogo, equipaId, id) {
+  const lado = ladoDe(jogo, equipaId);
+  if (!lado) return { erro: 'Não estás neste jogo.' };
+  if (jogo.acabou) return { erro: 'O jogo já acabou.' };
+  const e = sala.equipas[equipaId];
+  if (!(e.cartas.medico > 0)) return { erro: 'Não tens fichas de lesão.' };
+  const les = (lado.lesionados ?? []).find((l) => id == null || l.jogador === id);
+  if (!les) return { erro: 'Não tens ninguém lesionado.' };
+  e.cartas.medico--;
+  lado.lesionados = lado.lesionados.filter((l) => l !== les);
+  const lugar = lado.onze.find((l) => l.jogador === les.jogador);
+  if (lugar) {
+    lugar.overall += J.lesao.penalizacao;
+    delete lugar.lesionado;
+  }
+  const d = sala.jogadores[les.jogador];
+  if (d) delete d.lesionado;
+  const minuto = jogo.periodo * J.minutosPorPeriodo;
+  jogo.eventos.push({ minuto, lado: jogo.lados.indexOf(lado), tipo: 'medico', texto: `${les.nome} recupera.` });
+  registar(sala, ctx, `${e.nome} usa o Departamento médico: ${les.nome} recupera.`, { tipo: 'carta' });
+  return { ok: true };
+}
+
+/** O suplente entra já para o lugar do lesionado; fora das suas posições, joga com menos overall até ao fim. */
+export function suplentePorLesao(sala, ctx, jogo, equipaId, id) {
+  const lado = ladoDe(jogo, equipaId);
+  if (!lado) return { erro: 'Não estás neste jogo.' };
+  if (jogo.acabou) return { erro: 'O jogo já acabou.' };
+  if (!podeEntrarSuplente(lado)) return { erro: 'Já não tens substituições.' };
+  const les = (lado.lesionados ?? []).find((l) => id == null || l.jogador === id);
+  const i = les ? lado.onze.findIndex((l) => l.jogador === les.jogador) : -1;
+  if (i < 0) return { erro: 'Esse jogador não está lesionado em campo.' };
+  const sup = jogador(sala, ctx, lado.suplente);
+  const ov = overallNaPosicao(sup, les.posicao) ?? sup.overall - J.lesao.foraDePosicao;
+  const novo = { ...entrada(sala, ctx, sup.id, les.posicao), overall: ov };
+  jogo.eventos.push({ minuto: jogo.periodo * J.minutosPorPeriodo, lado: jogo.lados.indexOf(lado), tipo: 'substituicao', entra: novo.nome, sai: les.nome });
+  lado.onze[i] = novo;
+  lado.suplente = null;
+  lado.subUsada = true;
+  lado.subPedida = null;
+  les.pendente = false;
+  return { ok: true };
+}
+
+/** O treinador deixa o lesionado em campo, diminuído. */
+export function ficarLesionado(sala, ctx, jogo, equipaId, id) {
+  const lado = ladoDe(jogo, equipaId);
+  if (!lado) return { erro: 'Não estás neste jogo.' };
+  const les = (lado.lesionados ?? []).find((l) => l.pendente && (id == null || l.jogador === id));
+  if (!les) return { erro: 'Não há nada a decidir.' };
+  les.pendente = false;
+  return { ok: true };
+}
+
+/** No fim do jogo, quem continua lesionado fica de fora até à próxima janela e vem um emprestado para o lugar dele. */
+export function resolverLesoes(sala, ctx, jogo) {
+  for (const lado of jogo.lados) {
+    for (const les of lado.lesionados ?? []) {
+      const novo = emprestarPara(sala, ctx, lado, les.jogador, les.posicao);
+      if (!novo) continue;
+      const e = sala.equipas[lado.equipa];
+      e.emprestadosNovos = [...(e.emprestadosNovos ?? []), { jogador: novo.jogador, lesionado: les.nome }];
+      registar(sala, ctx, `${les.nome} continua lesionado: ${novo.nome} fica emprestado a ${e.nome} a partir da próxima jornada.`, { tipo: 'lesao' });
+    }
+    lado.lesionados = [];
+  }
 }
 
 function acontecimento(sala, ctx, jogo, i, minuto) {
@@ -209,14 +304,26 @@ function aplicarSubstituicao(sala, ctx, jogo, lado, minuto) {
   lado.subUsada = true;
 }
 
-export function jogarPeriodo(sala, ctx, jogo) {
+/** O lance do lado que tem a vez. A casa joga na 1.ª metade dos 10 minutos e a visitante na 2.ª. */
+export function jogarLance(sala, ctx, jogo) {
   if (jogo.acabou) return;
   const inicio = jogo.periodo * J.minutosPorPeriodo;
-  for (const lado of jogo.lados) if (lado.subPedida != null) aplicarSubstituicao(sala, ctx, jogo, lado, inicio);
-  for (const i of [0, 1]) lance(sala, ctx, jogo, i, inicio + inteiro(ctx.aleatorio, 1, J.minutosPorPeriodo));
+  if (jogo.vezLance === 0) for (const lado of jogo.lados) if (lado.subPedida != null) aplicarSubstituicao(sala, ctx, jogo, lado, inicio);
+  const i = jogo.vezLance;
+  const meio = Math.floor(J.minutosPorPeriodo / 2);
+  lance(sala, ctx, jogo, i, inicio + (i === 0 ? inteiro(ctx.aleatorio, 1, meio) : inteiro(ctx.aleatorio, meio + 1, J.minutosPorPeriodo)));
+  jogo.vezLance++;
+  if (jogo.vezLance < jogo.lados.length) return;
+  jogo.vezLance = 0;
   for (const lado of jogo.lados) for (const l of lado.onze) if (!l.temp) lado.minutos[l.jogador] = (lado.minutos[l.jogador] ?? 0) + J.minutosPorPeriodo;
   jogo.periodo++;
   jogo.acabou = jogo.periodo >= J.periodos;
+}
+
+/** O que falta da ronda atual, de uma vez (jogos entre bots e quando o anfitrião acaba os jogos). */
+export function jogarPeriodo(sala, ctx, jogo) {
+  const ronda = jogo.periodo;
+  while (!jogo.acabou && jogo.periodo === ronda) jogarLance(sala, ctx, jogo);
 }
 
 /** Pede a substituição do jovem da formação: entra no período seguinte. */

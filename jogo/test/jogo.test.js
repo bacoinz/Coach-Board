@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { resolverLesoes, usarMedico, suplentePorLesao, ficarLesionado, lesaoPorDecidir } from '../src/motor/jogo.js';
 import { CONFIG } from '../src/config.js';
 import { contexto, salaNoTabuleiro, salaComecada, treinadorDe, ok, verificarInvariantes } from './apoio.js';
 import { agir, rankingFinal } from '../src/motor/partida.js';
 import { jogador, transferir } from '../src/motor/estado.js';
 import { criarJogo, jogarPeriodo, forca, quimica, modificador, taticaVence, CICLO_TATICAS, pedirSubstituicao } from '../src/motor/jogo.js';
-import { calendarioVolta, ordenarTabela, avancarTempo } from '../src/motor/campeonato.js';
+import { calendarioVolta, ordenarTabela } from '../src/motor/campeonato.js';
 import { sugestaoFecho, comprarEmprestado } from '../src/motor/janela.js';
 import { melhorOnze } from '../src/motor/formacao.js';
 import { jogarAteAoFim } from '../scripts/treinador-auto.mjs';
@@ -156,6 +157,9 @@ describe('lesões e substituição', () => {
     const ctx = contexto(5);
     const { sala, jogo } = jogoEntre(ctx);
     forcarLesao(ctx, sala, jogo);
+    // Sem decisão do treinador, o emprestado só vem no fim do jogo.
+    expect(Object.values(sala.jogadores).some((d) => d.emprestadoLesao)).toBe(false);
+    resolverLesoes(sala, ctx, jogo);
     const emprestados = Object.entries(sala.jogadores).filter(([, d]) => d.emprestadoLesao);
     expect(emprestados.length).toBeGreaterThan(0);
     const [id, d] = emprestados[0];
@@ -171,8 +175,90 @@ describe('lesões e substituição', () => {
     sala.equipas.e1.cartas.medico = 50;
     sala.equipas.e2.cartas.medico = 50;
     forcarLesao(ctx, sala, jogo);
-    expect(Object.values(sala.jogadores).some((d) => d.emprestadoLesao)).toBe(false);
-    expect(sala.equipas.e1.cartas.medico + sala.equipas.e2.cartas.medico).toBeLessThan(100);
+    // Não é automático: a ficha só se gasta quando o treinador a usa.
+    expect(sala.equipas.e1.cartas.medico + sala.equipas.e2.cartas.medico).toBe(100);
+    jogo.acabou = false;
+    const lado = jogo.lados.find((l) => l.lesionados?.length);
+    const les = lado.lesionados[0];
+    const lugar = lado.onze.find((l) => l.jogador === les.jogador);
+    expect(lugar.lesionado).toBe(true);
+    expect(lugar.overall).toBe(les.overall - CONFIG.jogo.lesao.penalizacao);
+    expect(usarMedico(sala, ctx, jogo, lado.equipa, les.jogador).ok).toBe(true);
+    expect(sala.equipas[lado.equipa].cartas.medico).toBe(49);
+    expect(lugar.overall).toBe(les.overall);
+    expect(lugar.lesionado).toBeUndefined();
+    expect(usarMedico(sala, ctx, jogo, lado.equipa, les.jogador).erro).toBeTruthy();
+  });
+  it('os guarda-redes não se lesionam em campo', () => {
+    const ctx = contexto(7);
+    const { sala, jogo } = jogoEntre(ctx);
+    for (let n = 0; n < 400; n++) {
+      jogo.periodo = 0;
+      jogo.acabou = false;
+      jogarPeriodo(sala, ctx, jogo);
+      for (const l of jogo.lados) for (const les of l.lesionados ?? []) expect(les.posicao).not.toBe('GK');
+    }
+    expect(jogo.lados.some((l) => l.lesionados?.length)).toBe(true);
+  });
+  it('sem ficha nem suplente, só resta confirmar; o emprestado nunca é melhor nem mais caro', () => {
+    const ctx = contexto(5);
+    const { sala, jogo } = jogoEntre(ctx);
+    for (const id of ['e1', 'e2']) {
+      sala.equipas[id].cartas.medico = 0;
+      sala.equipas[id].suplente = null;
+    }
+    jogo.lados.forEach((l) => {
+      l.suplente = null;
+    });
+    forcarLesao(ctx, sala, jogo);
+    const lado = jogo.lados.find((l) => l.lesionados?.length);
+    const les = lado.lesionados[0];
+    expect(lesaoPorDecidir(lado)).toBe(true);
+    ficarLesionado(sala, ctx, jogo, lado.equipa);
+    const base = jogador(sala, ctx, les.jogador);
+    resolverLesoes(sala, ctx, jogo);
+    const [novo] = sala.equipas[lado.equipa].emprestadosNovos;
+    const emp = jogador(sala, ctx, novo.jogador);
+    expect(emp.overall).toBeLessThanOrEqual(base.overall);
+    expect(emp.valor).toBeLessThanOrEqual(base.valor);
+    expect(emp.posicao).toBe(les.posicao);
+    // Só joga a partir do jogo seguinte.
+    expect(lado.onze.some((l) => l.jogador === novo.jogador)).toBe(false);
+    expect(sala.equipas[lado.equipa].onze.some((l) => l.jogador === novo.jogador)).toBe(true);
+  });
+  it('com suplente, a lesão bloqueia até à decisão; fora de posição o suplente joga com menos 3', () => {
+    const ctx = contexto(5);
+    const { sala, jogo } = jogoEntre(ctx);
+    const gr = [...ctx.base.values()].find((j) => j.posicao === 'GK' && !sala.jogadores[j.id]?.equipa);
+    transferir(sala, gr.id, 'e1', {});
+    jogo.lados.forEach((l) => {
+      l.suplente = gr.id;
+    });
+    forcarLesao(ctx, sala, jogo);
+    jogo.acabou = false;
+    const lado = jogo.lados.find((l) => l.lesionados?.length);
+    const les = lado.lesionados[0];
+    expect(lesaoPorDecidir(lado)).toBe(true);
+    expect(les.posicao).not.toBe('GK');
+    expect(suplentePorLesao(sala, ctx, jogo, lado.equipa, les.jogador).ok).toBe(true);
+    expect(lesaoPorDecidir(lado)).toBe(false);
+    const lugar = lado.onze.find((l) => l.jogador === gr.id);
+    expect(lugar.posicao).toBe(les.posicao);
+    expect(lugar.overall).toBe(gr.overall - CONFIG.jogo.lesao.foraDePosicao);
+    expect(lado.subUsada).toBe(true);
+    expect(suplentePorLesao(sala, ctx, jogo, lado.equipa, les.jogador).erro).toBeTruthy();
+  });
+  it('deixar o lesionado em campo também desbloqueia', () => {
+    const ctx = contexto(5);
+    const { sala, jogo } = jogoEntre(ctx);
+    sala.equipas.e1.cartas.medico = 1;
+    sala.equipas.e2.cartas.medico = 1;
+    forcarLesao(ctx, sala, jogo);
+    const lado = jogo.lados.find((l) => l.lesionados?.length);
+    expect(lesaoPorDecidir(lado)).toBe(true);
+    expect(ficarLesionado(sala, ctx, jogo, lado.equipa).ok).toBe(true);
+    expect(lesaoPorDecidir(lado)).toBe(false);
+    expect(ficarLesionado(sala, ctx, jogo, lado.equipa).erro).toBeTruthy();
   });
   it('a substituição do jovem entra no período seguinte e os minutos contam até à saída', () => {
     const ctx = contexto(6);
@@ -231,7 +317,7 @@ describe('campeonato', () => {
     };
     expect(ordenarTabela(t).map((x) => x.equipa)).toEqual(['c', 'b', 'a']);
   });
-  it('as táticas são secretas até todos escolherem e os jogos correm com o relógio', () => {
+  it('as táticas são secretas até todos escolherem e os treinadores lançam à vez', () => {
     const ctx = contexto(8);
     const sala = salaNoCampeonato(ctx);
     ok(agir(sala, ctx, 't1', { t: 'tatica', tatica: 'Autocarro' }));
@@ -240,10 +326,26 @@ describe('campeonato', () => {
     ok(agir(sala, ctx, 't2', { t: 'tatica', tatica: 'Ataque Total' }));
     const c = sala.campeonato;
     expect(c.fase).toBe('jogos');
-    expect(avancarTempo(sala, { ...ctx, agora: ctx.agora })).toBe(false);
-    expect(avancarTempo(sala, { ...ctx, agora: c.proximoPeriodo })).toBe(true);
-    expect(c.jogos[0].periodo).toBe(1);
-    expect(avancarTempo(sala, { ...ctx, agora: c.proximoPeriodo + 60_000 })).toBe(true);
+    const jogo = c.jogos[0];
+    const treinador = (i) => (jogo.lados[i].equipa === 'e1' ? 't1' : 't2');
+    expect(jogo.vezLance).toBe(0);
+    expect(agir(sala, ctx, treinador(1), { t: 'lancar_ronda' }).erro).toMatch(/vez/);
+    let lances = 0;
+    while (!jogo.acabou) {
+      const i = jogo.vezLance;
+      const lado = jogo.lados[i];
+      // Uma lesão pára o jogo até o treinador decidir.
+      if (lado.lesionados?.some((l) => l.pendente)) {
+        expect(agir(sala, ctx, treinador(i), { t: 'lancar_ronda' }).erro).toMatch(/lesionado/);
+        ok(agir(sala, ctx, treinador(i), { t: 'lesao_ficar' }));
+      }
+      const antes = jogo.eventos.filter((e) => e.tipo === 'lance').length;
+      ok(agir(sala, ctx, treinador(i), { t: 'lancar_ronda' }));
+      expect(jogo.eventos.filter((e) => e.tipo === 'lance' && e.lado === i).length).toBeGreaterThan(0);
+      expect(jogo.eventos.filter((e) => e.tipo === 'lance').length).toBe(antes + 1);
+      lances++;
+    }
+    expect(lances).toBe(2 * CONFIG.jogo.periodos);
     expect(c.fase).toBe('resultados');
   });
   it('paga TV igual a todos e desconta salários; quem tem jogadores mais caros paga mais', () => {

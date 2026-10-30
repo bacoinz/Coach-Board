@@ -6,7 +6,6 @@ import { CONFIG } from './config.js';
 import { lerBase, descomprimir } from './motor/base.js';
 import * as L from './motor/sala-logica.js';
 import { agir } from './motor/partida.js';
-import { avancarTempo, proximoPrazo } from './motor/campeonato.js';
 import { estadoPublico, privado } from './motor/vista.js';
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -101,7 +100,6 @@ export class Sala extends DurableObject {
       return;
     }
     if (!id) return;
-    avancarTempo(sala, ctx);
 
     let r;
     switch (msg.t) {
@@ -157,9 +155,7 @@ export class Sala extends DurableObject {
       this.sala = null;
       return;
     }
-    const ctx = await this.contexto();
-    if (avancarTempo(this.sala, ctx)) await this.publicar(ctx);
-    else await this.agendar();
+    await this.agendar();
   }
 
   // --- utilitários ---
@@ -176,8 +172,8 @@ export class Sala extends DurableObject {
   }
 
   async agendar() {
-    // O próximo período dos jogos, se os houver; senão, a limpeza da sala abandonada.
-    const quando = proximoPrazo(this.sala) ?? this.sala.atualizada + CONFIG.sala.diasSemAtividade * DIA + 1000;
+    // A limpeza da sala abandonada.
+    const quando = this.sala.atualizada + CONFIG.sala.diasSemAtividade * DIA + 1000;
     if ((await this.ctx.storage.getAlarm()) !== quando) await this.ctx.storage.setAlarm(quando);
   }
 

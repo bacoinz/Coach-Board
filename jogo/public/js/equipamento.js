@@ -57,3 +57,14 @@ export function equipamentoSVG({ padrao: tipo = 'liso', principal = '#c49a6c', s
   ${patrocinio ? `<text x="50" y="54" font-size="7.5" font-family="Anton, Impact, sans-serif" fill="${texto}" text-anchor="middle" paint-order="stroke" stroke="${principal}" stroke-width="2" textLength="${Math.min(44, patrocinio.length * 5)}" lengthAdjust="spacingAndGlyphs">${escapar(patrocinio.toUpperCase())}</text>` : ''}
 </svg>`;
 }
+
+/** O emblema do clube: o que foi enviado ou, enquanto não houver, um escudo com as cores e as iniciais. */
+export function emblemaSVG({ nome = '', kit = {}, emblema = null }, tamanho = 40) {
+  if (emblema) return `<img class="emblema" src="${escapar(emblema)}" alt="" width="${tamanho}" height="${tamanho}">`;
+  const { principal = '#c49a6c', secundaria = '#3d241d' } = kit;
+  const iniciais = nome.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+  return `<svg class="emblema" viewBox="0 0 100 100" width="${tamanho}" height="${tamanho}" role="img" aria-label="Emblema">
+  <path d="M50 4 L90 16 V52 C90 76 70 90 50 97 C30 90 10 76 10 52 V16 Z" fill="${principal}" stroke="${secundaria}" stroke-width="6"/>
+  <text x="50" y="62" font-family="Anton, Impact, sans-serif" font-size="36" text-anchor="middle" fill="${corTexto(principal)}">${escapar(iniciais)}</text>
+</svg>`;
+}

@@ -65,7 +65,7 @@ describe('início da partida', () => {
   it('orçamento igual para todos, com os prémios iniciais, e contratos sem repetir', () => {
     const sala = salaComecada(4);
     const equipas = Object.values(sala.equipas);
-    const esperado = CONFIG.inicio.orcamento + CONFIG.inicio.premioMarcaInicial + 2 * CONFIG.inicio.premioPatrocinioInicial;
+    const esperado = CONFIG.inicio.orcamento + (CONFIG.inicio.orcamentoExtra[sala.config.epocas] ?? 0) + CONFIG.inicio.premioMarcaInicial + 2 * CONFIG.inicio.premioPatrocinioInicial;
     expect(equipas.every((e) => e.dinheiro === esperado)).toBe(true);
     const contratos = equipas.flatMap((e) => [e.marca, ...e.patrocinios]);
     expect(new Set(contratos).size).toBe(contratos.length);

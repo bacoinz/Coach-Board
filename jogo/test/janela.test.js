@@ -53,7 +53,8 @@ describe('formação e draft', () => {
     expect(d.escolhas.map((e) => `${e.equipa}:${e.tipo}`)).toEqual(['e3:jovem', 'e3:extra', 'e2:jovem', 'e1:jovem']);
     ok(agir(sala, ctx, 't3', { t: 'draft', jogador: null }));
     const extra = d.opcoes.map((id) => jogador(sala, ctx, id));
-    expect(extra.every((j) => CONFIG.draft.extra.some((c) => dentro(j.idade, c.idade) && dentro(j.overall, c.overall)))).toBe(true);
+    expect(extra).toHaveLength(CONFIG.draft.opcoes);
+    expect(extra.every((j) => j.overall <= 80 && j.valor <= 5)).toBe(true);
     ok(agir(sala, ctx, 't3', { t: 'draft', jogador: extra[0].id }));
     expect(sala.jogadores[extra[0].id].soBanca).toBe(true);
   });
@@ -267,7 +268,7 @@ describe('Empresário, banca e trocas', () => {
     expect(j.clausula).toBeCloseTo(j.valor * 2, 1);
     expect(agir(sala, ctx, treinadorDe(sala, eq), { t: 'inflacionar', jogador: id }).erro).toBeTruthy();
   });
-  it('exclusividade compra a 1× sem leilão; o dono com Empresário pode anular', () => {
+  it('exclusividade compra pela cláusula sem leilão; o dono com Empresário pode anular', () => {
     const ctx = contexto();
     const sala = salaNoTabuleiro(2, {}, ctx);
     const eq = vezDe(sala);
@@ -275,7 +276,7 @@ describe('Empresário, banca e trocas', () => {
     const [alvo1, alvo2] = sala.equipas[dono].plantel;
     sala.equipas[eq].dinheiro = 300;
     sala.equipas[eq].cartas.empresario = 2;
-    const valor = jogador(sala, ctx, alvo1).valor;
+    const valor = jogador(sala, ctx, alvo1).clausula;
     ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'exclusividade', jogador: alvo1 }));
     expect(sala.janela.leilao).toBeNull();
     expect(sala.equipas[eq].plantel).toContain(alvo1);

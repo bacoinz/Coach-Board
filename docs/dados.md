@@ -59,7 +59,7 @@ VEL, POS), que aparecem nas cartas de jogador.
   |---|---:|---:|---:|---:|---:|---:|---:|
   | Fator | 1,3 | 1,2 | 1,0 | 0,85 | 0,65 | 0,45 | 0,3 |
 
-- **Cláusula** = 1,5 × valor. O Empresário põe-na em 2× (num jogador teu) ou em 1× (num jogador alvo).
+- **Cláusula** = 1,5 × valor. O Agente põe-na em 2× (num jogador teu) ou em 1× (num jogador alvo).
 - **Preço base** (venda à banca) = 40% do valor. **Preço do draft** = 60% do valor.
 - **Salário** = 5% do valor por época, dividido pelas jornadas. Um jogador de 75 custa ~29 mil € por jornada num
   campeonato de 8 equipas.

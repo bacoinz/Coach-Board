@@ -69,7 +69,31 @@ const SEM_LUGAR = 1e6;
  * a soma dos overalls. Devolve os 11 lugares ({ posicao, jogador|null, overall }) e os jogadores que sobram.
  */
 export function melhorOnze(jogadores, formacao) {
+  return atribuir(jogadores, CONFIG.formacoes[formacao]);
+}
+
+/**
+ * O onze com a escolha do treinador (o id do jogador em cada lugar): quem ainda pode ficar no seu lugar fica, e o
+ * melhor possível preenche os outros. Sem escolha, é o melhor onze.
+ */
+export function onzeEscolhido(jogadores, formacao, escolha = null) {
+  if (!escolha) return melhorOnze(jogadores, formacao);
   const lugares = CONFIG.formacoes[formacao];
+  const usados = new Set();
+  const fixos = lugares.map((posicao, i) => {
+    const j = jogadores.find((x) => x.id === escolha[i]);
+    if (!j || usados.has(j.id) || overallNaPosicao(j, posicao) == null) return null;
+    usados.add(j.id);
+    return j;
+  });
+  const livres = lugares.map((_, i) => i).filter((i) => !fixos[i]);
+  const { onze: resto, sobram } = atribuir(jogadores.filter((j) => !usados.has(j.id)), livres.map((i) => lugares[i]));
+  const onze = lugares.map((posicao, i) => (fixos[i] ? { posicao, jogador: fixos[i].id, overall: overallNaPosicao(fixos[i], posicao) } : resto[livres.indexOf(i)]));
+  return { onze, sobram };
+}
+
+function atribuir(jogadores, lugares) {
+  if (!lugares.length) return { onze: [], sobram: jogadores.map((j) => j.id) };
   // Linhas = lugares; colunas = jogadores + 11 colunas "vazio" (para poder deixar um lugar por preencher).
   const colunas = [...jogadores, ...lugares.map(() => null)];
   const custo = lugares.map((pos) =>

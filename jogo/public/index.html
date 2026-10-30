@@ -72,46 +72,71 @@
   </main>
 
   <!-- Jogo -->
-  <div id="ecra-jogo" class="ecra" hidden>
+  <div id="ecra-jogo" class="ecra ecra-jogo" hidden>
     <header class="barra-jogo">
       <div class="barra-marca">
         <img src="/favicon.svg" alt="" width="28" height="28">
         <span class="barra-nome">The <span class="caramelo">Gaffer</span></span>
       </div>
       <p id="barra-info" class="barra-info"></p>
-      <p id="barra-dinheiro" class="barra-dinheiro"></p>
-      <button class="btn btn-mini" type="button" data-abrir="dialogo-como">Como jogar</button>
-      <button id="btn-sair" class="btn btn-mini" type="button">Sair</button>
-    </header>
-    <main class="jogo-grelha">
-      <section id="col-acao" class="col-acao painel" aria-live="polite"></section>
-      <section id="col-tabuleiro" class="col-tabuleiro"></section>
-      <aside class="col-lado painel">
-        <div class="separadores" role="tablist">
-          <button class="separador-btn" role="tab" data-separador="equipas" aria-selected="true">Equipas</button>
-          <button class="separador-btn" role="tab" data-separador="registo" aria-selected="false">Registo</button>
+      <button class="btn btn-mini" type="button" data-acao="abrir-registo">Registo</button>
+      <button class="btn btn-mini" type="button" data-acao="abrir-classificacoes">Classificações</button>
+      <details id="menu-jogo" class="menu-jogo">
+        <summary class="btn btn-mini" aria-label="Menu"><span aria-hidden="true">☰</span></summary>
+        <div class="menu-lista">
+          <label class="menu-volume">Volume <input id="volume" type="range" min="0" max="1" step="0.05"></label>
+          <button class="btn btn-mini" type="button" data-abrir="dialogo-como">Como jogar</button>
+          <button id="btn-sair" class="btn btn-mini" type="button">Sair</button>
+          <div id="menu-anfitriao" class="menu-anfitriao"></div>
         </div>
-        <div id="lado-equipas"></div>
-        <ol id="lado-registo" class="feed" hidden></ol>
+      </details>
+    </header>
+    <main id="palco" class="palco">
+      <p id="legenda-vez" class="legenda-vez"></p>
+      <section id="col-tabuleiro" class="col-tabuleiro"></section>
+      <aside class="coluna-lado coluna-esq">
+        <div id="equipas-esq" class="equipas-lado"></div>
+        <section id="caixa-lance" class="caixa-lance painel" hidden>
+          <div id="dados-3d" class="dados-3d"><p id="dados-rotulo-cima" class="dados-rotulo cima"></p><p id="dados-rotulo-baixo" class="dados-rotulo baixo"></p><div id="dados-2d" class="dados-2d"></div></div>
+          <div id="lance-acoes" class="lance-acoes"></div>
+        </section>
+      </aside>
+      <section class="centro">
+        <div id="marcador-jogo" class="marcador-jogo" hidden></div>
+        <div id="equipas-topo" class="equipas-topo"></div>
+        <div class="centro-tabuleiro">
+          <p id="soma-dados" class="soma-dados" hidden></p>
+          <p id="titulo-casa" class="titulo-casa" hidden></p>
+          <section id="col-acao" class="col-acao sobre-relvado painel" aria-live="polite" hidden></section>
+        </div>
+      </section>
+      <aside class="coluna-lado coluna-dir">
+        <div id="equipas-dir" class="equipas-lado"></div>
+        <section id="registo-jogo" class="registo-jogo painel" hidden></section>
       </aside>
     </main>
+    <footer id="barra-equipa" class="barra-equipa"></footer>
   </div>
 
   <dialog id="dialogo-jogador" class="dialogo dialogo-jogador"></dialog>
   <dialog id="dialogo-equipa" class="dialogo dialogo-equipa dialogo-fixo"></dialog>
+  <dialog id="dialogo-plantel" class="dialogo dialogo-plantel"></dialog>
+  <dialog id="dialogo-registo" class="dialogo dialogo-registo"></dialog>
+  <dialog id="dialogo-classificacoes" class="dialogo dialogo-registo"></dialog>
   <dialog id="dialogo-troca" class="dialogo"></dialog>
+  <dialog id="dialogo-carta" class="dialogo dialogo-carta"></dialog>
 
   <dialog id="dialogo-como" class="dialogo">
     <h2 class="titulo titulo-medio"><span>Como</span> <span class="caramelo">jogar</span></h2>
     <ol class="regras">
       <li><span>Cada um é o <strong>treinador</strong> de uma equipa: começa com o mesmo orçamento, 11 jogadores (média 75), uma marca e dois patrocinadores.</span></li>
       <li><span>Cada época tem duas <strong>janelas de transferências</strong> (verão e inverno), cada uma seguida de meio campeonato.</span></li>
-      <li><span>Na janela escolhes a <strong>formação</strong>, fazes o <strong>draft</strong> de um jogador (quem está em último escolhe primeiro) e jogas no <strong>tabuleiro</strong>: uma volta, com um dado no verão e, no inverno, um no primeiro lançamento e dois nos seguintes.</span></li>
-      <li><span>No tabuleiro, as casas dão jogadores no <strong>Mercado</strong> (compras a 80% do valor; se passares, os outros podem licitar a partir do valor de mercado ou passar, e aí a carta é descartada), cartas de <strong>Empresário</strong> e do <strong>Departamento médico</strong>, <strong>Redes de observação</strong> (20% de desconto numa liga), <strong>Jovens Talentos</strong> e <strong>Patrocínios</strong>. Na casa <strong>SAD</strong> recebes uma injeção de capital, e metade só de passar por lá.</span></li>
+      <li><span>Na janela escolhes a <strong>formação</strong>, fazes o <strong>draft</strong> de um jogador (quem está em último escolhe primeiro e, a partir da segunda janela, tem uma segunda escolha) e jogas no <strong>tabuleiro</strong>: uma volta, com um dado no verão e, no inverno, um no primeiro lançamento e dois nos seguintes.</span></li>
+      <li><span>No tabuleiro, as casas dão jogadores no <strong>Mercado</strong> (compras a 80% do valor; se passares, os outros podem licitar a partir do valor de mercado ou passar, e aí a carta é descartada), cartas de <strong>Agente</strong> e do <strong>Departamento médico</strong>, <strong>Redes de observação</strong> (20% de desconto numa liga), <strong>Jovens Talentos</strong> e <strong>Patrocínios</strong>. Na casa <strong>SAD</strong> recebes uma injeção de capital, e metade só de passar por lá.</span></li>
       <li><span>As casas <strong>Mistério</strong> tiram uma carta, boa ou má. Cuidado: quem tem sorte a mais pode cair na <strong>Investigação</strong> e levar uma multa ou um limite de contratações.</span></li>
       <li><span>Na tua vez podes fazer uma <strong>proposta</strong> por qualquer jogador de outro treinador: abre leilão para todos e o dono decide, exceto se bateres a cláusula (aí a venda é obrigatória). Clica num jogador para propor.</span></li>
-      <li><span>O <strong>Empresário</strong> inflaciona a cláusula de um jogador teu para 2×, anula outro Empresário usado contra ti, ou compra um jogador em exclusivo pela cláusula de 1×, sem leilão.</span></li>
-      <li><span>Vender à banca (preço base) e trocas diretas podem fazer-se a qualquer altura da janela.</span></li>
+      <li><span>O <strong>Agente</strong> inflaciona a cláusula de um jogador teu para 2×, anula outro Agente usado contra ti, ou compra um jogador em exclusivo pelo valor da cláusula, sem leilão.</span></li>
+      <li><span>Vender à banca (preço base) e trocas diretas podem fazer-se a qualquer altura da janela. Em cada janela não podes comprar mais de <strong>2 jogadores ao mesmo treinador</strong>.</span></li>
       <li><span>No fecho da janela ficas com <strong>11 + 1 da formação</strong>, encaixados na formação escolhida. Os lugares vazios recebem um emprestado.</span></li>
       <li><span>Nas últimas épocas joga-se também uma <strong>Taça</strong> a eliminar. No fim, ganha quem tiver <strong>mais títulos</strong> (uma Taça vale meio campeonato). O desempate é pelos pontos de todas as épocas.</span></li>
       <li><span>Quem entra com a partida a decorrer fica a ver e joga a partir da <strong>janela seguinte</strong>.</span></li>
@@ -120,6 +145,7 @@
   </dialog>
 
   <div id="aviso-ligacao" class="aviso-ligacao" hidden>A ligar ao servidor…</div>
+  <div id="notificacoes" class="notificacoes" aria-live="polite"></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>

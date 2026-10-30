@@ -1,33 +1,43 @@
-// Tabuleiro 3D em Three.js, low-poly: casas, peões, dados e a transformação entre o mercado e o estádio.
+// Tabuleiro 3D em Three.js, low-poly: casas à volta do relvado, peões, baralhos, dados e a transformação em que as
+// casas rodam e passam a ser as bancadas do estádio. Dá para o agarrar e rodar.
 // Só desenha quando há alguma coisa a mexer, para poupar bateria no telemóvel.
 import * as THREE from '/vendor/three.min.js';
 import { CONFIG } from './comum/config.gen.js';
 import { Relvado } from './relvado.js';
+import { CASA, desenharSimbolo, pintarFundo, textoAjustado } from './casas.js';
+
+// As texturas desenham texto: só depois de a letra estar carregada.
+await document.fonts?.load('800 40px Inter').catch(() => {});
 
 const CASAS = CONFIG.tabuleiro.casas;
 const LADO = CASAS.length / 4;
-const ALCANCE = LADO / 2; // o centro das casas dos cantos, a partir do centro do tabuleiro
+// Cada casa é um retângulo deitado: o tabuleiro fica retangular e abraça o relvado.
+const CASA_X = 1.6;
+const CASA_Z = 1;
+const CANTO_X = (LADO * CASA_X) / 2;
+const CANTO_Z = (LADO * CASA_Z) / 2;
+const RELVADO_X = (LADO - 1) * CASA_X - 0.12;
+const RELVADO_Z = RELVADO_X / 1.6;
+const DURACAO_DADOS = 1250;
+const MS_POR_CASA = 320;
 
-const TIPOS = {
-  inicio: ['Início', '#3d241d'],
-  mercado: ['Mercado', '#b07a46'],
-  rede: ['Rede', '#2563eb'],
-  empresario: ['Empresário', '#7c3aed'],
-  medico: ['Médico', '#16a34a'],
-  patrocinio: ['Patrocínio', '#ca8a04'],
-  jovens: ['Jovens Talentos', '#ea580c'],
-  misterio: ['Mistério', '#db2777'],
-  investigacao: ['Investigação', '#991b1b'],
-  sad: ['SAD', '#0f766e'],
-};
+// Baralhos em cima do relvado, com as moedas nas pontas.
+const BARALHOS = ['misterio', 'mercado', 'rede', 'jovens', 'patrocinio'];
 
 /** Posição de uma casa: 0 no canto da frente à direita, no sentido dos ponteiros (como no tabuleiro 2D). */
 export function posicaoCasa(i) {
   const n = ((i % CASAS.length) + CASAS.length) % CASAS.length;
-  if (n <= LADO) return { x: ALCANCE - n, z: ALCANCE };
-  if (n <= 2 * LADO) return { x: -ALCANCE, z: ALCANCE - (n - LADO) };
-  if (n <= 3 * LADO) return { x: -ALCANCE + (n - 2 * LADO), z: -ALCANCE };
-  return { x: ALCANCE, z: -ALCANCE + (n - 3 * LADO) };
+  if (n <= LADO) return { x: CANTO_X - n * CASA_X, z: CANTO_Z };
+  if (n <= 2 * LADO) return { x: -CANTO_X, z: CANTO_Z - (n - LADO) * CASA_Z };
+  if (n <= 3 * LADO) return { x: -CANTO_X + (n - 2 * LADO) * CASA_X, z: -CANTO_Z };
+  return { x: CANTO_X, z: -CANTO_Z + (n - 3 * LADO) * CASA_Z };
+}
+
+/** Para que lado fica o exterior do tabuleiro nesta casa (nos cantos, nos dois sentidos). */
+function exterior(i) {
+  const { x, z } = posicaoCasa(i);
+  // Os cantos ficam com as filas de trás e da frente, para o estádio não ter buracos.
+  return Math.abs(z) === CANTO_Z ? { sx: 0, sz: Math.sign(z) } : { sx: Math.sign(x), sz: 0 };
 }
 
 /** As casas por onde um peão passa, sem contar com a de partida. */
@@ -39,11 +49,16 @@ export function caminho(de, para) {
 const COR_TABULEIRO = new THREE.Color(0x3d241d);
 const COR_ESTADIO = new THREE.Color(0x0a2015);
 const suave = (x) => x * x * (3 - 2 * x);
-const limitar = (x) => Math.max(0, Math.min(1, x));
-const CAMARA = {
-  mercado: { pos: [0, 20, 11], alvo: [0, 0, 0.3] },
-  estadio: { pos: [0, 25, 10], alvo: [0, 0, -1.3] },
+const limitar = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const misturar = (a, b, k) => a + (b - a) * k;
+const VISTA = {
+  mercado: { fi: 1.12, alvo: [0, 0, 0.05], cantos: [8.3, 5.3, 0.4] },
+  estadio: { fi: 1.05, alvo: [0, 0, 0], cantos: [8.7, 5.9, 1.4] },
 };
+const INCLINACAO_BANCADA = 0.62;
+const LARGURA_LADO = 0.68;
+const FUNDO_X = 6.45; // onde começam as bancadas, mesmo à volta do relvado
+const FUNDO_Z = 4.02;
 
 function textura(desenhar, largura, altura) {
   const canvas = document.createElement('canvas');
@@ -52,24 +67,180 @@ function textura(desenhar, largura, altura) {
   desenhar(canvas.getContext('2d'), largura, altura);
   const t = new THREE.CanvasTexture(canvas);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  t.anisotropy = 8;
   return t;
 }
 
 function texturaCasa(tipo) {
-  const [nome, cor] = TIPOS[tipo];
+  const casa = CASA[tipo];
+  const nome = (casa.rotulo ?? casa.nome).toUpperCase();
   return textura((c, W, H) => {
-    c.fillStyle = tipo === 'inicio' ? '#e9d5b5' : '#f4ead8';
-    c.fillRect(0, 0, W, H);
-    c.fillStyle = cor;
-    c.fillRect(0, 0, W, H * 0.2);
-    c.fillStyle = '#2b1a0e';
+    pintarFundo(c, tipo, W, H);
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    const palavras = nome.split(' ');
-    c.font = `800 ${palavras.length > 1 || nome.length > 9 ? 25 : 30}px Inter, sans-serif`;
-    palavras.forEach((p, i) => c.fillText(p, W / 2, H * 0.6 + (i - (palavras.length - 1) / 2) * 30));
-  }, 192, 192);
+    if (tipo === 'inicio') return pintarBalneario(c, W, H);
+    if (tipo === 'sad') return pintarSAD(c, W, H);
+    if (casa.inteira) {
+      c.shadowColor = '#0009';
+      c.shadowBlur = 12;
+      c.shadowOffsetY = 3;
+      c.fillStyle = casa.texto;
+      textoAjustado(c, nome, W / 2, H / 2, W * 0.92, 92);
+      return;
+    }
+    // O símbolo em grande, cortado pelo fundo da casa, e o nome numa faixa branca.
+    const S = H * 0.86;
+    const faixa = H * 0.27;
+    desenharSimbolo(c, tipo, (W - S) / 2, faixa + H * 0.05, S);
+    const g = c.createLinearGradient(0, 0, 0, faixa);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(1, '#ece6da');
+    c.fillStyle = g;
+    c.fillRect(0, 0, W, faixa);
+    c.fillStyle = '#0005';
+    c.fillRect(0, faixa, W, 4);
+    c.fillStyle = '#17110c';
+    textoAjustado(c, nome, W / 2, faixa / 2 + 3, W * 0.94, 56);
+  }, 512, 320);
+}
+
+/** O canto de partida: os cacifos ao fundo, o nome e a seta a mostrar para onde se anda. */
+function pintarBalneario(c, W, H) {
+  const { texto } = CASA.inicio;
+  c.save();
+  c.globalAlpha = 0.24;
+  c.strokeStyle = texto;
+  c.fillStyle = texto;
+  c.lineWidth = 5;
+  const n = 6;
+  const largura = (W - 40) / n;
+  for (let i = 0; i < n; i++) {
+    const x = 20 + i * largura;
+    c.strokeRect(x + 3, 14, largura - 6, H * 0.3);
+    c.fillRect(x + largura - 22, 24, 8, 26);
+  }
+  c.fillRect(20, H * 0.33 + 14, W - 40, 12);
+  c.restore();
+  c.fillStyle = texto;
+  textoAjustado(c, 'BALNEÁRIO', W / 2, H * 0.57, W * 0.86, 76);
+  const y = H * 0.82;
+  c.beginPath();
+  c.moveTo(W * 0.92, y - 17);
+  c.lineTo(W * 0.27, y - 17);
+  c.lineTo(W * 0.27, y - 42);
+  c.lineTo(W * 0.1, y);
+  c.lineTo(W * 0.27, y + 42);
+  c.lineTo(W * 0.27, y + 17);
+  c.lineTo(W * 0.92, y + 17);
+  c.closePath();
+  c.fill();
+}
+
+/** A mesa da reunião com a administração, com o nome escrito em cima. */
+function pintarSAD(c, W, H) {
+  const S = H * 0.88;
+  const largura = (S * 160) / 90;
+  const y = (H - S) / 2;
+  desenharSimbolo(c, 'sad', (W - largura) / 2, y, S);
+  c.fillStyle = CASA.sad.texto;
+  const meio = y + (S * 54) / 90;
+  textoAjustado(c, 'REUNIÃO COM A', W / 2, meio - 44, largura * 0.5, 30);
+  textoAjustado(c, 'SAD', W / 2, meio + 16, largura * 0.5, 92);
+}
+
+/** Assentos e público em tons claros: a cor da equipa da casa vem da cor do material. */
+function texturaAssentos() {
+  return textura((c, W, H) => {
+    c.fillStyle = '#8f8f8f';
+    c.fillRect(0, 0, W, H);
+    for (let y = 2; y < H; y += 12) {
+      for (let x = 2; x < W; x += 9) {
+        const r = Math.random();
+        c.fillStyle = r < 0.45 ? '#ffffff' : r < 0.75 ? '#d9d9d9' : '#565656';
+        c.fillRect(x, y, 7, 9);
+      }
+    }
+  }, 256, 160);
+}
+
+/** As costas de uma carta: o nome em cima e o símbolo da casa em baixo. */
+function texturaBaralho(tipo) {
+  const casa = CASA[tipo];
+  return textura((c, W, H) => {
+    pintarFundo(c, tipo, W, H);
+    c.strokeStyle = '#ffffffd0';
+    c.lineWidth = 11;
+    c.strokeRect(20, 20, W - 40, H - 40);
+    c.fillStyle = casa.texto;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    const nome = casa.nome.toUpperCase();
+    const linhas = nome.length > 14 ? [nome.slice(0, nome.lastIndexOf(' ')), nome.slice(nome.lastIndexOf(' ') + 1)] : [nome];
+    linhas.forEach((l, i) => textoAjustado(c, l, W / 2, H * 0.17 + i * 54, W - 76, 50));
+    const S = W * 0.64;
+    desenharSimbolo(c, tipo, (W - S) / 2, H * 0.4, S);
+  }, 360, 504);
+}
+
+function texturaMoeda(tipo) {
+  return textura((c, W) => {
+    const r = W / 2;
+    c.fillStyle = tipo === 'medico' ? '#16a34a' : '#d9a93c';
+    c.fillRect(0, 0, W, W);
+    c.strokeStyle = tipo === 'medico' ? '#bbf7d0' : '#fbe39a';
+    c.lineWidth = 8;
+    c.beginPath();
+    c.arc(r, r, r - 10, 0, Math.PI * 2);
+    c.stroke();
+    if (tipo === 'medico') {
+      c.fillStyle = '#fff';
+      c.fillRect(r - 13, r - 40, 26, 80);
+      c.fillRect(r - 40, r - 13, 80, 26);
+      return;
+    }
+    // A mala de quem faz negócios.
+    c.fillStyle = '#4a2f0e';
+    c.fillRect(r - 34, r - 16, 68, 46);
+    c.fillRect(r - 15, r - 30, 30, 8);
+    c.fillRect(r - 15, r - 30, 7, 16);
+    c.fillRect(r + 8, r - 30, 7, 16);
+    c.fillStyle = '#e0b34c';
+    c.fillRect(r - 34, r + 3, 68, 4);
+    c.fillStyle = '#fbe39a';
+    c.fillRect(r - 7, r - 3, 14, 12);
+  }, 128, 128);
+}
+
+/** O equipamento enrolado no corpo do peão. */
+function texturaPeao(kit) {
+  return textura((c, W, H) => {
+    c.fillStyle = kit.principal;
+    c.fillRect(0, 0, W, H);
+    c.fillStyle = kit.secundaria;
+    switch (kit.padrao) {
+      case 'riscas-v':
+        for (let x = 0; x < W; x += W / 8) c.fillRect(x, 0, W / 16, H);
+        break;
+      case 'riscas-h':
+        for (let y = 0; y < H; y += H / 7) c.fillRect(0, y, W, H / 14);
+        break;
+      case 'faixa':
+        c.beginPath();
+        c.moveTo(W * 0.1, 0);
+        c.lineTo(W * 0.25, 0);
+        c.lineTo(W * 0.4, H);
+        c.lineTo(W * 0.25, H);
+        c.closePath();
+        c.fill();
+        break;
+      case 'metades':
+        c.fillRect(0, 0, W / 2, H);
+        break;
+      default:
+    }
+    // A base do peão, na cor secundária.
+    c.fillRect(0, H * 0.72, W, H * 0.28);
+  }, 128, 96);
 }
 
 const PINTAS = { 1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [2, 0], [0, 2], [2, 2]], 5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]], 6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]] };
@@ -88,26 +259,6 @@ function texturaDado(n) {
 }
 
 // Ordem das faces de uma caixa no Three.js: +x, −x, +y, −y, +z, −z. Rotação para cada valor ficar virado para cima.
-/** Um metro quadrado de público; repete-se em cada degrau. */
-function texturaPublico() {
-  const cores = ['#6e5a48', '#8a6a4f', '#5a4a3e', '#a58b6f', '#7a4a3a', '#4a5a70'];
-  const t = textura((c, W, H) => {
-    c.fillStyle = '#2a1f19';
-    c.fillRect(0, 0, W, H);
-    for (let y = 1; y < H; y += 4) {
-      for (let x = 1; x < W; x += 4) {
-        if (Math.random() < 0.8) {
-          c.fillStyle = cores[Math.floor(Math.random() * cores.length)];
-          c.fillRect(x, y, 3, 3);
-        }
-      }
-    }
-  }, 64, 64);
-  t.wrapS = THREE.RepeatWrapping;
-  t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
-
 const FACES_DADO = [1, 6, 2, 5, 3, 4];
 const ROTACAO_DADO = {
   1: [0, 0, Math.PI / 2],
@@ -118,15 +269,119 @@ const ROTACAO_DADO = {
   4: [Math.PI / 2, 0, 0],
 };
 
-export class Tabuleiro3D {
+/** Corpo de peão de xadrez, feito ao torno. */
+const PERFIL_PEAO = [[0, 0], [0.29, 0], [0.29, 0.06], [0.2, 0.12], [0.11, 0.26], [0.095, 0.44], [0.16, 0.48], [0.09, 0.52]].map(([x, y]) => new THREE.Vector2(x, y));
+
+const distanciaEntre = (ponteiros) => {
+  const [a, b] = [...ponteiros.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y) || 1;
+};
+
+/** Uma cor quase preta deixaria o estádio às escuras. */
+function corVisivel(hex) {
+  const c = new THREE.Color(hex);
+  const l = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b;
+  return l < 0.04 ? c.lerp(new THREE.Color(0xffffff), 0.18) : c;
+}
+
+/** Os dados de cada ronda do jogo, num quadro só deles: os do adversário em cima, os meus em baixo. */
+export class DadosJogo {
   constructor(caixa) {
     this.caixa = caixa;
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    caixa.append(this.renderer.domElement);
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(30, 1.4, 0.1, 40);
+    this.camera.position.set(0, 9, 2.4);
+    this.camera.lookAt(0, 0, 0);
+    this.scene.add(new THREE.AmbientLight(0xffffff, 2.2));
+    const sol = new THREE.DirectionalLight(0xffffff, 1.5);
+    sol.position.set(2, 8, 4);
+    this.scene.add(sol);
+    const materiais = FACES_DADO.map((n) => new THREE.MeshLambertMaterial({ map: texturaDado(n) }));
+    const geo = new THREE.BoxGeometry(1.25, 1.25, 1.25);
+    // Primeiro os meus (em baixo), depois os do adversário (em cima).
+    this.dados = [[-0.85, 1.55], [0.85, 1.55], [-0.85, -1], [0.85, -1]].map(([x, z]) => {
+      const d = new THREE.Mesh(geo, materiais);
+      d.position.set(x, 0.65, z);
+      d.visible = false;
+      this.scene.add(d);
+      return d;
+    });
+    this.reduzir = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.tweens = [];
+    new ResizeObserver(() => this.redimensionar()).observe(caixa);
+    this.redimensionar();
+  }
+
+  /** valores: [os meus [a, b] ou null, os do adversário [a, b] ou null]. Só rolam os dados de quem lançou agora. */
+  mostrar(valores) {
+    const inicio = performance.now();
+    [0, 1].forEach((lado) => {
+      const chave = JSON.stringify(valores[lado]);
+      const mudou = chave !== this.atuais?.[lado];
+      (valores[lado] ?? [null, null]).forEach((n, k) => {
+        const d = this.dados[lado * 2 + k];
+        d.visible = n != null;
+        if (n == null || !mudou) return;
+        const [rx, ry, rz] = ROTACAO_DADO[n];
+        const fim = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz));
+        fim.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, (Math.random() - 0.5) * 0.8, 0)));
+        if (this.reduzir || !this.atuais) {
+          d.quaternion.copy(fim);
+          d.position.y = 0.65;
+          return;
+        }
+        const eixo = new THREE.Vector3(1 + Math.random(), (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8).normalize();
+        const volta = new THREE.Quaternion();
+        const duracao = DURACAO_DADOS * 0.8 + k * 60;
+        this.tweens.push((agora) => {
+          const x = limitar((agora - inicio) / duracao);
+          const s = 1 - (1 - x) ** 2.4;
+          d.position.y = 0.65 + Math.abs(Math.cos(x * x * Math.PI * 3.5 + Math.PI / 2)) * 1.5 * (1 - x) ** 1.6;
+          volta.setFromAxisAngle(eixo, -(1 - s) * Math.PI * 8);
+          d.quaternion.copy(fim).premultiply(volta);
+          return x < 1;
+        });
+      });
+    });
+    this.atuais = valores.map((v) => JSON.stringify(v));
+    this.ciclo();
+  }
+
+  ciclo() {
+    const agora = performance.now();
+    this.tweens = this.tweens.filter((f) => f(agora));
+    this.renderer.render(this.scene, this.camera);
+    if (this.tweens.length) requestAnimationFrame(() => this.ciclo());
+  }
+
+  redimensionar() {
+    const w = this.caixa.clientWidth;
+    const h = this.caixa.clientHeight;
+    if (!w || !h) return;
+    this.renderer.setSize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.renderer.render(this.scene, this.camera);
+  }
+}
+
+export { DURACAO_DADOS };
+
+export class Tabuleiro3D {
+  constructor(caixa, { aoGolo = null, zona = null } = {}) {
+    this.caixa = caixa;
+    this.zona = zona;
+    this.aoGolo = aoGolo;
     const telemovel = matchMedia('(pointer: coarse)').matches;
+    this.intervaloRelvado = telemovel ? 66 : 33;
     this.renderer = new THREE.WebGLRenderer({ antialias: !telemovel, alpha: true, powerPreference: 'low-power' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, telemovel ? 1.5 : 2));
     caixa.append(this.renderer.domElement);
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(30, 1, 0.1, 80);
+    this.camera = new THREE.PerspectiveCamera(26, 1, 0.1, 120);
     this.scene.add(new THREE.AmbientLight(0xffffff, 2.2));
     const sol = new THREE.DirectionalLight(0xffffff, 1.6);
     sol.position.set(3, 10, 6);
@@ -135,106 +390,107 @@ export class Tabuleiro3D {
     this.progresso = 0; // 0 = mercado, 1 = estádio
     this.tweens = [];
     this.pecas = new Map();
-    this.ultimoLance = null;
-    this.quadro = null;
+    this.orbita = { teta: 0, fi: 0, zoom: 1 };
+    this.distancias = { mercado: 30, estadio: 40 };
     this.relvadoAtivo = false;
     this.aDesenhar = false;
     this.reduzir = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     this.construirTabuleiro();
     this.construirCentro();
-    this.construirEstadio();
     this.construirDados();
     this.aplicarProgresso(0);
+    this.ligarOrbita();
 
     this.observador = new ResizeObserver(() => this.redimensionar());
     this.observador.observe(caixa);
+    if (zona) this.observador.observe(zona);
     this.redimensionar();
   }
 
   // --- Construção ---
 
   construirTabuleiro() {
-    const base = new THREE.Mesh(new THREE.BoxGeometry(LADO + 1.5, 0.3, LADO + 1.5), new THREE.MeshLambertMaterial({ color: 0x3d241d }));
-    base.position.y = -0.15;
-    this.scene.add(base);
-    this.base = base;
-    const lateral = new THREE.MeshLambertMaterial({ color: 0x8a6a4f });
-    const baixo = new THREE.MeshLambertMaterial({ color: 0x3d241d });
-    const materiais = Object.fromEntries(Object.keys(TIPOS).map((t) => [t, new THREE.MeshLambertMaterial({ map: texturaCasa(t) })]));
-    const geo = new THREE.BoxGeometry(0.95, 0.16, 0.95);
+    this.base = new THREE.Mesh(new THREE.BoxGeometry(LADO * CASA_X + 2.1, 0.3, LADO * CASA_Z + 1.5), new THREE.MeshLambertMaterial({ color: COR_TABULEIRO.clone() }));
+    this.base.position.y = -0.15;
+    this.scene.add(this.base);
+    this.corLado = new THREE.MeshLambertMaterial({ color: 0x8a6a4f });
+    this.corAssentos = new THREE.MeshLambertMaterial({ map: texturaAssentos(), color: 0xc49a6c });
+    const tampas = Object.fromEntries(Object.keys(CASA).map((t) => [t, new THREE.MeshLambertMaterial({ map: texturaCasa(t) })]));
+    const geo = new THREE.BoxGeometry(CASA_X - 0.05, 0.14, CASA_Z - 0.05);
+    const cos = Math.cos(INCLINACAO_BANCADA);
+    const sen = Math.sin(INCLINACAO_BANCADA);
     this.casas = CASAS.map((tipo, i) => {
-      const m = new THREE.Mesh(geo, [lateral, lateral, materiais[tipo], baixo, lateral, lateral]);
       const { x, z } = posicaoCasa(i);
+      const { sx, sz } = exterior(i);
+      // A cara de baixo é a bancada: rodando em torno da aresta do lado, os assentos ficam virados para o relvado.
+      const comp = Math.hypot(sx, sz);
+      const eixo = new THREE.Vector3(sz / comp, 0, -sx / comp);
+      const m = new THREE.Mesh(geo, [this.corLado, this.corLado, tampas[tipo], this.corAssentos, this.corLado, this.corLado]);
+      // Nas filas dos lados a casa encolhe no sentido do relvado: senão as bancadas tiravam-lhe o espaço.
+      const largura = sx ? CASA_X * LARGURA_LADO : CASA_Z;
+      const baixa = { x: sx ? sx * (FUNDO_X + (largura / 2) * cos) : x, y: 0.42, z: sz ? sz * (FUNDO_Z + (largura / 2) * cos) : z };
       m.position.set(x, 0.08, z);
       this.scene.add(m);
-      return m;
+      // Por trás de cada casa sobe um segundo piso.
+      const alta = new THREE.Mesh(geo, [this.corLado, this.corLado, this.corLado, this.corAssentos, this.corLado, this.corLado]);
+      alta.visible = false;
+      this.scene.add(alta);
+      const altaFim = { x: baixa.x + sx * largura * cos * 0.98, y: baixa.y + largura * sen * 0.98, z: baixa.z + sz * largura * cos * 0.98 };
+      return { m, alta, x, z, eixo, baixa, altaFim, encolhe: sx ? LARGURA_LADO : 1, ordem: i / CASAS.length };
     });
   }
 
   construirCentro() {
-    const tamanho = LADO - 1.08;
-    this.tapete = new THREE.Mesh(new THREE.BoxGeometry(tamanho, 0.1, tamanho), new THREE.MeshLambertMaterial({ color: 0x0d2a1b }));
+    this.tapete = new THREE.Mesh(new THREE.BoxGeometry(RELVADO_X + 0.1, 0.1, (LADO - 1) * CASA_Z - 0.04), new THREE.MeshLambertMaterial({ color: 0x0d2a1b }));
     this.tapete.position.y = 0.03;
     this.scene.add(this.tapete);
     const canvas = document.createElement('canvas');
-    this.relvado = new Relvado(canvas);
+    this.relvado = new Relvado(canvas, { aoGolo: () => this.aoGolo?.() });
     this.texturaRelvado = new THREE.CanvasTexture(canvas);
     this.texturaRelvado.colorSpace = THREE.SRGBColorSpace;
     this.texturaRelvado.anisotropy = 4;
-    this.campo = new THREE.Mesh(new THREE.PlaneGeometry(tamanho, tamanho * (512 / 768)), new THREE.MeshBasicMaterial({ map: this.texturaRelvado }));
+    this.campo = new THREE.Mesh(new THREE.PlaneGeometry(RELVADO_X, RELVADO_Z), new THREE.MeshBasicMaterial({ map: this.texturaRelvado }));
     this.campo.rotation.x = -Math.PI / 2;
     this.campo.position.y = 0.09;
     this.scene.add(this.campo);
-  }
 
-  /** As bancadas crescem à volta do relvado e o painel da classificação sobe por trás delas. */
-  construirEstadio() {
-    this.bancadas = new THREE.Group();
-    const padrao = texturaPublico();
-    const lado = new THREE.MeshLambertMaterial({ color: 0x33261e });
-    // Cada degrau fica mais alto à medida que se afasta do relvado (sentido dá a direção, para fora).
-    const degraus = (eixo, interior, sentido, comprimento, fundo, alturas) => {
-      const d = fundo / alturas.length;
-      alturas.forEach((h, n) => {
-        const fora = interior + sentido * d * (n + 0.5);
-        const [lx, lz] = eixo === 'x' ? [d, comprimento] : [comprimento, d];
-        const mapa = padrao.clone();
-        mapa.repeat.set(lx, lz);
-        mapa.needsUpdate = true;
-        const publico = new THREE.MeshLambertMaterial({ map: mapa });
-        const m = new THREE.Mesh(new THREE.BoxGeometry(lx, h, lz), [lado, lado, publico, lado, lado, lado]);
-        m.position.set(eixo === 'x' ? fora : 0, h / 2, eixo === 'x' ? 0 : fora);
-        this.bancadas.add(m);
-      });
-    };
-    // Largas atrás e dos lados; à frente mais baixas, para não taparem o relvado.
-    degraus('z', -3.7, -1, 12.8, 2, [0.45, 0.9, 1.35]);
-    degraus('z', 3.7, 1, 12.8, 1.8, [0.2, 0.4]);
-    degraus('x', -5.15, -1, 7.4, 1.25, [0.4, 0.8]);
-    degraus('x', 5.15, 1, 7.4, 1.25, [0.4, 0.8]);
-    this.scene.add(this.bancadas);
-
-    // A classificação: um painel em cada lado de trás e dos lados.
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 256;
-    this.canvasQuadro = canvas;
-    this.texturaQuadro = new THREE.CanvasTexture(canvas);
-    this.texturaQuadro.colorSpace = THREE.SRGBColorSpace;
-    this.painel = new THREE.Mesh(new THREE.PlaneGeometry(12.4, 3.1), new THREE.MeshBasicMaterial({ map: this.texturaQuadro, transparent: true }));
-    this.painel.rotation.x = -1;
-    this.painel.position.set(0, 2.1, -7);
-    this.scene.add(this.painel);
-    this.desenharQuadro([]);
+    // Baralhos e moedas em cima do relvado.
+    this.mesa = new THREE.Group();
+    this.lateralCarta = new THREE.MeshLambertMaterial({ color: 0xf4ead8 });
+    const geoBaralho = new THREE.BoxGeometry(1.4, 0.28, 1.96);
+    this.baralhos = {};
+    const POSICAO_Z = -1.75;
+    const passo = 1.78;
+    BARALHOS.forEach((tipo, i) => {
+      const tampa = new THREE.MeshLambertMaterial({ map: texturaBaralho(tipo) });
+      const m = new THREE.Mesh(geoBaralho, [this.lateralCarta, this.lateralCarta, tampa, this.lateralCarta, this.lateralCarta, this.lateralCarta]);
+      m.position.set((i - 2) * passo, 0.21, POSICAO_Z);
+      m.rotation.y = (i % 2 ? 1 : -1) * 0.04;
+      this.mesa.add(m);
+      this.baralhos[tipo] = { m, tampa };
+    });
+    for (const [tipo, x] of [['empresario', -3 * passo], ['medico', 3 * passo]]) {
+      const lado = new THREE.MeshLambertMaterial({ color: tipo === 'medico' ? 0x128a3e : 0xb98a2c });
+      const tampa = new THREE.MeshLambertMaterial({ map: texturaMoeda(tipo) });
+      const geo = new THREE.CylinderGeometry(0.62, 0.62, 0.1, 26);
+      for (let n = 0; n < 3; n++) {
+        const moeda = new THREE.Mesh(geo, [lado, tampa, lado]);
+        moeda.position.set(x + n * 0.015, 0.14 + n * 0.1, POSICAO_Z + n * 0.012);
+        this.mesa.add(moeda);
+      }
+    }
+    this.cartaVoadora = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.03, 1.96), this.lateralCarta);
+    this.cartaVoadora.visible = false;
+    this.mesa.add(this.cartaVoadora);
+    this.scene.add(this.mesa);
   }
 
   construirDados() {
     const materiais = FACES_DADO.map((n) => new THREE.MeshLambertMaterial({ map: texturaDado(n) }));
-    const geo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
-    this.dados = [0, 1].map((i) => {
+    const geo = new THREE.BoxGeometry(0.72, 0.72, 0.72);
+    this.dados = [0, 1].map(() => {
       const d = new THREE.Mesh(geo, materiais);
-      d.position.set(i === 0 ? -0.65 : 0.65, 0.55, 0.15);
       d.visible = false;
       this.scene.add(d);
       return d;
@@ -243,108 +499,139 @@ export class Tabuleiro3D {
 
   novaPeca(equipa) {
     const g = new THREE.Group();
-    const corpo = new THREE.MeshLambertMaterial({ color: new THREE.Color(equipa.kit.principal) });
-    const detalhe = new THREE.MeshLambertMaterial({ color: new THREE.Color(equipa.kit.secundaria) });
-    const pe = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.1, 10), detalhe);
-    pe.position.y = 0.05;
-    const tronco = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.18, 0.34, 10), corpo);
-    tronco.position.y = 0.27;
-    const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), corpo);
-    cabeca.position.y = 0.52;
-    g.add(pe, tronco, cabeca);
+    const corpo = new THREE.Mesh(new THREE.LatheGeometry(PERFIL_PEAO, 18), new THREE.MeshLambertMaterial({ map: texturaPeao(equipa.kit) }));
+    const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), new THREE.MeshLambertMaterial({ color: new THREE.Color(equipa.kit.principal) }));
+    cabeca.position.y = 0.62;
+    const anel = new THREE.Mesh(new THREE.RingGeometry(0.33, 0.42, 26), new THREE.MeshBasicMaterial({ color: 0xf2c879 }));
+    anel.rotation.x = -Math.PI / 2;
+    anel.position.y = 0.01;
+    anel.visible = false;
+    g.add(corpo, cabeca, anel);
+    g.scale.setScalar(1.15);
     this.scene.add(g);
-    return g;
+    return { grupo: g, anel };
   }
 
   // --- Estado ---
 
-  /** Recebe o estado do jogo e põe a cena a condizer. */
+  /** Recebe o estado do jogo. Devolve quantos ms faltam para acabar a animação do lance (os dados e o peão). */
   atualizar(S, EU) {
     const agora = performance.now();
     const emMercado = S.fase === 'janela';
     this.definirModo(emMercado ? 0 : 1, this.jaDesenhou && !this.reduzir);
-    this.atualizarPecas(S, agora);
-    this.atualizarDados(S);
-    this.atualizarQuadro(S);
+    const espera = this.atualizarDados(S);
+    this.atualizarPecas(S, espera);
+    this.atualizarBaralhos(S, espera);
+    this.atualizarCorEstadio(S, EU);
     this.atualizarJogo(S, EU, agora);
     this.jaDesenhou = true;
     this.pedir();
+    return espera;
   }
 
   definirModo(alvo, animar) {
     if (this.alvo === alvo) return;
     this.alvo = alvo;
     if (!animar) {
-      this.tweens = this.tweens.filter((t) => t.nome !== 'modo');
       this.progresso = alvo;
       this.aplicarProgresso(alvo);
       return;
     }
     const de = this.progresso;
-    this.animar('modo', 2600, (x) => {
+    // A câmara volta à posição de origem para se ver a transformação como deve ser.
+    const orbita = { ...this.orbita };
+    this.animar('modo', 3000, (x) => {
       this.progresso = de + (alvo - de) * suave(x);
+      const volta = suave(limitar(x * 2.2));
+      this.orbita.teta = orbita.teta * (1 - volta);
+      this.orbita.fi = orbita.fi * (1 - volta);
+      this.orbita.zoom = misturar(orbita.zoom, 1, volta);
       this.aplicarProgresso(this.progresso);
     });
   }
 
   aplicarProgresso(p) {
-    // As casas viram-se e afundam-se em cascata.
-    this.casas.forEach((m, i) => {
-      const s = suave(limitar(p * 1.5 - (i / this.casas.length) * 0.5));
-      m.rotation.x = Math.PI * s;
-      m.position.y = 0.08 - 1.5 * s + Math.sin(Math.PI * s) * 0.5;
-      m.visible = s < 0.995;
-    });
-    // O centro cresce e passa a ser o relvado; o tabuleiro escurece e vira o chão do estádio.
-    const c = suave(limitar((p - 0.25) / 0.75));
-    const escala = 1 + 0.22 * c;
-    this.tapete.scale.set(1 + 0.3 * c, 1, 1 - 0.08 * c);
-    this.campo.position.y = 0.09 + 0.02 * c;
-    this.campo.scale.set(escala, escala, 1);
-    this.base.material.color.lerpColors(COR_TABULEIRO, COR_ESTADIO, c);
-    // As bancadas crescem do chão e a classificação aparece atrás delas.
-    const b = suave(limitar((p - 0.4) / 0.6));
-    this.bancadas.scale.y = Math.max(0.001, b);
-    this.bancadas.visible = b > 0.001;
-    this.painel.position.y = -0.5 + 2.6 * b;
-    this.painel.visible = b > 0.001;
-    this.painel.material.opacity = b;
-    // Peões e dados saem de cena no início.
+    // As casas rodam em cascata, sobem e ficam viradas para o relvado, com os assentos à vista.
+    const angulo = Math.PI - INCLINACAO_BANCADA;
+    for (const c of this.casas) {
+      const s = suave(limitar(p * 1.55 - c.ordem * 0.55));
+      c.m.quaternion.setFromAxisAngle(c.eixo, angulo * s);
+      c.m.position.set(misturar(c.x, c.baixa.x, s), misturar(0.08, c.baixa.y, s) + Math.sin(Math.PI * s) * 0.8, misturar(c.z, c.baixa.z, s));
+      c.m.scale.y = 1 + 1.4 * s;
+      c.m.scale.x = misturar(1, c.encolhe, s);
+      const a = suave(limitar((p - 0.55 - c.ordem * 0.12) / 0.33));
+      c.alta.visible = a > 0.001;
+      if (c.alta.visible) {
+        c.alta.quaternion.copy(c.m.quaternion);
+        c.alta.position.set(c.altaFim.x, misturar(-2.5, c.altaFim.y, a), c.altaFim.z);
+        c.alta.scale.y = 2.4;
+        c.alta.scale.x = c.encolhe;
+      }
+    }
+    // O tabuleiro escurece e vira o chão do estádio.
+    this.base.material.color.lerpColors(COR_TABULEIRO, COR_ESTADIO, suave(limitar(p * 1.4)));
+    // Peões, baralhos e dados saem de cena no início.
     const fora = limitar(p * 4);
     for (const { grupo } of this.pecas.values()) {
       grupo.visible = fora < 1;
-      grupo.scale.setScalar(1 - fora);
+      grupo.scale.setScalar(1.15 * (1 - fora));
     }
-    this.dados.forEach((d) => {
-      d.scale.setScalar(1 - fora);
-    });
-    // Câmara em curva suave.
-    const q = suave(p);
-    const [de, para] = [CAMARA.mercado, CAMARA.estadio];
-    const arco = Math.sin(Math.PI * q) * 1.2;
-    const mistura = (a, b2, k) => a + (b2 - a) * k;
-    const factor = this.afastamento ?? 1;
-    this.camera.position.set(mistura(de.pos[0], para.pos[0], q), mistura(de.pos[1], para.pos[1], q) * factor + arco, mistura(de.pos[2], para.pos[2], q) * factor);
-    this.camera.lookAt(mistura(de.alvo[0], para.alvo[0], q), mistura(de.alvo[1], para.alvo[1], q), mistura(de.alvo[2], para.alvo[2], q));
+    this.mesa.visible = fora < 1;
+    this.mesa.scale.setScalar(Math.max(0.001, 1 - fora));
+    for (const d of this.dados) d.scale.setScalar(Math.max(0.001, 1 - fora));
+    this.aplicarCamara();
   }
 
-  atualizarPecas(S, agora) {
-    const posicoes = S.janela?.posicao ?? null;
+  aplicarCamara() {
+    const q = suave(this.progresso);
+    const { mercado: a, estadio: b } = VISTA;
+    const fi = limitar(misturar(a.fi, b.fi, q) + this.orbita.fi, 0.42, 1.52);
+    const d = (misturar(this.distancias.mercado, this.distancias.estadio, q) + Math.sin(Math.PI * q) * 3) * this.orbita.zoom;
+    const t = this.orbita.teta;
+    const alvo = [misturar(a.alvo[0], b.alvo[0], q), misturar(a.alvo[1], b.alvo[1], q), misturar(a.alvo[2], b.alvo[2], q)];
+    this.camera.position.set(alvo[0] + d * Math.cos(fi) * Math.sin(t), alvo[1] + d * Math.sin(fi), alvo[2] + d * Math.cos(fi) * Math.cos(t));
+    this.camera.lookAt(alvo[0], alvo[1], alvo[2]);
+  }
+
+  /** A distância a que tudo cabe no ecrã, sem cortar os cantos. */
+  distanciaQueCabe({ fi, alvo, cantos: [cx, cz, cy] }, limiteX = 0.985, limiteY = 0.985) {
+    const cam = new THREE.PerspectiveCamera(this.camera.fov, this.camera.aspect, 0.1, 200);
+    const pontos = [];
+    for (const x of [-cx, cx]) for (const z of [-cz, cz]) for (const y of [0, cy]) pontos.push(new THREE.Vector3(x, y, z));
+    const v = new THREE.Vector3();
+    for (let d = 8; d < 120; d += 0.5) {
+      cam.position.set(alvo[0], alvo[1] + d * Math.sin(fi), alvo[2] + d * Math.cos(fi));
+      cam.lookAt(alvo[0], alvo[1], alvo[2]);
+      cam.updateMatrixWorld();
+      if (pontos.every((p) => {
+        v.copy(p).project(cam);
+        return Math.abs(v.x) <= limiteX && Math.abs(v.y) <= limiteY;
+      })) return d;
+    }
+    return 120;
+  }
+
+  atualizarPecas(S, espera) {
+    const j = S.janela;
+    const posicoes = j?.posicao ?? null;
     if (!posicoes) {
       for (const { grupo } of this.pecas.values()) grupo.visible = false;
       return;
     }
     const ids = Object.keys(posicoes);
+    const vez = j.fase === 'tabuleiro' ? j.ordem?.[j.vez] : null;
     for (const id of ids) {
-      if (!this.pecas.has(id)) this.pecas.set(id, { grupo: this.novaPeca(S.equipas[id]), casa: posicoes[id] });
+      if (!this.pecas.has(id)) {
+        this.pecas.set(id, { ...this.novaPeca(S.equipas[id]), casa: posicoes[id] });
+        this.colocarPeca(id, this.pecas.get(id), ids, posicoes);
+      }
       const peca = this.pecas.get(id);
-      if (peca.casa !== posicoes[id]) this.moverPeca(id, peca, posicoes[id], ids);
+      peca.anel.visible = id === vez;
+      if (peca.casa !== posicoes[id]) this.moverPeca(id, peca, posicoes[id], ids, posicoes, espera);
       else if (!peca.emMovimento) this.colocarPeca(id, peca, ids, posicoes);
       peca.grupo.visible = this.progresso < 0.25;
     }
     for (const [id, { grupo }] of this.pecas) if (!ids.includes(id)) grupo.visible = false;
-    this.vez = S.janela.ordem?.[S.janela.vez] ?? null;
-    void agora;
   }
 
   /** Várias peças na mesma casa ficam lado a lado. */
@@ -352,129 +639,150 @@ export class Tabuleiro3D {
     const aqui = ids.filter((x) => posicoes[x] === casa);
     const n = aqui.indexOf(id);
     if (aqui.length <= 1) return { x: 0, z: 0 };
-    return { x: ((n % 2) - 0.5) * 0.42, z: (Math.floor(n / 2) - (aqui.length > 2 ? 0.5 : 0)) * 0.42 };
+    const colunas = Math.min(aqui.length, 3);
+    return { x: ((n % colunas) - (colunas - 1) / 2) * 0.46, z: (Math.floor(n / colunas) - (aqui.length > colunas ? 0.5 : 0)) * 0.38 };
   }
 
   colocarPeca(id, peca, ids, posicoes) {
     const { x, z } = posicaoCasa(peca.casa);
     const d = this.deslocamento(id, peca.casa, ids, posicoes);
-    peca.grupo.position.set(x + d.x, 0.16, z + d.z);
+    peca.grupo.position.set(x + d.x, 0.15, z + d.z);
   }
 
-  /** O peão salta de casa em casa até à nova. */
-  moverPeca(id, peca, para) {
+  /** Depois de os dados pararem, o peão salta de casa em casa. */
+  moverPeca(id, peca, para, ids, posicoes, espera) {
     const passos = caminho(peca.casa, para);
     peca.casa = para;
-    if (!passos.length || this.reduzir) {
-      const { x, z } = posicaoCasa(para);
-      peca.grupo.position.set(x, 0.16, z);
-      return;
-    }
+    if (!passos.length || this.reduzir) return this.colocarPeca(id, peca, ids, posicoes);
     peca.emMovimento = true;
+    const atraso = Math.max(0, espera - passos.length * MS_POR_CASA - 120);
     const inicio = peca.grupo.position.clone();
     const pontos = [inicio, ...passos.map((c) => {
       const { x, z } = posicaoCasa(c);
-      return new THREE.Vector3(x, 0.16, z);
+      return new THREE.Vector3(x, 0.15, z);
     })];
-    this.animar(`peca-${id}`, Math.min(1800, passos.length * 170), (t) => {
+    this.animar(`peca-${id}`, passos.length * MS_POR_CASA, (t) => {
       const k = t * (pontos.length - 1);
       const n = Math.min(pontos.length - 2, Math.floor(k));
       const s = k - n;
       peca.grupo.position.lerpVectors(pontos[n], pontos[n + 1], s);
-      peca.grupo.position.y = 0.16 + Math.sin(Math.PI * s) * 0.45;
-      if (t >= 1) peca.emMovimento = false;
-    });
+      peca.grupo.position.y = 0.15 + Math.sin(Math.PI * s) * 0.5;
+      if (t >= 1) {
+        peca.emMovimento = false;
+        this.colocarPeca(id, peca, ids, posicoes);
+      }
+    }, atraso);
   }
 
+  /** Os dados são atirados da frente para cima do relvado, batem e rolam até parar. */
   atualizarDados(S) {
     const lance = S.janela?.ultimoLance ?? null;
     if (!lance) {
-      this.dados.forEach((d) => { d.visible = false; });
+      for (const d of this.dados) d.visible = false;
       this.ultimoLance = null;
-      return;
+      return 0;
     }
     const chave = JSON.stringify(lance);
-    if (chave === this.ultimoLance) return;
-    const primeiro = this.ultimoLance === null && !this.jaDesenhou;
+    if (chave === this.ultimoLance) return 0;
+    const primeiro = !this.jaDesenhou;
     this.ultimoLance = chave;
+    let espera = 0;
     this.dados.forEach((d, i) => {
       const n = lance.dados[i];
       d.visible = n != null;
       if (n == null) return;
-      if (lance.dados.length === 1) d.position.x = 0;
-      else d.position.x = i === 0 ? -0.65 : 0.65;
+      const dois = lance.dados.length > 1;
+      const fimX = dois ? (i === 0 ? -0.75 : 0.75) : 0;
+      const fimZ = 1.15 + (i ? 0.25 : 0);
       const [rx, ry, rz] = ROTACAO_DADO[n];
       const fim = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz));
-      const giro = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random() * Math.PI * 2, 0));
-      fim.premultiply(giro);
+      fim.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, (Math.random() - 0.5) * 1.2, 0)));
       if (primeiro || this.reduzir) {
         d.quaternion.copy(fim);
+        d.position.set(fimX, 0.45, fimZ);
         return;
       }
-      const eixos = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      const eixo = new THREE.Vector3(1 + Math.random(), (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8).normalize();
       const volta = new THREE.Quaternion();
-      this.animar(`dado-${i}`, 800, (t) => {
-        const s = 1 - (1 - t) ** 3;
-        volta.setFromAxisAngle(eixos, (1 - s) * Math.PI * 7);
+      const deX = fimX * 2.6 + (Math.random() - 0.5);
+      espera = DURACAO_DADOS;
+      this.animar(`dado-${i}`, DURACAO_DADOS, (t) => {
+        // Cada ressalto é mais baixo e mais curto, e o dado vai perdendo velocidade.
+        const s = 1 - (1 - t) ** 2.4;
+        const salto = Math.abs(Math.cos(t * t * Math.PI * 3.5 + Math.PI / 2)) * 2.9 * (1 - t) ** 1.6;
+        d.position.set(misturar(deX, fimX, s), 0.45 + salto, misturar(4.1, fimZ, s));
+        volta.setFromAxisAngle(eixo, -(1 - s) * Math.PI * 9);
         d.quaternion.copy(fim).premultiply(volta);
-        d.position.y = 0.55 + Math.sin(Math.PI * t) * 2.1;
       });
     });
+    return espera ? espera + caminho(lance.de, lance.para).length * MS_POR_CASA + 120 : 0;
   }
 
-  atualizarQuadro(S) {
-    const linhas = S.tabela ?? [];
-    const chave = JSON.stringify(linhas.map((l) => [l.equipa, l.pts, l.gm - l.gs]));
-    if (chave === this.quadro) return;
-    this.quadro = chave;
-    this.desenharQuadro(linhas.map((l) => ({ nome: S.equipas[l.equipa]?.nome ?? '?', pts: l.pts, dg: l.gm - l.gs })));
-  }
-
-  desenharQuadro(linhas) {
-    const c = this.canvasQuadro.getContext('2d');
-    const { width: W, height: H } = this.canvasQuadro;
-    c.clearRect(0, 0, W, H);
-    c.fillStyle = '#06140df0';
-    c.fillRect(0, 0, W, H);
-    c.strokeStyle = '#c49a6c';
-    c.lineWidth = 6;
-    c.strokeRect(3, 3, W - 6, H - 6);
-    c.textBaseline = 'middle';
-    const colunas = linhas.length > 5 ? 2 : 1;
-    const porColuna = Math.ceil(linhas.length / colunas) || 1;
-    const altura = (H - 24) / Math.max(porColuna, 3);
-    c.font = `800 ${Math.min(34, altura * 0.62)}px Inter, sans-serif`;
-    linhas.forEach((l, i) => {
-      const col = Math.floor(i / porColuna);
-      const x0 = 24 + col * (W / colunas);
-      const larg = W / colunas - 48;
-      const y = 12 + altura * (i % porColuna + 0.5);
-      c.textAlign = 'left';
-      c.fillStyle = '#d7b48c';
-      c.fillText(`${i + 1}.`, x0, y);
-      c.fillStyle = '#fff';
-      c.fillText(l.nome.length > 20 ? `${l.nome.slice(0, 19)}…` : l.nome, x0 + 44, y);
-      c.textAlign = 'right';
-      c.fillStyle = '#d7b48c';
-      c.fillText(String(l.pts), x0 + larg, y);
-    });
-    if (!linhas.length) {
-      c.textAlign = 'center';
-      c.fillStyle = '#d7b48c';
-      c.font = '60px Anton, Impact, sans-serif';
-      c.fillText('Classificação', W / 2, H / 2);
+  /** Quando sai uma carta, ela levanta-se do baralho dela. */
+  atualizarBaralhos(S, espera) {
+    const j = S.janela;
+    const p = j?.pendente;
+    const c = j?.ultimaCarta;
+    let baralho = null;
+    let chave = null;
+    if (p && this.baralhos[p.tipo]) {
+      baralho = p.tipo;
+      chave = JSON.stringify([p.tipo, p.jogador, p.liga, p.nome]);
+    } else if (c && this.baralhos[c.tipo]) {
+      baralho = c.tipo;
+      chave = JSON.stringify([c.tipo, c.titulo, j.ultimoLance]);
     }
-    this.texturaQuadro.needsUpdate = true;
+    if (chave === this.ultimaCartaChave) return;
+    const primeira = !this.jaDesenhou;
+    this.ultimaCartaChave = chave;
+    if (!baralho || primeira || this.reduzir) return;
+    const { m, tampa } = this.baralhos[baralho];
+    const voa = this.cartaVoadora;
+    const l = this.lateralCarta;
+    voa.material = [l, l, tampa, l, l, l];
+    voa.position.copy(m.position);
+    voa.rotation.set(0, 0, 0);
+    this.animar('carta', 750, (t) => {
+      voa.visible = t < 1;
+      voa.position.y = 0.33 + suave(t) * 2.6;
+      voa.position.z = m.position.z + suave(t) * 1.4;
+      voa.rotation.x = suave(t) * Math.PI * 1.5;
+    }, Math.max(0, espera - 200));
+  }
+
+  /** O estádio pinta-se com as cores da equipa da casa do jogo em causa. */
+  atualizarCorEstadio(S, EU) {
+    const c = S.campeonato;
+    if (!c) return;
+    const pares = c.jogos?.length ? c.jogos.map((x) => x.lados.map((l) => l.equipa)) : c.calendario ?? [];
+    const par = pares.find((x) => x.includes(EU?.equipa)) ?? pares[0];
+    const casa = par && S.equipas[par[0]];
+    if (!casa || casa.id === this.equipaDaCasa) return;
+    this.equipaDaCasa = casa.id;
+    const alvoAssentos = corVisivel(casa.kit.principal);
+    const alvoLado = new THREE.Color(casa.kit.secundaria);
+    const deA = this.corAssentos.color.clone();
+    const deL = this.corLado.color.clone();
+    this.animar('cor', 900, (t) => {
+      this.corAssentos.color.lerpColors(deA, alvoAssentos, t);
+      this.corLado.color.lerpColors(deL, alvoLado, t);
+    });
+  }
+
+  /** Até que minuto se viu o jogo no relvado. */
+  minutoVisto() {
+    return this.relvadoAtivo ? this.relvado.minuto : Infinity;
   }
 
   atualizarJogo(S, EU, agora) {
     const c = S.campeonato;
     if (S.fase === 'campeonato' && c?.jogos?.length) {
       const meu = c.jogos.find((j) => j.lados.some((l) => l.equipa === EU?.equipa)) ?? c.jogos[0];
-      this.relvado.definirJogo(meu, S.equipas, agora);
+      this.relvado.definirJogo(meu, S.equipas, agora, { espelho: meu.lados[1].equipa === EU?.equipa });
       this.relvadoAtivo = true;
+      this.relvadoMexe = true;
     } else {
-      const titulo = S.fase === 'campeonato' ? (c.competicao === 'taca' ? `Taça · ${c.ronda}` : `Jornada ${Math.min(c.jornada + 1, c.jornadas)}`) : S.fase === 'fimEpoca' ? `Fim da época ${S.epoca}` : S.fase === 'fim' ? 'Fim da partida' : '';
+      const titulo = S.fase === 'campeonato' ? (c.competicao === 'taca' ? `Taça · ${c.ronda}` : `Jornada ${Math.min(c.jornada + 1, c.jornadas)}`) : '';
       if (this.tituloRelvado !== titulo || this.relvado.chave) {
         this.tituloRelvado = titulo;
         this.relvado.semJogo(titulo);
@@ -484,42 +792,97 @@ export class Tabuleiro3D {
     }
   }
 
+  // --- Agarrar e rodar ---
+
+  ligarOrbita() {
+    const el = this.renderer.domElement;
+    const ponteiros = new Map();
+    let distancia = 0;
+    el.style.touchAction = 'none';
+    el.style.cursor = 'grab';
+    el.addEventListener('pointerdown', (ev) => {
+      el.setPointerCapture(ev.pointerId);
+      ponteiros.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      el.style.cursor = 'grabbing';
+      if (ponteiros.size === 2) distancia = distanciaEntre(ponteiros);
+    });
+    el.addEventListener('pointermove', (ev) => {
+      const p = ponteiros.get(ev.pointerId);
+      if (!p) return;
+      const dx = ev.clientX - p.x;
+      const dy = ev.clientY - p.y;
+      p.x = ev.clientX;
+      p.y = ev.clientY;
+      if (ponteiros.size === 1) {
+        this.orbita.teta -= dx * 0.006;
+        this.orbita.fi = limitar(this.orbita.fi + dy * 0.004, -0.75, 0.45);
+      } else if (ponteiros.size === 2) {
+        const d = distanciaEntre(ponteiros);
+        if (distancia) this.orbita.zoom = limitar(this.orbita.zoom * (distancia / d), 0.55, 1.5);
+        distancia = d;
+      }
+      this.aplicarCamara();
+      this.pedir();
+    });
+    const largar = (ev) => {
+      ponteiros.delete(ev.pointerId);
+      if (!ponteiros.size) el.style.cursor = 'grab';
+    };
+    el.addEventListener('pointerup', largar);
+    el.addEventListener('pointercancel', largar);
+    el.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      this.orbita.zoom = limitar(this.orbita.zoom * (1 + Math.sign(ev.deltaY) * 0.07), 0.55, 1.5);
+      this.aplicarCamara();
+      this.pedir();
+    }, { passive: false });
+    // Dois cliques: volta à vista normal.
+    el.addEventListener('dblclick', () => {
+      const de = { ...this.orbita };
+      this.animar('orbita', 500, (x) => {
+        const s = suave(x);
+        this.orbita.teta = de.teta * (1 - s);
+        this.orbita.fi = de.fi * (1 - s);
+        this.orbita.zoom = misturar(de.zoom, 1, s);
+        this.aplicarCamara();
+      });
+    });
+  }
+
   // --- Animação ---
 
-  animar(nome, duracao, passo) {
+  animar(nome, duracao, passo, atraso = 0) {
     this.tweens = this.tweens.filter((t) => t.nome !== nome);
-    this.tweens.push({ nome, inicio: performance.now(), duracao, passo });
+    this.tweens.push({ nome, inicio: performance.now() + atraso, duracao, passo });
     this.pedir();
   }
 
   pedir() {
     if (this.aDesenhar) return;
     this.aDesenhar = true;
-    requestAnimationFrame((t) => this.ciclo(t));
+    requestAnimationFrame(() => this.ciclo());
   }
 
-  ciclo(t) {
+  ciclo() {
     this.aDesenhar = false;
     const agora = performance.now();
     this.tweens = this.tweens.filter((tw) => {
+      if (agora < tw.inicio) return true;
       const x = limitar((agora - tw.inicio) / tw.duracao);
       tw.passo(x);
       return x < 1;
     });
     let continuar = this.tweens.length > 0;
     if (this.relvadoAtivo) {
-      // O relvado atualiza a 15 imagens por segundo: chega para os pontos e poupa o telemóvel.
-      if (!this.ultimaTextura || agora - this.ultimaTextura > 66) {
-        const aMexer = this.relvado.tick(agora);
+      if (!this.ultimaTextura || agora - this.ultimaTextura >= this.intervaloRelvado) {
+        this.relvadoMexe = this.relvado.tick(agora);
         this.texturaRelvado.needsUpdate = true;
         this.ultimaTextura = agora;
-        this.relvadoMexe = aMexer;
       }
       continuar = continuar || this.relvadoMexe;
     }
     this.renderer.render(this.scene, this.camera);
     if (continuar) this.pedir();
-    void t;
   }
 
   redimensionar() {
@@ -528,8 +891,17 @@ export class Tabuleiro3D {
     if (!w || !h) return;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
-    this.afastamento = Math.max(1, 1 / this.camera.aspect);
+    // O centro da câmara vai para o meio da zona livre: o canvas continua por trás dos nomes, para o zoom os preencher.
+    let [lx, ly] = [0.985, 0.985];
+    const z = this.zona?.getBoundingClientRect();
+    const c = this.caixa.getBoundingClientRect();
+    if (z && z.width > 40 && z.height > 40) {
+      lx = (0.985 * z.width) / w;
+      ly = (0.985 * z.height) / h;
+      this.camera.setViewOffset(w, h, c.left + w / 2 - (z.left + z.width / 2), c.top + h / 2 - (z.top + z.height / 2), w, h);
+    } else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
+    this.distancias = { mercado: this.distanciaQueCabe(VISTA.mercado, lx, ly), estadio: this.distanciaQueCabe(VISTA.estadio, lx, ly) };
     this.aplicarProgresso(this.progresso);
     this.pedir();
   }

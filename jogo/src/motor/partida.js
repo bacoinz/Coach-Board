@@ -1,17 +1,17 @@
 // A partida: começar, passar de fase em fase e encaminhar as ações dos treinadores para o motor.
 import { CONFIG } from '../config.js';
 import { erro, registar, equipasTreinadores } from './estado.js';
-import { prepararEquipa, criarBots, darContratosIniciais } from './equipas.js';
+import { prepararEquipa, criarBots, darContratosIniciais, orcamentoInicial } from './equipas.js';
 import { faltaParaComecar } from './sala-logica.js';
-import { abrirJanela, comprarEmprestado, escolherFormacao, escolherDraft, prontoFechar, forcarFecho, fechar, verificarFecho } from './janela.js';
-import { lancar, comprar, passar, descartarRede, terminarVez, forcarVez } from './tabuleiro.js';
+import { abrirJanela, comprarEmprestado, escolherFormacao, escolherOnze, escolherDraft, prontoFechar, forcarFecho, fechar, verificarFecho } from './janela.js';
+import { lancar, comprar, passar, descartarRede, terminarVez, forcarVez, confirmarCarta } from './tabuleiro.js';
 import {
   licitar, desistir, forcarFimLeilao, decidirProposta, propor, inflacionar, exclusividade, responderExclusividade,
   venderBanca, proporTroca, responderTroca,
 } from './negocios.js';
 import { decidirPatrocinio, extensaoMarca } from './patrocinios.js';
 import { envelhecer, calcularPremios } from './fim-epoca.js';
-import { escolherTatica, substituir, continuar, forcarCampeonato, ordenarTabela, iniciarTaca } from './campeonato.js';
+import { escolherTatica, substituir, continuar, forcarCampeonato, ordenarTabela, iniciarTaca, lancarRonda, forcarRonda, fichaLesao, lesaoSuplente, lesaoFicar } from './campeonato.js';
 import { fimDePartida } from './misterio.js';
 
 export function comecar(sala, ctx, id) {
@@ -45,7 +45,7 @@ function entrarEspectadores(sala, ctx, tipo) {
     t.equipa = bot.id;
     delete bot.bot;
     bot.treinador = t.id;
-    bot.dinheiro = CONFIG.inicio.orcamento;
+    bot.dinheiro = orcamentoInicial(sala);
     darContratosIniciais(sala, ctx, bot.id);
     registar(sala, ctx, `${t.nome} fica com ${bot.nome}, que era um bot.`);
   }
@@ -76,6 +76,7 @@ function concluirEpoca(sala, ctx) {
   const tabela = ordenarTabela(sala.tabela);
   sala.pontosTotais = sala.pontosTotais ?? {};
   for (const l of tabela) sala.pontosTotais[l.equipa] = (sala.pontosTotais[l.equipa] ?? 0) + l.pts;
+  sala.epocaContada = sala.epoca;
   sala.palmares.push({ epoca: sala.epoca, campeao: tabela[0].equipa });
   const premiosEpoca = calcularPremios(sala, ctx, tabela);
   sala.estatisticasTaca = null;
@@ -119,12 +120,20 @@ export function rankingFinal(sala) {
     .sort((a, b) => b.titulos - a.titulos || b.pontos - a.pontos);
 }
 
+/** A classificação total a meio da partida: os títulos e os pontos de todas as épocas, com os da época que decorre. */
+export function rankingAtual(sala) {
+  const emCurso = sala.tabela && sala.epocaContada !== sala.epoca && (sala.fase === 'campeonato' || sala.janela?.tipo === 'inverno');
+  return rankingFinal(sala).map((r) => ({ ...r, pontos: r.pontos + (emCurso ? sala.tabela[r.equipa]?.pts ?? 0 : 0) })).sort((a, b) => b.titulos - a.titulos || b.pontos - a.pontos);
+}
+
 /** Ações do anfitrião (desbloquear quem não está). */
 function acaoAnfitriao(sala, ctx, id, msg) {
   if (id !== sala.anfitriao) return erro('Só o anfitrião pode fazer isso.');
   switch (msg.t) {
     case 'forcar_vez':
       return forcarVez(sala, ctx);
+    case 'forcar_ronda':
+      return forcarRonda(sala, ctx);
     case 'forcar_leilao':
       return forcarFimLeilao(sala, ctx);
     case 'forcar_fecho':
@@ -146,7 +155,7 @@ function acaoAnfitriao(sala, ctx, id, msg) {
 
 /** Encaminha uma ação de um treinador. Devolve { ok } ou { erro }. */
 export function agir(sala, ctx, id, msg) {
-  if (['forcar_vez', 'forcar_leilao', 'forcar_fecho', 'avancar'].includes(msg.t)) return acaoAnfitriao(sala, ctx, id, msg);
+  if (['forcar_vez', 'forcar_ronda', 'forcar_leilao', 'forcar_fecho', 'avancar'].includes(msg.t)) return acaoAnfitriao(sala, ctx, id, msg);
   if (msg.t === 'comecar') return comecar(sala, ctx, id);
   const t = sala.treinadores.find((x) => x.id === id);
   const e = t && sala.equipas[t.equipa];
@@ -155,8 +164,10 @@ export function agir(sala, ctx, id, msg) {
   let r;
   switch (msg.t) {
     case 'formacao': r = escolherFormacao(sala, ctx, eq, msg.formacao); break;
+    case 'onze': r = escolherOnze(sala, ctx, eq, msg.lugares); break;
     case 'draft': r = escolherDraft(sala, ctx, eq, msg.jogador ?? null); break;
     case 'lancar': r = lancar(sala, ctx, eq); break;
+    case 'confirmar_carta': r = confirmarCarta(sala, ctx, eq); break;
     case 'comprar': r = comprar(sala, ctx, eq); break;
     case 'passar': r = passar(sala, ctx, eq); break;
     case 'descartar_rede': r = descartarRede(sala, ctx, eq, msg.liga); break;
@@ -176,6 +187,10 @@ export function agir(sala, ctx, id, msg) {
     case 'comprar_emprestado': r = comprarEmprestado(sala, ctx, eq, msg.jogador); break;
     case 'tatica': r = escolherTatica(sala, ctx, eq, msg.tatica); break;
     case 'substituir': r = substituir(sala, ctx, eq, msg.sai); break;
+    case 'lancar_ronda': r = lancarRonda(sala, ctx, eq); break;
+    case 'usar_medico': r = fichaLesao(sala, ctx, eq, msg.jogador ?? null); break;
+    case 'lesao_suplente': r = lesaoSuplente(sala, ctx, eq, msg.jogador ?? null); break;
+    case 'lesao_ficar': r = lesaoFicar(sala, ctx, eq, msg.jogador ?? null); break;
     case 'patrocinio': r = decidirPatrocinio(sala, ctx, eq, Boolean(msg.aceitar), Number(msg.substitui ?? 0)); break;
     case 'continuar':
       if (sala.fase === 'fimEpoca') return continuarFimEpoca(sala, ctx, eq);

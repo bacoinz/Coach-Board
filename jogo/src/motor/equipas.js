@@ -6,6 +6,8 @@ import { MARCAS, PATROCINIOS, NOMES_BOTS, KITS_BOTS } from './marcas.js';
 
 const I = CONFIG.inicio;
 
+export const orcamentoInicial = (sala) => I.orcamento + (I.orcamentoExtra[sala.config.epocas] ?? 0);
+
 /** Equipa nova, ainda sem plantel (no lobby, ou quem entra a meio). */
 export function novaEquipa({ id, treinador = null, nome, kit }) {
   return {
@@ -77,7 +79,7 @@ export function darContratosIniciais(sala, ctx, equipaId) {
 /** Prepara uma equipa de treinador para começar a jogar (no início da partida ou ao entrar numa janela). */
 export function prepararEquipa(sala, ctx, equipaId) {
   const e = sala.equipas[equipaId];
-  e.dinheiro = I.orcamento;
+  e.dinheiro = orcamentoInicial(sala);
   darPlantelInicial(sala, ctx, equipaId);
   darContratosIniciais(sala, ctx, equipaId);
 }

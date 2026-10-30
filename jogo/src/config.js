@@ -31,8 +31,8 @@ export const CONFIG = {
     ],
     arredondar: 0.1,                // os valores arredondam ao 0,1 M€
     clausula: 1.5,                  // cláusula = 1,5 × valor
-    clausulaInflacionada: 2,        // Empresário: cláusula de um jogador teu
-    clausulaEmpresario: 1,          // Empresário: cláusula do jogador alvo
+    clausulaInflacionada: 2,        // Agente: cláusula de um jogador teu
+    clausulaEmpresario: 1,          // Agente: cláusula do jogador alvo
     precoBase: 0.4,                 // venda à banca = 40% do valor
     precoDraft: 0.6,                // escolha do draft = 60% do valor
     salarioEpoca: 0.05,             // salário de uma época = 5% do valor (cobrado por jornada)
@@ -51,6 +51,8 @@ export const CONFIG = {
   // --- Início da partida (src/motor/equipas.js) ---
   inicio: {
     orcamento: 40,
+    // Numa partida curta, o Mercado encarece depressa: sem isto não há dinheiro para os bons jogadores na 2.ª época.
+    orcamentoExtra: { 3: 40, 5: 20 },
     // Os 11 overalls do plantel inicial: iguais para todos (média 75), distribuídos ao acaso pelas posições.
     overalls: [78, 77, 77, 76, 75, 75, 75, 74, 73, 73, 72],
     // As posições do plantel inicial (servem a 4-4-2 e, com alternativas, as outras formações).
@@ -87,12 +89,15 @@ export const CONFIG = {
   // --- Draft (src/motor/draft.js). Critérios: idade e overall inclusivos. ---
   draft: {
     opcoes: 3,
-    jovem: { idade: [0, 21], overall: [60, 68] },
-    // Escolha extra do último classificado: uma das variantes, sorteada por opção.
-    extra: [
-      { idade: [34, 99], overall: [80, 85] },
-      { idade: [21, 23], overall: [78, 82] },
-    ],
+    // Na 1.ª época; cada época seguinte sobe porEpoca nos dois limites do overall.
+    jovem: { idade: [0, 21], overall: [60, 68], porEpoca: 1 },
+    // Segunda escolha do último classificado (não há na 1.ª janela, porque ainda não há classificação).
+    // Na 1.ª época: até 80 de overall e até 5 M€. Cada época sobe 1 de overall até 82 e 1 M€ até 7 M€.
+    extra: {
+      overall: { inicial: 80, porEpoca: 1, maximo: 82 },
+      valor: { inicial: 5, porEpoca: 1, maximo: 7 },
+      margemOverall: 6,             // as opções saem a menos de 6 pontos do limite, para a escolha valer a pena
+    },
   },
 
   // --- Tabuleiro (src/motor/tabuleiro.js) ---
@@ -123,16 +128,26 @@ export const CONFIG = {
 
   // --- Investigação (src/motor/misterio.js) ---
   // Probabilidade de um clube ser condenado = base + porCampeonato × títulos + porAjuda × ajudas, até ao máximo.
-  // Ajudas (desde a última condenação): cartas Mistério boas (com o seu peso), cartas de Empresário usadas e
+  // Ajudas (desde a última condenação): cartas Mistério boas (com o seu peso), cartas de Agente usadas e
   // contratos com marcas ou patrocinadores iniciais que entretanto se tornaram grandes.
   // Quem não teve ajudas quase nunca é condenado.
   investigacao: {
+    acusacoes: [
+      'Fuga ao fisco',
+      'Contas da SAD maquilhadas',
+      'Empresas-fantasma em offshores',
+      'Comissões a agentes por baixo da mesa',
+      'Salários pagos em envelopes',
+      'Viciação de resultados',
+      'Direitos de jogadores vendidos duas vezes',
+      'Contratos de patrocínio inventados',
+    ],
     base: 0.03,
     porCampeonato: 0.05,
     porAjuda: 0.12,
     maximo: 0.85,
     ajudaMisterio: 1 / 3,           // multiplica o peso de cada carta Mistério boa
-    ajudaEmpresario: 1,             // por cada carta de Empresário usada
+    ajudaEmpresario: 1,             // por cada carta de Agente usada
     ajudaInicialInvestida: 1,       // por aceitar uma marca ou patrocinador inicial já investido
     // A sanção é sorteada entre estas, com estes pesos.
     sancoes: { limite: 0.4, multa: 0.4, ambas: 0.2 },
@@ -245,7 +260,7 @@ export const CONFIG = {
       { bom: true, titulo: 'Adjunto génio', texto: 'Um jogador ao acaso ganha +1 de overall.', efeito: { tipo: 'overall', alvo: 'acaso', delta: 1, ou: 1 } },
       { bom: true, titulo: 'Voo fretado', texto: 'Lanças os dados outra vez.', efeito: { tipo: 'repetir' } },
       { bom: true, titulo: 'Telefonema importante', texto: 'Avanças até ao próximo Mercado.', efeito: { tipo: 'avancar', casa: 'mercado' } },
-      { bom: true, titulo: 'Cláusula blindada', texto: 'A cláusula do teu melhor jogador passa a 2× o valor, sem gastar Empresário.', efeito: { tipo: 'blindar', ou: 2 } },
+      { bom: true, titulo: 'Cláusula blindada', texto: 'A cláusula do teu melhor jogador passa a 2× o valor, sem gastar Agente.', efeito: { tipo: 'blindar', ou: 2 } },
 
       { bom: false, titulo: 'Multa da federação', texto: 'O castigo chegou por carta registada.', efeito: { tipo: 'dinheiro', valor: -4 } },
       { bom: false, titulo: 'Obras no estádio', texto: 'A bancada central afinal precisava de pilares.', efeito: { tipo: 'dinheiro', valor: -3 } },
@@ -262,7 +277,7 @@ export const CONFIG = {
       { bom: false, titulo: 'Balneário dividido', texto: 'Ninguém se fala: −1 no modificador do próximo jogo.', efeito: { tipo: 'jogo', efeito: 'modificador', valor: -1 } },
       { bom: false, titulo: 'Noite de copos', texto: 'Um jogador ao acaso perde 1 de overall.', efeito: { tipo: 'overall', alvo: 'acaso', delta: -1, ou: -1 } },
       { bom: false, titulo: 'Olheiro roubado', texto: 'Perdes uma Rede de observação.', efeito: { tipo: 'perderRede', ou: -2 } },
-      { bom: false, titulo: 'Empresário zangado', texto: 'Perdes uma carta de Empresário.', efeito: { tipo: 'perderCarta', carta: 'empresario', ou: -2 } },
+      { bom: false, titulo: 'Agente zangado', texto: 'Perdes uma carta de Agente.', efeito: { tipo: 'perderCarta', carta: 'empresario', ou: -2 } },
       { bom: false, titulo: 'Médico despedido', texto: 'Perdes uma carta do Departamento médico.', efeito: { tipo: 'perderCarta', carta: 'medico', ou: -1 } },
       { bom: false, titulo: 'Papelada em atraso', texto: 'Perdes a próxima vez no tabuleiro.', efeito: { tipo: 'perderVez' } },
       { bom: false, titulo: 'O craque quer sair', texto: 'Até à próxima janela, a cláusula do teu melhor jogador fica em 1× o valor.', efeito: { tipo: 'clausulaBaixa' } },
@@ -310,6 +325,10 @@ export const CONFIG = {
   leilao: {
     incrementoMinimo: 0.5,          // cada lance sobe pelo menos isto
   },
+  // Numa janela, não se compram mais do que estes jogadores ao mesmo treinador (propostas, Agente e trocas).
+  transferencias: {
+    maxPorTreinador: 2,
+  },
 
   // --- Motor dos jogos (src/motor/jogo.js) ---
   jogo: {
@@ -317,7 +336,7 @@ export const CONFIG = {
     taticas: ['Contra-ataque', 'Ataque Total', 'Autocarro', 'Posse de Bola', 'Pressão Alta'],
     periodos: 9,
     minutosPorPeriodo: 10,
-    segundosPorPeriodo: 4,          // no ecrã
+    segundosPorPeriodo: 7,          // quanto dura no ecrã a animação de cada ronda de 10 minutos
     forca: { pontosPorUnidade: 3, maximo: 2 }, // ±1 por cada 3 pontos de Ataque − Defesa, entre −2 e +2
     bonusTatica: 1,
     vermelho: 1,                    // −1 no modificador até ao fim
@@ -344,7 +363,21 @@ export const CONFIG = {
     pesoAssistir: { GR: 0.05, DEF: 0.6, MED: 1.3, AV: 1 },
     probabilidadeAssistencia: 0.8,
     // Quem substitui: lesão sem carta médica (15% de ser pelo menos tão bom) ou efeito de carta Mistério por um jogo.
-    emprestimoLesao: { probabilidadeIgualOuMelhor: 0.15, margemMelhor: 3, margemPior: 8 },
+    // Quem se lesiona e fica em campo joga com menos isto de overall até ao fim do jogo.
+    // Um suplente que entra para fora das suas posições joga com menos foraDePosicao.
+    lesao: { penalizacao: 10, foraDePosicao: 3 },
+    // As lesões em campo; as outras, mais disparatadas, ficam para as cartas Mistério.
+    lesoesEmCampo: [
+      'sentiu a coxa num sprint',
+      'torceu o tornozelo numa dividida',
+      'levou uma pancada no joelho',
+      'ficou com uma contratura na barriga da perna',
+      'caiu mal em cima do ombro',
+      'sentiu os isquiotibiais a puxar',
+      'magoou as costas num choque',
+      'lesionou o pé num carrinho',
+    ],
+    emprestimoLesao: { margemPior: 8 },     // nunca melhor nem mais caro do que o lesionado
     substitutoUmJogo: { overall: [60, 65] },
   },
 

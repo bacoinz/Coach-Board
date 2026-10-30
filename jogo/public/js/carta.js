@@ -2,6 +2,7 @@
 // e a carta pequena usada no campo (só cara, nome e overall). A liga e o clube ficam para o detalhe do jogador.
 import { CONFIG } from './comum/config.gen.js';
 import { esc, dinheiro } from './util.js';
+import { moedaEmpresarioSVG } from './moedas.js';
 
 const NOMES_POS = CONFIG.posicoes.nome;
 const FACETAS = ['VEL', 'REM', 'PAS', 'DRI', 'DEF', 'FÍS'];
@@ -17,6 +18,9 @@ export function nivel(overall) {
   if (overall >= 70) return 'prata';
   return 'bronze';
 }
+
+/** Quem tem um Agente (cláusula inflacionada) leva a moeda no canto da carta. */
+const moedaCanto = (j) => (j.inflacionada ? `<span class="moeda-canto" title="Tem Agente">${moedaEmpresarioSVG()}</span>` : '');
 
 const SILHUETA = `<svg class="carta-silhueta" viewBox="0 0 56 70" aria-hidden="true"><circle cx="28" cy="22" r="13"/><path d="M4 70C6 46 16 40 28 40s22 6 24 30z"/></svg>`;
 
@@ -47,6 +51,7 @@ export function cartaHTML(j, { tamanho = 'normal' } = {}) {
   return `<article class="carta carta-${nivel(j.overall)} carta-${tamanho}" aria-label="${esc(j.nome)}, ${j.overall} ${posicao(j.posicao)}">
   <div class="carta-topo"><span class="carta-ovr">${j.overall}</span><span class="carta-pos">${posicao(j.posicao)}</span></div>
   <div class="carta-foto">${cara(j, 240)}</div>
+  ${moedaCanto(j)}
   <div class="carta-tags">${etiquetas(j)}</div>
   <div class="carta-nome">${esc(j.curto)}</div>
   <div class="carta-facetas">${facetas}</div>
@@ -59,6 +64,7 @@ export function miniCartaHTML(j) {
   return `<article class="mini-carta carta-${nivel(j.overall)}">
     <span class="mini-carta-ovr">${j.overall}</span>
     <div class="mini-carta-foto">${cara(j, 120)}</div>
+    ${moedaCanto(j)}
     <span class="mini-carta-nome">${esc(j.curto)}</span>
     ${j.formacao ? '<span class="mini-carta-tag">Form.</span>' : j.lesionado ? '<span class="mini-carta-tag">Les.</span>' : j.emprestado ? '<span class="mini-carta-tag">Empr.</span>' : ''}
   </article>

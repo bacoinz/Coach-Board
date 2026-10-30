@@ -1,4 +1,4 @@
-// Leilões, propostas, Empresário, vendas à banca e trocas diretas (durante a janela de transferências).
+// Leilões, propostas, Agente, vendas à banca e trocas diretas (durante a janela de transferências).
 import { CONFIG } from '../config.js';
 import { jogador, transferir, mudarJogador, pagar, receber, registar, equipaDe, equipasTreinadores, libertar, erro, M } from './estado.js';
 import { podeContratar, contarContratacao, somarAjuda } from './misterio.js';
@@ -14,7 +14,20 @@ function ocupado(sala, id) {
   return j?.leilao?.jogador === id || j?.contestacao?.jogador === id || j?.pendente?.jogador === id;
 }
 
-/** Pode ser alvo de proposta ou de Empresário por esta equipa? */
+/** Quantos jogadores esta equipa já comprou a esse treinador nesta janela. */
+const comprasA = (sala, comprador, vendedor) => sala.janela?.compras?.[comprador]?.[vendedor] ?? 0;
+const noLimite = (sala, comprador, vendedor) => comprasA(sala, comprador, vendedor) >= CONFIG.transferencias.maxPorTreinador;
+const TEXTO_LIMITE = `Só podes comprar ${CONFIG.transferencias.maxPorTreinador} jogadores ao mesmo treinador em cada janela.`;
+
+function contarCompra(sala, comprador, vendedor, n = 1) {
+  const j = sala.janela;
+  if (!j || !sala.equipas[vendedor]?.treinador) return;
+  j.compras ??= {};
+  j.compras[comprador] ??= {};
+  j.compras[comprador][vendedor] = (j.compras[comprador][vendedor] ?? 0) + n;
+}
+
+/** Pode ser alvo de proposta ou de Agente por esta equipa? */
 function alvoValido(sala, ctx, equipaId, id) {
   const j = jogador(sala, ctx, id);
   if (!j || !j.equipa) return 'Esse jogador não tem equipa.';
@@ -24,6 +37,7 @@ function alvoValido(sala, ctx, equipaId, id) {
   if (j.soBanca) return 'Esse jogador só pode ser vendido à banca.';
   if (j.compradoRonda === sala.janela.ronda) return 'Esse jogador foi comprado nesta ronda.';
   if (ocupado(sala, id)) return 'Esse jogador já está em negociação.';
+  if (noLimite(sala, equipaId, j.equipa)) return TEXTO_LIMITE;
   return null;
 }
 
@@ -41,6 +55,7 @@ function tuaVezLivre(sala, equipaId) {
 export function executarVenda(sala, ctx, id, compradorId, valor) {
   const vendedorId = sala.jogadores[id]?.equipa ?? null;
   contarContratacao(sala.equipas[compradorId]);
+  if (vendedorId) contarCompra(sala, compradorId, vendedorId);
   pagar(sala, compradorId, valor);
   if (vendedorId) receber(sala, vendedorId, valor);
   const formacao = sala.jogadores[id]?.formacao;
@@ -59,8 +74,8 @@ export function executarVenda(sala, ctx, id, compradorId, valor) {
  * Numa proposta, o proponente começa como líder com o valor proposto.
  */
 export function abrirLeilao(sala, ctx, { jogador: id, origem, vendedor = null, proponente = null, minimo, excluir = null, obrigatorio = false, formacao = false }) {
-  // Fora do leilão: o dono, quem passou a carta e quem está sancionado e já não pode contratar.
-  const participantes = equipasTreinadores(sala).filter((e) => e.id !== vendedor && e.id !== excluir && podeContratar(e)).map((e) => e.id);
+  // Fora do leilão: o dono, quem passou a carta, quem está sancionado e quem já comprou o máximo a este treinador.
+  const participantes = equipasTreinadores(sala).filter((e) => e.id !== vendedor && e.id !== excluir && podeContratar(e) && !(vendedor && noLimite(sala, e.id, vendedor))).map((e) => e.id);
   sala.janela.leilao = {
     jogador: id,
     origem,
@@ -169,45 +184,52 @@ export function propor(sala, ctx, equipaId, id, valor) {
   return { ok: true };
 }
 
-// --- Empresário ---
+// --- Agente ---
 
 export function inflacionar(sala, ctx, equipaId, id) {
   if (!naJanela(sala)) return erro('Só durante a janela.');
   const e = sala.equipas[equipaId];
   const j = jogador(sala, ctx, id);
   if (!j || j.equipa !== equipaId) return erro('Esse jogador não é teu.');
-  if (e.cartas.empresario < 1) return erro('Não tens carta de Empresário.');
+  if (e.cartas.empresario < 1) return erro('Não tens carta de Agente.');
   if (j.inflacionada) return erro('A cláusula desse jogador já foi inflacionada.');
   if (j.emprestado) return erro('Esse jogador está emprestado.');
   e.cartas.empresario--;
   somarAjuda(e, CONFIG.investigacao.ajudaEmpresario);
   mudarJogador(sala, id, { multClausula: CONFIG.valores.clausulaInflacionada, inflacionada: true });
-  registar(sala, ctx, `${e.nome} usa o Empresário: a cláusula de ${j.curto} passa a ${M(clausula(j.valor, CONFIG.valores.clausulaInflacionada))}.`, { tipo: 'empresario' });
+  registar(sala, ctx, `${e.nome} usa o Agente: a cláusula de ${j.curto} passa a ${M(clausula(j.valor, CONFIG.valores.clausulaInflacionada))}.`, { tipo: 'empresario' });
   return { ok: true };
 }
 
-/** Exclusividade: compra o jogador pela cláusula de 1× o valor, sem leilão. O dono pode anular com outro Empresário. */
+/** Exclusividade: compra o jogador pelo valor da cláusula, sem leilão. O dono pode anular com outro Agente. */
 export function exclusividade(sala, ctx, equipaId, id) {
   const bloqueio = tuaVezLivre(sala, equipaId) ?? alvoValido(sala, ctx, equipaId, id);
   if (bloqueio) return erro(bloqueio);
   const e = sala.equipas[equipaId];
-  if (e.cartas.empresario < 1) return erro('Não tens carta de Empresário.');
+  if (e.cartas.empresario < 1) return erro('Não tens carta de Agente.');
   if (!podeContratar(e)) return erro('Estás sancionado: já não podes contratar nesta janela.');
   const j = jogador(sala, ctx, id);
-  const preco = clausula(j.valor, CONFIG.valores.clausulaEmpresario);
+  const preco = j.clausula;
   if (e.dinheiro < preco) return erro(`Precisas de ${M(preco)}.`);
   e.cartas.empresario--;
   somarAjuda(e, CONFIG.investigacao.ajudaEmpresario);
-  registar(sala, ctx, `${e.nome} usa o Empresário para comprar ${j.curto} em exclusivo por ${M(preco)}.`, { tipo: 'empresario' });
+  registar(sala, ctx, `${e.nome} usa o Agente para comprar ${j.curto} em exclusivo por ${M(preco)}.`, { tipo: 'empresario' });
   if (sala.equipas[j.equipa].cartas.empresario > 0) {
     sala.janela.contestacao = { atacante: equipaId, vendedor: j.equipa, jogador: id, preco };
     return { ok: true };
   }
-  executarVenda(sala, ctx, id, equipaId, preco);
+  roubar(sala, ctx, id, equipaId, preco);
   return { ok: true };
 }
 
-/** O dono responde à exclusividade: anula com um Empresário seu ou deixa vender. */
+/** A venda em exclusivo fica marcada, para o dono ser avisado de quem lhe levou o jogador. */
+function roubar(sala, ctx, id, compradorId, preco) {
+  const de = sala.jogadores[id]?.equipa;
+  executarVenda(sala, ctx, id, compradorId, preco);
+  sala.janela.roubos = [...(sala.janela.roubos ?? []), { jogador: id, de, para: compradorId }];
+}
+
+/** O dono responde à exclusividade: anula com um Agente seu ou deixa vender. */
 export function responderExclusividade(sala, ctx, equipaId, anular) {
   const c = sala.janela?.contestacao;
   if (!c) return erro('Não há nada a responder.');
@@ -216,8 +238,8 @@ export function responderExclusividade(sala, ctx, equipaId, anular) {
   if (anular) {
     sala.equipas[equipaId].cartas.empresario--;
     somarAjuda(sala.equipas[equipaId], CONFIG.investigacao.ajudaEmpresario);
-    registar(sala, ctx, `${nomeEquipa(sala, equipaId)} anula o Empresário com outro Empresário.`, { tipo: 'empresario' });
-  } else executarVenda(sala, ctx, c.jogador, c.atacante, c.preco);
+    registar(sala, ctx, `${nomeEquipa(sala, equipaId)} anula o Agente com outro Agente.`, { tipo: 'empresario' });
+  } else roubar(sala, ctx, c.jogador, c.atacante, c.preco);
   return { ok: true };
 }
 
@@ -241,11 +263,14 @@ function trocavel(sala, ctx, id, equipaId) {
   return j && j.equipa === equipaId && !j.emprestado && !j.soBanca && !ocupado(sala, id);
 }
 
+const excedeLimite = (sala, comprador, vendedor, n) => comprasA(sala, comprador, vendedor) + n > CONFIG.transferencias.maxPorTreinador;
+
 export function proporTroca(sala, ctx, equipaId, { para, dar = [], receber: pedir = [] }) {
   if (!naJanela(sala)) return erro('Só durante a janela.');
   if (!sala.equipas[para]?.treinador || para === equipaId) return erro('Escolhe outro treinador.');
   if (!dar.length || !pedir.length) return erro('Uma troca leva jogadores dos dois lados.');
   if (!dar.every((id) => trocavel(sala, ctx, id, equipaId)) || !pedir.every((id) => trocavel(sala, ctx, id, para))) return erro('Há jogadores que não podem entrar na troca.');
+  if (excedeLimite(sala, equipaId, para, pedir.length) || excedeLimite(sala, para, equipaId, dar.length)) return erro(TEXTO_LIMITE);
   const j = sala.janela;
   j.trocas = j.trocas ?? [];
   j.proximaTroca = (j.proximaTroca ?? 0) + 1;
@@ -267,6 +292,9 @@ export function responderTroca(sala, ctx, equipaId, trocaId, aceitar) {
   if (!t.dar.every((id) => trocavel(sala, ctx, id, t.de)) || !t.receber.every((id) => trocavel(sala, ctx, id, t.para))) return erro('A troca já não é possível.');
   const [de, para] = [sala.equipas[t.de], sala.equipas[t.para]];
   if (!podeContratar(de, t.receber.length) || !podeContratar(para, t.dar.length)) return erro('Um dos clubes está sancionado e não pode contratar tantos jogadores.');
+  if (excedeLimite(sala, t.de, t.para, t.receber.length) || excedeLimite(sala, t.para, t.de, t.dar.length)) return erro(TEXTO_LIMITE);
+  contarCompra(sala, t.de, t.para, t.receber.length);
+  contarCompra(sala, t.para, t.de, t.dar.length);
   contarContratacao(de, t.receber.length);
   contarContratacao(para, t.dar.length);
   const ronda = sala.janela.ronda;
