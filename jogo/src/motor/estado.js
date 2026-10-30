@@ -53,6 +53,9 @@ export function transferir(sala, id, equipaId, extra = {}) {
       delete d.inflacionada;
       delete d.emprestado;
       delete d.emprestadoLesao;
+      // Volta ao baralho como está na base.
+      delete d.idade;
+      delete d.overall;
       delete d.lesionado;
       delete d.minutos;
       delete d.soBanca;

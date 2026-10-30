@@ -5,6 +5,7 @@ import { jogador, reservar, libertar, receber, registar, erro, M } from './estad
 import { tirarMercado, tirarJovemTalento, tirarRede } from './cartas.js';
 import { abrirLeilao, executarVenda, prepararJovem } from './negocios.js';
 import { tirarMisterio, investigar, podeContratar } from './misterio.js';
+import { tirarPatrocinio } from './patrocinios.js';
 import { arredondar } from './valores.js';
 
 export const CASAS = CONFIG.tabuleiro.casas;
@@ -166,8 +167,7 @@ export function resolverCasa(sala, ctx, equipaId, casa) {
       registar(sala, ctx, `${e.nome} ganha uma carta do Departamento médico.`, { tipo: 'carta' });
       break;
     case 'patrocinio':
-      // As cartas de marca e patrocínio entram no passo 5.
-      registar(sala, ctx, `${e.nome} cai em Patrocínio (as cartas de patrocínio ainda não estão no jogo).`, { tipo: 'carta' });
+      tirarPatrocinio(sala, ctx, equipaId);
       break;
     case 'misterio':
       resolverMisterio(sala, ctx, equipaId);

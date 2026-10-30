@@ -9,6 +9,11 @@ describe('valor de mercado', () => {
   it('sobe com o overall', () => {
     for (let ov = 56; ov <= 95; ov++) expect(valorMercado(ov, 26)).toBeGreaterThanOrEqual(valorMercado(ov - 1, 26));
   });
+  it('acima do joelho, cada ponto de overall vale menos', () => {
+    const { joelho, curva, curvaTopo } = CONFIG.valores;
+    expect(valorMercado(joelho + 1, 26) / valorMercado(joelho, 26)).toBeCloseTo(Math.exp(curvaTopo), 2);
+    expect(valorMercado(joelho, 26) / valorMercado(joelho - 1, 26)).toBeCloseTo(Math.exp(curva), 2);
+  });
   it('desce a partir do auge e os jovens valem mais', () => {
     expect(valorMercado(80, 20)).toBeGreaterThan(valorMercado(80, 27));
     expect(valorMercado(80, 31)).toBeLessThan(valorMercado(80, 27));

@@ -4,7 +4,7 @@ import { comPeso, dado, escolher, inteiro } from './aleatorio.js';
 import { jogador, transferir, registar } from './estado.js';
 import { livresQue, tirarEmprestimo } from './cartas.js';
 import { overallNaPosicao } from './formacao.js';
-import { frase } from './misterio.js';
+import { frase, fimDePartida } from './misterio.js';
 
 const J = CONFIG.jogo;
 const LINHA = CONFIG.posicoes.linha;
@@ -34,7 +34,7 @@ function prepararLado(sala, ctx, equipaId, tatica) {
     subUsada: false,
     subPedida: null,
     vermelhos: 0,
-    modExtra: e.bot ? CONFIG.bots.modificador[sala.config.nivelBots] ?? 0 : 0,
+    modExtra: e.bot ? (sala.campeonato?.competicao === 'taca' ? CONFIG.bots.modificadorTaca : CONFIG.bots.modificador)[sala.config.nivelBots] ?? 0 : 0,
     golos: 0,
     minutos: {},
     marcadores: {},
@@ -71,6 +71,8 @@ function prepararLado(sala, ctx, equipaId, tatica) {
 export function criarJogo(sala, ctx, casa, fora, taticas = {}) {
   return {
     lados: [prepararLado(sala, ctx, casa, taticas[casa]), prepararLado(sala, ctx, fora, taticas[fora])],
+    // Nas últimas épocas a Força conta menos, para haver mais surpresas.
+    forcaMaxima: fimDePartida(sala) ? CONFIG.misterio.fimDePartida.forcaMaxima : J.forca.maximo,
     periodo: 0,
     acabou: false,
     eventos: [],
@@ -82,9 +84,9 @@ export function criarJogo(sala, ctx, casa, fora, taticas = {}) {
 const linhaMedia = (lado, linhas) => media(lado.onze.filter((l) => linhas.includes(LINHA[l.posicao])).map((l) => l.overall));
 
 /** Ataque do lado menos a Defesa adversária: ±1 por cada 3 pontos, entre −2 e +2. */
-export function forca(lado, adversario) {
+export function forca(lado, adversario, maximo = J.forca.maximo) {
   const dif = linhaMedia(lado, ['MED', 'AV']) - linhaMedia(adversario, ['GR', 'DEF']);
-  return Math.max(-J.forca.maximo, Math.min(J.forca.maximo, Math.trunc(dif / J.forca.pontosPorUnidade)));
+  return Math.max(-maximo, Math.min(maximo, Math.trunc(dif / J.forca.pontosPorUnidade)));
 }
 
 /** Pequeno bónus por grupos de jogadores da mesma nacionalidade. */
@@ -98,7 +100,7 @@ export function quimica(lado) {
 export function modificador(jogo, i) {
   const [lado, adv] = [jogo.lados[i], jogo.lados[1 - i]];
   const tatica = lado.tatica && adv.tatica && taticaVence(lado.tatica, adv.tatica) ? J.bonusTatica : 0;
-  return forca(lado, adv) + tatica + quimica(lado) + lado.modExtra - lado.vermelhos * J.vermelho;
+  return forca(lado, adv, jogo.forcaMaxima) + tatica + quimica(lado) + lado.modExtra - lado.vermelhos * J.vermelho;
 }
 
 // --- Golos ---

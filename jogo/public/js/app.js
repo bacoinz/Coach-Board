@@ -104,7 +104,10 @@ function desenharLobby() {
   }).join('');
   const seg = (campo, valor, texto, sub = '') =>
     `<button class="segmento" role="radio" aria-checked="${S.config[campo] === valor}" data-config="${campo}" data-valor="${valor}" ${anf ? '' : 'disabled'}>${texto}${sub ? `<small>${sub}</small>` : ''}</button>`;
-  const total = S.treinadores.filter((t) => !t.saiu).length + S.config.bots;
+  const treinadores = S.treinadores.filter((t) => !t.saiu).length;
+  // "Sem bots" com treinadores ímpares: entra um bot, para todos jogarem em todas as jornadas.
+  const botExtra = S.config.bots === 0 && treinadores % 2 === 1;
+  const total = treinadores + S.config.bots + (botExtra ? 1 : 0);
   const jornadas = 2 * (total % 2 ? total : total - 1);
   const html = `
     <section class="cartao ocupa-tudo">
@@ -124,7 +127,7 @@ function desenharLobby() {
       <p class="rotulo">Equipas bot</p>
       <div class="segmentos" role="radiogroup" aria-label="Número de bots">${[0, 1, 2, 3, 4, 5, 6].map((n) => seg('bots', n, String(n))).join('')}</div>
       <div class="segmentos" role="radiogroup" aria-label="Nível dos bots">${seg('nivelBots', 'inferior', 'Inferior', 'overall mais baixo')}${seg('nivelBots', 'equivalente', 'Equivalente', 'como os treinadores')}</div>
-      <p class="nota">${anf ? 'És o anfitrião.' : 'Só o anfitrião muda a configuração.'} ${total} equipas = ${jornadas} jornadas por época.</p>
+      <p class="nota">${anf ? 'És o anfitrião.' : 'Só o anfitrião muda a configuração.'} ${total} equipas = ${jornadas} jornadas por época.${botExtra ? ' Como são ímpares, entra 1 bot para todos jogarem sempre.' : ''}</p>
     </section>
     <section id="editor-equipa" class="cartao ocupa-tudo"></section>
     <section class="cartao ocupa-tudo">
@@ -165,7 +168,8 @@ function desenharJogo() {
   const j = S.janela;
   let info = `<span class="ronda">Época ${S.epoca}/${S.config.epocas}</span> · `;
   if (S.fase === 'janela') info += `Janela de ${j.tipo === 'verao' ? 'verão' : 'inverno'} · ${FASES[j.fase]}`;
-  else if (S.fase === 'campeonato') info += `Campeonato · ${S.campeonato.volta}.ª volta · jornada ${Math.min(S.campeonato.jornada + 1, S.campeonato.jornadas)}`;
+  else if (S.fase === 'campeonato') info += S.campeonato.competicao === 'taca' ? `Taça · ${S.campeonato.ronda}` : `Campeonato · ${S.campeonato.volta}.ª volta · jornada ${Math.min(S.campeonato.jornada + 1, S.campeonato.jornadas)}`;
+  else if (S.fase === 'fimEpoca') info += 'Fim da época';
   else info += 'Fim da partida';
   $('#barra-info').innerHTML = info;
   $('#barra-dinheiro').innerHTML = e && !e.espera ? `<strong>${dinheiro(e.dinheiro)}</strong>` : '<small>A ver</small>';
@@ -192,6 +196,7 @@ function centroTabuleiro() {
 
 function painelAcao() {
   if (S.fase === 'fim') return painelFim();
+  if (S.fase === 'fimEpoca') return painelFimEpoca();
   if (S.fase === 'campeonato') return painelCampeonato();
   const e = minhaEquipa();
   if (!e || e.espera) return '<h2 class="painel-titulo">A ver</h2><p>Entraste a meio: jogas a partir da próxima janela.</p>';
@@ -315,6 +320,22 @@ function painelTabuleiro(e) {
     html += `<h2 class="painel-titulo">Rede de observação</h2>
       <p>Nova Rede: <strong>${esc(p.liga)}</strong>. Só podes ter ${CONFIG.cartas.maxRedes}: ${p.equipa === e.id ? 'escolhe a que descartas.' : `${nomeEquipa(p.equipa)} escolhe a que descarta.`}</p>
       ${p.equipa === e.id ? `<div class="linha-botoes">${todas.map((l) => `<button class="btn btn-fantasma btn-mini" data-acao="descartar_rede" data-liga="${esc(l)}">Descartar ${esc(l)}</button>`).join('')}</div>` : ''}`;
+  } else if (p?.tipo === 'patrocinio') {
+    const categoria = { baixas: 'baixo', medias: 'médio', grandes: 'alto', investidas: 'inicial que se tornou grande' }[p.categoria];
+    const contrato = p.genero === 'marca' ? 'Marca' : 'Patrocinador';
+    const dono = equipa(p.equipa);
+    html += `<h2 class="painel-titulo">Patrocínio</h2>
+      <div class="carta-evento evento-bom">
+        <p class="rotulo">${contrato} · valor ${categoria}</p>
+        <p class="evento-titulo">${esc(p.nome)}</p>
+        <p>Prémio de assinatura: <strong>${dinheiro(p.premio)}</strong></p>
+      </div>
+      ${p.equipa !== e.id ? `<p class="nota">${nomeEquipa(p.equipa)} decide.</p>` : p.bloqueio
+        ? `<p class="nota">${esc(p.bloqueio)}</p><button class="btn btn-contorno" data-acao="patrocinio">Recusar</button>`
+        : `<div class="linha-botoes">${p.genero === 'marca'
+            ? `<button class="btn btn-principal" data-acao="patrocinio" data-aceitar="1">Trocar ${esc(dono.marca)}</button>`
+            : p.substituir.map((i) => `<button class="btn btn-principal btn-mini" data-acao="patrocinio" data-aceitar="1" data-substitui="${i}">Trocar ${esc(dono.patrocinios[i])}</button>`).join('')}
+            <button class="btn btn-contorno" data-acao="patrocinio">Recusar</button></div>`}`;
   } else {
     html += `<h2 class="painel-titulo">${minha ? 'A tua vez' : `Vez de ${nomeEquipa(vez)}`}</h2>${cartaEvento()}`;
     if (e.limiteContratacoes != null) html += `<p class="nota">Sanção: ${e.limiteContratacoes === 0 ? 'já não podes contratar' : `só podes fazer mais ${e.limiteContratacoes} ${e.limiteContratacoes === 1 ? 'contratação' : 'contratações'}`} nesta janela.</p>`;
@@ -429,7 +450,7 @@ function placarHTML(jogo) {
   const [a, b] = jogo.lados;
   return `<div class="placar-jogo">
     <span class="placar-equipa">${kit(equipa(a.equipa), 26)}<span>${nomeEquipa(a.equipa)}</span></span>
-    <span class="placar-golos">${a.golos}–${b.golos}</span>
+    <span class="placar-golos">${a.golos}–${b.golos}${jogo.penaltis ? `<small class="placar-penaltis">${jogo.penaltis[0]}–${jogo.penaltis[1]} g.p.</small>` : ''}</span>
     <span class="placar-equipa fora"><span>${nomeEquipa(b.equipa)}</span>${kit(equipa(b.equipa), 26)}</span>
   </div>`;
 }
@@ -463,15 +484,22 @@ function tabelaLigaHTML() {
   return `<table class="tabela tabela-liga"><thead><tr><th>#</th><th>Equipa</th><th>J</th><th class="so-largo">V</th><th class="so-largo">E</th><th class="so-largo">D</th><th>DG</th><th>Pts</th></tr></thead><tbody>${linhas}</tbody></table>`;
 }
 
+/** Marcadores e assistentes da Taça. */
+function tabelaTacaHTML(t) {
+  if (!t) return '';
+  const lista = (titulo, itens) => (itens.length ? `<p class="rotulo">${titulo} da Taça</p><ul class="palmares">${itens.map((m) => `<li><span>${esc(m.nome)} <small>${nomeEquipa(m.equipa)}</small></span><span class="titulos">${m.valor}</span></li>`).join('')}</ul>` : '');
+  return lista('Marcadores', t.tacaMarcadores ?? []) + lista('Assistências', t.tacaAssistentes ?? []);
+}
+
 function painelCampeonato() {
   const c = S.campeonato;
   const e = minhaEquipa();
-  const titulo = `<h2 class="painel-titulo">Jornada ${Math.min(c.jornada + 1, c.jornadas)} de ${c.jornadas} · ${c.volta}.ª volta</h2>`;
+  const titulo = c.competicao === 'taca' ? `<h2 class="painel-titulo">Taça · ${c.ronda}</h2>` : `<h2 class="painel-titulo">Jornada ${Math.min(c.jornada + 1, c.jornadas)} de ${c.jornadas} · ${c.volta}.ª volta</h2>`;
   const anfitriao = souAnfitriao() ? `<button class="btn btn-mini btn-contorno" data-acao="avancar">${c.fase === 'taticas' ? 'Táticas ao acaso para quem falta' : c.fase === 'jogos' ? 'Acabar os jogos já' : 'Seguir já'} (anfitrião)</button>` : '';
   if (c.fase === 'taticas') {
     const par = c.calendario.find((p) => p.includes(e?.id));
     if (!e || e.espera) return `${titulo}<p class="nota">À espera das táticas.</p>${tabelaLigaHTML()}`;
-    if (!par) return `${titulo}<p>Tens folga nesta jornada.</p>${anfitriao}${tabelaLigaHTML()}`;
+    if (!par) return `${titulo}<p>${c.competicao === 'taca' ? 'Não jogas nesta ronda.' : 'Tens folga nesta jornada.'}</p>${anfitriao}${tabelaLigaHTML()}`;
     const adv = equipa(par[0] === e.id ? par[1] : par[0]);
     const T = CONFIG.jogo.taticas;
     const botoes = T.map((t, i) => `<button class="segmento" role="radio" aria-checked="${EU.tatica === t}" data-acao="tatica" data-tatica="${t}">${t}<small>vence ${T[(i + 1) % T.length]}</small></button>`).join('');
@@ -493,14 +521,45 @@ function painelCampeonato() {
     ${principal ? meuJogoHTML(principal, e) : '<p>Tens folga nesta jornada.</p>'}
     ${resto.length ? `<p class="rotulo">Outros jogos</p>${resto.map(placarHTML).join('')}` : ''}
     ${continuar}${anfitriao}
-    ${c.fase === 'resultados' ? `${tabelaLigaHTML()}${melhores}` : ''}`;
+    ${c.fase === 'resultados' ? (c.competicao === 'taca' ? tabelaTacaHTML(S.estatisticasTaca) : `${tabelaLigaHTML()}${melhores}`) : ''}`;
+}
+
+/** Os prémios de uma época. */
+function premiosHTML(p) {
+  const lista = (titulo, itens) => (itens.length ? `<p class="rotulo">${titulo}</p><ul class="palmares">${itens.map((m) => `<li><span>${esc(m.nome)} <small>${nomeEquipa(m.equipa)}</small></span><span class="titulos">${m.valor}</span></li>`).join('')}</ul>` : '');
+  const LINHAS = { GR: 'GR', DEF: 'Defesas', MED: 'Médios', AV: 'Avançados' };
+  const equipaEpoca = Object.entries(LINHAS).map(([l, nome]) => {
+    const nomes = p.equipa.filter((x) => x.linha === l).map((x) => esc(x.nome)).join(', ');
+    return nomes ? `<li><span>${nome}</span><span>${nomes}</span></li>` : '';
+  }).join('');
+  return `<div class="carta-evento evento-bom">
+      <p class="rotulo">Campeão da época ${p.epoca}</p>
+      <p class="evento-titulo">${nomeEquipa(p.campeao)}</p>
+      <p>${p.pontos} pontos${p.jogador ? ` · Jogador do ano: <strong>${esc(p.jogador.nome)}</strong>` : ''}${p.taca ? ` · Taça: <strong>${nomeEquipa(p.taca)}</strong>` : ''}</p>
+    </div>
+    ${lista('Marcadores', p.marcadores)}${lista('Assistências', p.assistentes)}
+    ${p.taca ? tabelaTacaHTML(p) : ''}
+    ${equipaEpoca ? `<p class="rotulo">Equipa da época</p><ul class="palmares">${equipaEpoca}</ul>` : ''}`;
+}
+
+function painelFimEpoca() {
+  const f = S.fimEpoca;
+  const e = minhaEquipa();
+  const p = S.premios.at(-1);
+  const minhas = f.mudancas.filter((m) => m.equipa === e?.id);
+  const mudancas = minhas.length ? `<p class="rotulo">O teu plantel</p><ul class="palmares">${minhas.map((m) => `<li><span>${esc(m.nome)}${m.promovido ? ' <small>passa ao plantel principal</small>' : ''}</span><span class="titulos">${m.antes} → ${m.depois}</span></li>`).join('')}</ul>` : '';
+  const pronto = e && f.prontos.includes(e.id);
+  return `<h2 class="painel-titulo">Fim da época ${p.epoca}</h2>
+    ${premiosHTML(p)}${tabelaLigaHTML()}${mudancas}
+    ${!e || e.espera ? '' : pronto ? '<p class="nota">À espera dos outros treinadores.</p>' : `<button class="btn btn-principal" data-acao="continuar">${f.ultima ? 'Ver o palmarés' : 'Seguir para a próxima época'}</button>`}
+    ${souAnfitriao() ? '<button class="btn btn-mini btn-contorno" data-acao="avancar">Seguir já (anfitrião)</button>' : ''}`;
 }
 
 function painelFim() {
-  const linhas = S.palmares.map((p) => `<li><span>Época ${p.epoca}</span><span>${nomeEquipa(p.campeao)} <span class="titulos">CAMPEÃO</span></span></li>`).join('');
-  const ranking = (S.ranking ?? []).map((r, i) => `<tr class="${r.equipa === EU.equipa ? 'eu' : ''}"><td>${i + 1}</td><td>${nomeEquipa(r.equipa)}</td><td>${r.titulos}</td><td class="pts">${r.pontos}</td></tr>`).join('');
+  const linhas = S.premios.map((p) => `<li><span>Época ${p.epoca}</span><span>${nomeEquipa(p.campeao)} <span class="titulos">CAMPEÃO</span>${p.taca ? ` · ${nomeEquipa(p.taca)} <span class="titulos">TAÇA</span>` : ''}</span></li>`).join('');
+  const ranking = (S.ranking ?? []).map((r, i) => `<tr class="${r.equipa === EU.equipa ? 'eu' : ''}"><td>${i + 1}</td><td>${nomeEquipa(r.equipa)}</td><td>${r.campeonatos}</td><td>${r.tacas}</td><td>${String(r.titulos).replace('.', ',')}</td><td class="pts">${r.pontos}</td></tr>`).join('');
   return `<h2 class="painel-titulo">Fim da partida</h2>
-    <table class="tabela tabela-liga"><thead><tr><th>#</th><th>Equipa</th><th>Títulos</th><th>Pontos</th></tr></thead><tbody>${ranking}</tbody></table>
+    <table class="tabela tabela-liga"><thead><tr><th>#</th><th>Equipa</th><th>Camp.</th><th>Taças</th><th>Títulos</th><th>Pontos</th></tr></thead><tbody>${ranking}</tbody></table>
     <p class="rotulo">Palmarés</p><ul class="palmares">${linhas}</ul>`;
 }
 
@@ -702,6 +761,7 @@ const ACOES = {
   substituir: (d) => enviar({ t: 'substituir', sai: Number(d.sai) }),
   continuar: () => enviar({ t: 'continuar' }),
   comprar_emprestado: (d) => enviar({ t: 'comprar_emprestado', jogador: Number(d.jogador) }),
+  patrocinio: (d) => enviar({ t: 'patrocinio', aceitar: Boolean(d.aceitar), substitui: Number(d.substitui ?? 0) }),
   forcar_vez: () => enviar({ t: 'forcar_vez' }),
   forcar_leilao: () => enviar({ t: 'forcar_leilao' }),
   forcar_fecho: () => confirm('Fechar a janela já? Quem ainda não completou as voltas perde o resto.') && enviar({ t: 'forcar_fecho' }),

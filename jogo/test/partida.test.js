@@ -12,7 +12,7 @@ function passo(sala, ctx) {
   const rng = ctx.aleatorio;
   const t = (eq) => treinadorDe(sala, eq);
   const acaso = (lista) => lista[Math.floor(rng() * lista.length)];
-  if (sala.fase === 'campeonato') return agir(sala, ctx, sala.anfitriao, { t: 'avancar' });
+  if (sala.fase === 'campeonato' || sala.fase === 'fimEpoca') return agir(sala, ctx, sala.anfitriao, { t: 'avancar' });
   const j = sala.janela;
   if (j.fase === 'formacao') {
     const e = Object.values(sala.equipas).find((x) => x.treinador && !x.espera && !j.prontos.includes(x.id));
@@ -41,6 +41,7 @@ function passo(sala, ctx) {
   const e = sala.equipas[eq];
   if (j.pendente) {
     if (j.pendente.tipo === 'rede') return agir(sala, ctx, t(eq), { t: 'descartar_rede', liga: acaso([...e.redes, j.pendente.liga]) });
+    if (j.pendente.tipo === 'patrocinio') return agir(sala, ctx, t(eq), { t: 'patrocinio', aceitar: !j.pendente.bloqueio && rng() < 0.5, substitui: j.pendente.substituir?.[0] ?? 0 });
     if (rng() < 0.5 && e.dinheiro >= j.pendente.preco) return agir(sala, ctx, t(eq), { t: 'comprar' });
     return agir(sala, ctx, t(eq), { t: 'passar' });
   }

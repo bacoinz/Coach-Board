@@ -15,6 +15,9 @@ export const CONFIG = {
     base: 8,                        // um jogador de 75 com 25–28 anos vale 8 M€
     overallBase: 75,
     curva: 0.2,                     // cada ponto de overall vale ~22% mais
+    // Acima do joelho, cada ponto vale menos, para os craques das partidas longas não ficarem impossíveis de pagar.
+    joelho: 88,
+    curvaTopo: 0.08,                // cada ponto acima do joelho vale ~8% mais
     minimo: 0.1,
     // Fator da idade: o primeiro escalão em que idade ≤ ate.
     idade: [
@@ -55,8 +58,8 @@ export const CONFIG = {
     idade: [22, 31],
     // Bots "inferiores": overall do plantel inicial menos isto. "Equivalentes": igual.
     botsInferiores: 4,
-    premioMarcaInicial: 1.5,
-    premioPatrocinioInicial: 1,
+    premioMarcaInicial: 3,
+    premioPatrocinioInicial: 2,
   },
 
   // --- Posições e formações (src/motor/formacao.js) ---
@@ -130,7 +133,7 @@ export const CONFIG = {
     maximo: 0.85,
     ajudaMisterio: 1 / 3,           // multiplica o peso de cada carta Mistério boa
     ajudaEmpresario: 1,             // por cada carta de Empresário usada
-    ajudaInicialInvestida: 1,       // por aceitar uma marca ou patrocinador inicial já investido (passo 5)
+    ajudaInicialInvestida: 1,       // por aceitar uma marca ou patrocinador inicial já investido
     // A sanção é sorteada entre estas, com estes pesos.
     sancoes: { limite: 0.4, multa: 0.4, ambas: 0.2 },
     limiteContratacoes: 2,          // contratações que ainda pode fazer nesta janela
@@ -143,6 +146,9 @@ export const CONFIG = {
   // ou: valor em M€ que se aplica quando o efeito não é possível (ex.: perder uma carta que não se tem).
   // inverno: título e texto que a carta usa nas janelas de inverno.
   misterio: {
+    // Fim da partida: nas últimas épocas saem mais cartas más, para o jogo ficar mais imprevisível.
+    // Também limita a Força nos jogos e faz as cartas más doerem mais. É nestas épocas que se joga a Taça.
+    fimDePartida: { epocas: { 3: 1, 5: 2, 8: 3, 10: 3 }, probabilidadeMa: 0.7, multiplicadorMas: 2, forcaMaxima: 1 },
     // Razões do "Castigo interno": a frase é o nome do jogador seguido de uma destas.
     // As de razoesCastigoAdultos nunca saem a jogadores com menos de 18 anos (a base tem reais de 16 e 17).
     razoesCastigoAdultos: [
@@ -247,10 +253,10 @@ export const CONFIG = {
       { bom: false, titulo: 'Salários em atraso', texto: 'O plantel foi para tribunal e ganhou.', efeito: { tipo: 'dinheiro', valor: -2 } },
       { bom: false, titulo: 'Balneário destruído', texto: 'A claque não gostou do último resultado.', efeito: { tipo: 'dinheiro', valor: -2 } },
       { bom: false, titulo: 'Patrocinador furioso', texto: 'Um escândalo obriga a devolver dinheiro.', efeito: { tipo: 'dinheiro', valor: -3 } },
-      { bom: false, titulo: 'Penhora das Finanças', texto: 'Na próxima janela, 8 M€ ficam retidos.', efeito: { tipo: 'proximaJanela', valor: -8 } },
+      { bom: false, titulo: 'Penhora das Finanças', texto: 'Na próxima janela, fica dinheiro retido.', efeito: { tipo: 'proximaJanela', valor: -8 } },
       { bom: false, titulo: 'Dívida antiga', texto: 'Uma transferência de há dez anos ficou por pagar. Vence na próxima janela.', efeito: { tipo: 'proximaJanela', valor: -5 } },
-      { bom: false, titulo: 'Inspeção fiscal', texto: 'Perdes 10% do orçamento.', efeito: { tipo: 'percentagem', fracao: 0.1 } },
-      { bom: false, titulo: 'Diretor em fuga', texto: 'Levou 15% do orçamento numa mala.', efeito: { tipo: 'percentagem', fracao: 0.15 } },
+      { bom: false, titulo: 'Inspeção fiscal', texto: 'Levaram parte do orçamento.', efeito: { tipo: 'percentagem', fracao: 0.1 } },
+      { bom: false, titulo: 'Diretor em fuga', texto: 'Levou parte do orçamento numa mala.', efeito: { tipo: 'percentagem', fracao: 0.15 } },
       { bom: false, titulo: 'Lesão no treino', texto: 'Um jogador ao acaso falha o próximo jogo, por uma das lesões da lista.', efeito: { tipo: 'jogo', efeito: 'lesao' } },
       { bom: false, titulo: 'Castigo interno', texto: 'Um jogador ao acaso fica de fora do próximo jogo, por uma das razões de razoesCastigo.', efeito: { tipo: 'jogo', efeito: 'suspenso' } },
       { bom: false, titulo: 'Balneário dividido', texto: 'Ninguém se fala: −1 no modificador do próximo jogo.', efeito: { tipo: 'jogo', efeito: 'modificador', valor: -1 } },
@@ -346,6 +352,58 @@ export const CONFIG = {
   // Modificador escondido em todos os jogos dos bots, conforme o nível escolhido no lobby.
   bots: {
     modificador: { inferior: -1.5, equivalente: -1 },
+    // Na Taça só entra um bot quando os treinadores são ímpares. A um só jogo é preciso mais, senão ganha demasiadas.
+    modificadorTaca: { inferior: -3, equivalente: -2 },
+    // Em cada janela trocam os piores jogadores até a média ficar esta distância abaixo da dos onzes dos treinadores.
+    distancia: { inferior: 6, equivalente: 2 },
+    trocasPorJanela: 3,
+  },
+
+  // --- Marcas e patrocínios (src/motor/patrocinios.js) ---
+  patrocinios: {
+    // Prémio de assinatura em M€. Os "iniciais" (no início da partida) estão em CONFIG.inicio.
+    premios: {
+      marca: { baixas: 4, medias: 10, grandes: 20, investidas: 24 },
+      patrocinio: { baixas: 3, medias: 6, grandes: 12, investidas: 14 },
+    },
+    extensao: 0.25,                 // prémio de extensão = esta parte do prémio de assinatura
+    probabilidadeMarca: 0.5,        // a carta da casa é uma marca ou um patrocinador
+    mudancasMarcaPorEpoca: 1,
+    mudancasPatrocinioPorJanela: 1, // e o mesmo lugar de patrocinador não muda duas vezes na mesma época
+    altos: ['grandes', 'investidas'], // nunca dois patrocínios destes ao mesmo tempo
+    // Probabilidades de cada categoria por fase (a fase de cada época está em CONFIG.mercado.fasesPorDuracao).
+    fases: [
+      null,
+      { baixas: 1 },
+      { baixas: 0.5, medias: 0.5 },
+      { baixas: 0.25, medias: 0.75 },
+      { baixas: 0.1, medias: 0.5, grandes: 0.4 },
+      { investidas: 0.1, medias: 0.4, grandes: 0.5 },
+      { investidas: 0.2, medias: 0.2, grandes: 0.6 },
+      { investidas: 0.3, grandes: 0.7 },
+    ],
+  },
+
+  // --- Fim de época (src/motor/fim-epoca.js) ---
+  evolucao: {
+    // Overall de quem não é da formação, pela idade na época que acaba: o primeiro escalão em que idade ≤ ate.
+    // Em cada um, as probabilidades de cada variação.
+    adultos: [
+      // Quem já tem overall acima de "travao.acima" sobe mais devagar, senão passava os 95 muito depressa.
+      { ate: 23, variacoes: { 1: 0.15, 2: 0.6, 3: 0.25 }, travao: { acima: 84, variacoes: { 1: 0.8, 2: 0.2 } } },
+      { ate: 30, variacoes: { 1: 0.8, 2: 0.2 }, travao: { acima: 88, variacoes: { 0: 0.5, 1: 0.5 } } },
+      { ate: 33, variacoes: { 0: 0.7, 1: 0.3 } },
+    ],
+    // A partir daqui, pode perder overall: a probabilidade começa aqui e aumenta a cada ano.
+    veteranos: { desde: 34, probabilidade: 0.2, aumentoPorAno: 0.1, delta: -1 },
+    overallMaximo: 99,
+    // O rendimento da época (de −1 a +1) inclina as probabilidades: mais peso às subidas de quem jogou bem.
+    // Médios e avançados: golos e assistências por jogo, em relação ao alvo. Defesas e GR: golos sofridos pela equipa por
+    // jogo, em relação à média da liga. Quem jogou menos do que "minimoMinutos" da época não conta.
+    rendimento: { influencia: 0.5, minimoMinutos: 0.2, alvoPorJogo: { MED: 0.25, AV: 0.55 }, pesoAssistencia: 0.7 },
+    crescimentoJovem: [2, 8],       // de +2 (quase não jogou) a +8 (jogou quase tudo)
+    notaEpoca: { golo: 3, assistencia: 2, homemDoJogo: 4, jogo: 0.5, overall: 0.2 },
+    equipaDaEpoca: { GR: 1, DEF: 4, MED: 3, AV: 3 },
   },
 
   // --- Campeonato (src/motor/campeonato.js) ---
@@ -353,6 +411,14 @@ export const CONFIG = {
     vitoria: 3,
     empate: 1,
     tvEpoca: 40,                    // M€ de TV por época, iguais para todos e pagos por jornada
+  },
+
+  // --- Taça (src/motor/campeonato.js): a eliminar, no fim das últimas épocas (CONFIG.misterio.fimDePartida.epocas) ---
+  taca: {
+    valor: 0.5,                     // um campeonato vale 1 título; a Taça vale metade
+    penaltis: 5,                    // desempate: 5 de cada lado, com o dado de um penálti normal, e depois morte súbita
+    premioVitoria: 1,               // M€ por cada eliminatória ganha
+    premioVencedor: 3,              // M€ a mais para quem ganha a Taça
   },
 
   // --- Fecho da janela ---

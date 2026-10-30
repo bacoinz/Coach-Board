@@ -43,6 +43,17 @@ export function somarAjuda(e, pontos = 1) {
   e.ajudas = (e.ajudas ?? 0) + pontos;
 }
 
+/** As cartas más doem o dobro nas últimas épocas. */
+function agravar(sala, efeito) {
+  if (!fimDePartida(sala)) return efeito;
+  const m = CONFIG.misterio.fimDePartida.multiplicadorMas;
+  const novo = { ...efeito };
+  if (novo.valor < 0) novo.valor *= m;
+  if (novo.ou < 0) novo.ou *= m;
+  if (novo.tipo === 'percentagem') novo.fracao *= m;
+  return novo;
+}
+
 /**
  * Aplica o efeito de uma carta. Devolve { detalhe } para o registo e, nos que mexem no tabuleiro,
  * { repetir } ou { avancar }, que o tabuleiro trata.
@@ -141,15 +152,32 @@ function aplicar(sala, ctx, e, efeito) {
   }
 }
 
-/** Tira a carta de cima do baralho (baralha de novo quando acaba) e aplica-a. */
+/** Estamos nas últimas épocas da partida? */
+export function fimDePartida(sala) {
+  const { epocas } = CONFIG.misterio.fimDePartida;
+  const finais = epocas[sala.config.epocas] ?? 0;
+  return sala.epoca > sala.config.epocas - finais;
+}
+
+/** A carta de cima. Nas últimas épocas sorteia-se primeiro se é má ou boa, e sai a primeira desse tipo que houver. */
+function tirarDoBaralho(sala, ctx) {
+  if (!fimDePartida(sala)) return sala.baralhoMisterio.pop();
+  const querBoa = ctx.aleatorio() >= CONFIG.misterio.fimDePartida.probabilidadeMa;
+  const posicao = () => sala.baralhoMisterio.findLastIndex((n) => CONFIG.misterio.cartas[n].bom === querBoa);
+  // Se já não houver cartas desse tipo, baralha-se de novo, senão a percentagem voltava a meio por meio.
+  if (posicao() < 0) sala.baralhoMisterio = baralhar(ctx.aleatorio, CONFIG.misterio.cartas.map((_, i) => i));
+  return sala.baralhoMisterio.splice(posicao(), 1)[0];
+}
+
+/** Tira uma carta do baralho (baralha de novo quando acaba) e aplica-a. */
 export function tirarMisterio(sala, ctx, equipaId) {
   if (!sala.baralhoMisterio?.length) {
     sala.baralhoMisterio = baralhar(ctx.aleatorio, CONFIG.misterio.cartas.map((_, i) => i));
   }
-  const base = CONFIG.misterio.cartas[sala.baralhoMisterio.pop()];
+  const base = CONFIG.misterio.cartas[tirarDoBaralho(sala, ctx)];
   const carta = sala.janela.tipo === 'inverno' && base.inverno ? { ...base, ...base.inverno } : base;
   const e = sala.equipas[equipaId];
-  const r = aplicar(sala, ctx, e, carta.efeito);
+  const r = aplicar(sala, ctx, e, carta.bom ? carta.efeito : agravar(sala, carta.efeito));
   if (carta.bom) somarAjuda(e, (carta.peso ?? 1) * CONFIG.investigacao.ajudaMisterio);
   const texto = r.texto ?? carta.texto;
   sala.janela.ultimaCarta = { equipa: equipaId, tipo: 'misterio', bom: carta.bom, titulo: carta.titulo, texto, detalhe: r.detalhe ?? null };
@@ -159,7 +187,10 @@ export function tirarMisterio(sala, ctx, equipaId) {
 
 // --- Investigação ---
 
-export const titulos = (sala, equipaId) => (sala.palmares ?? []).filter((p) => p.campeao === equipaId).length;
+/** Títulos, contando cada Taça pelo que vale. */
+export const titulos = (sala, equipaId) =>
+  (sala.palmares ?? []).filter((p) => p.campeao === equipaId).length +
+  (sala.palmaresTaca ?? []).filter((p) => p.vencedor === equipaId).length * CONFIG.taca.valor;
 
 /** Probabilidade de condenação deste clube. */
 export function probabilidadeCondenacao(sala, equipaId) {

@@ -8,6 +8,8 @@ import { iniciarTabuleiro, acabou, todosAcabaram } from './tabuleiro.js';
 import { prepararJovem } from './negocios.js';
 import { aplicarAberturaJanela } from './misterio.js';
 import { iniciarVolta } from './campeonato.js';
+import { extensaoPatrocinios } from './patrocinios.js';
+import { ajustarBots } from './bots.js';
 import { precoBase, precoDraft } from './valores.js';
 
 const NOMES = { verao: 'de verão', inverno: 'de inverno' };
@@ -21,6 +23,7 @@ export function abrirJanela(sala, ctx, tipo) {
     else if (d.compradoRonda != null) delete d.compradoRonda;
   }
   sala.descartados = [];
+  ajustarBots(sala, ctx);
   sala.fase = 'janela';
   sala.janela = { tipo, fase: 'formacao', prontos: [], ronda: 0, trocas: [] };
   registar(sala, ctx, `Época ${sala.epoca}: abre a janela ${NOMES[tipo]}. Escolham a formação.`, { tipo: 'fase' });
@@ -231,6 +234,7 @@ function concluirJanela(sala, ctx) {
     const { onze } = melhorOnze(e.plantel.map((id) => jogador(sala, ctx, id)), e.formacao);
     e.onze = onze;
   }
+  extensaoPatrocinios(sala, ctx);
   registar(sala, ctx, `A janela ${NOMES[sala.janela.tipo]} fecha.`, { tipo: 'fase' });
   const volta = sala.janela.tipo === 'verao' ? 1 : 2;
   sala.janela = null;

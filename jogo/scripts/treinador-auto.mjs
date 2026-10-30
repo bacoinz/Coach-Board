@@ -7,6 +7,7 @@ import { sugestaoFecho } from '../src/motor/janela.js';
 import { melhorOnze, FORMACOES } from '../src/motor/formacao.js';
 import { CICLO_TATICAS, podemSair } from '../src/motor/jogo.js';
 import { acabou } from '../src/motor/tabuleiro.js';
+import { premio } from '../src/motor/patrocinios.js';
 
 const acaso = (rng, lista) => lista[Math.floor(rng() * lista.length)];
 
@@ -23,10 +24,14 @@ export function passo(sala, ctx) {
   const t = (eq) => sala.equipas[eq].treinador;
   const coaches = Object.values(sala.equipas).filter((e) => e.treinador && !e.espera);
 
+  if (sala.fase === 'fimEpoca') {
+    const falta = coaches.find((e) => !sala.fimEpoca.prontos.includes(e.id));
+    return agir(sala, ctx, falta.treinador, { t: 'continuar' });
+  }
   if (sala.fase === 'campeonato') {
     const c = sala.campeonato;
     if (c.fase === 'taticas') {
-      const pares = (c.volta === 1 ? sala.calendario[c.jornada] : sala.calendario[c.jornada]).flat();
+      const pares = (c.pares ?? sala.calendario[c.jornada]).flat();
       const falta = pares.find((id) => !c.taticas[id] && sala.equipas[id].treinador);
       return agir(sala, ctx, t(falta), { t: 'tatica', tatica: acaso(rng, CICLO_TATICAS) });
     }
@@ -80,6 +85,14 @@ export function passo(sala, ctx) {
   const e = sala.equipas[eq];
   if (j.pendente) {
     if (j.pendente.tipo === 'rede') return agir(sala, ctx, t(eq), { t: 'descartar_rede', liga: j.pendente.liga });
+    if (j.pendente.tipo === 'patrocinio') {
+      const p = j.pendente;
+      if (p.bloqueio) return agir(sala, ctx, t(eq), { t: 'patrocinio', aceitar: false });
+      // Aceita quando o prémio é melhor do que o do contrato que sai.
+      const atual = p.genero === 'marca' ? premio('marca', e.categorias.marca) : Math.min(...p.substituir.map((i) => premio('patrocinio', e.categorias.patrocinios[i])));
+      const substitui = p.genero === 'marca' ? 0 : p.substituir.reduce((a, b) => (premio('patrocinio', e.categorias.patrocinios[b]) < premio('patrocinio', e.categorias.patrocinios[a]) ? b : a));
+      return agir(sala, ctx, t(eq), { t: 'patrocinio', aceitar: p.premio > atual, substitui });
+    }
     const compensa = melhoraOnze(sala, ctx, e, j.pendente.jogador) >= 1 || jogador(sala, ctx, j.pendente.jogador).formacao;
     if (compensa && e.dinheiro >= j.pendente.preco && (e.limiteContratacoes ?? 1) > 0) return agir(sala, ctx, t(eq), { t: 'comprar' });
     return agir(sala, ctx, t(eq), { t: 'passar' });

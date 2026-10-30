@@ -19,6 +19,8 @@ const argumento = (nome, omissao) => {
 };
 const N_JOGOS = argumento('jogos', 20000);
 const N_PARTIDAS = argumento('partidas', 12);
+const TREINADORES = argumento('treinadores', 4);
+const BOTS = argumento('bots', 2);
 const NIVEL_BOTS = process.argv.includes('--inferiores') ? 'inferior' : 'equivalente';
 
 const base = lerBase(await descomprimir(readFileSync(new URL('../public/dados/jogadores.bin', import.meta.url)))).jogadores;
@@ -134,14 +136,14 @@ function jogarPartida(semente, epocas, treinadores, bots) {
     const c = sala.campeonato;
     if (sala.fase === 'campeonato' && c?.fase === 'resultados') {
       const chave = `${sala.epoca}-${c.volta}-${c.jornada}`;
-      if (!contados.has(chave)) {
+      if (!c.pares && !contados.has(chave)) {
         contados.add(chave);
         for (const jogo of c.jogos) {
           porEpoca[sala.epoca - 1].golos += jogo.lados[0].golos + jogo.lados[1].golos;
           porEpoca[sala.epoca - 1].jogos++;
         }
       }
-      if (c.volta === 2 && c.jornada === sala.calendario.length - 1 && voltaAnterior !== sala.epoca) {
+      if (!c.pares && c.volta === 2 && c.jornada === sala.calendario.length - 1 && voltaAnterior !== sala.epoca) {
         voltaAnterior = sala.epoca;
         fotografar(sala.epoca - 1);
       }
@@ -149,14 +151,23 @@ function jogarPartida(semente, epocas, treinadores, bots) {
     if (sala.epoca !== epocaAnterior) epocaAnterior = sala.epoca;
   }
   const ranking = rankingFinal(sala);
-  return { porEpoca, passos: n, ranking, condenados, lancesVerao: lances.verao / (janelas.verao * treinadores), lancesInverno: lances.inverno / (janelas.inverno * treinadores), titulosVencedor: ranking[0].titulos, bots: Object.values(sala.equipas).filter((e) => e.bot).map((e) => e.id), palmares: sala.palmares };
+  // Quem ia à frente a 3 épocas do fim (com mais títulos, sem empate) acabou por ganhar?
+  const antes = {};
+  for (const p of sala.palmares.slice(0, Math.max(0, epocas - 3))) antes[p.campeao] = (antes[p.campeao] ?? 0) + 1;
+  const ordem = Object.entries(antes).sort((a, b) => b[1] - a[1]);
+  const lider = ordem.length && (ordem.length === 1 || ordem[0][1] > ordem[1][1]) ? ordem[0][0] : null;
+  const idsBots = Object.values(sala.equipas).filter((e) => e.bot).map((e) => e.id);
+  const tacas = sala.palmaresTaca ?? [];
+  // A Taça mudou o vencedor da partida? Compara com o ranking só por campeonatos.
+  const soCampeonatos = [...ranking].sort((a, b) => b.campeonatos - a.campeonatos || b.pontos - a.pontos)[0].equipa;
+  return { porEpoca, tacas: tacas.length, tacasBot: tacas.filter((p) => idsBots.includes(p.vencedor)).length, tacaMudou: soCampeonatos !== ranking[0].equipa, liderGanhou: lider ? ranking[0].equipa === lider : null, passos: n, ranking, condenados, lancesVerao: lances.verao / (janelas.verao * treinadores), lancesInverno: lances.inverno / (janelas.inverno * treinadores), titulosVencedor: ranking[0].titulos, bots: Object.values(sala.equipas).filter((e) => e.bot).map((e) => e.id), palmares: sala.palmares };
 }
 
 const DURACOES = [3, 5, 8, 10];
 const partidas = {};
 for (const epocas of DURACOES) {
-  console.log(`A simular ${N_PARTIDAS} partidas de ${epocas} épocas (4 treinadores, 2 bots)…`);
-  partidas[epocas] = Array.from({ length: N_PARTIDAS }, (_, i) => jogarPartida(100 * epocas + i, epocas, 4, 2));
+  console.log(`A simular ${N_PARTIDAS} partidas de ${epocas} épocas (${TREINADORES} treinadores, ${BOTS} bots)…`);
+  partidas[epocas] = Array.from({ length: N_PARTIDAS }, (_, i) => jogarPartida(100 * epocas + i, epocas, TREINADORES, BOTS));
 }
 
 function resumoEpocas(lista, epocas) {
@@ -183,7 +194,7 @@ L('# Equilíbrio: resultados da simulação');
 L();
 L('Gerado por `npm run simular`, com os valores de `jogo/src/config.js`. Muda-se lá e corre-se outra vez.');
 L();
-L('**O que isto ainda não inclui:** marcas e patrocínios (o dinheiro deles), evolução e envelhecimento dos jogadores, e os ajustes de plantel dos bots (entram no passo 5). Os treinadores são automáticos e simples: compram quem melhora o onze e não têm a malícia de um jogador a sério.');
+L('**Atenção:** os treinadores são automáticos e simples: compram quem melhora o onze e não têm a malícia de um jogador a sério.');
 L();
 L('## 1. Jogos entre equipas equivalentes');
 L();
@@ -219,7 +230,7 @@ for (const c of cenarios) {
 L();
 L('## 3. Partidas inteiras: dinheiro e nível dos plantéis');
 L();
-L(`${N_PARTIDAS} partidas por duração, 4 treinadores e 2 bots de nível ${NIVEL_BOTS}. Valores médios por treinador **no fim de cada época**. O orçamento inicial é ${CONFIG.inicio.orcamento} M€ e o plantel inicial vale cerca de 100 M€.`);
+L(`${N_PARTIDAS} partidas por duração, ${TREINADORES} treinadores e ${BOTS} bots de nível ${NIVEL_BOTS}. Valores médios por treinador **no fim de cada época**. O orçamento inicial é ${CONFIG.inicio.orcamento} M€ e o plantel inicial vale cerca de 100 M€.`);
 for (const epocas of DURACOES) {
   L();
   L(`### ${epocas} épocas`);
@@ -232,7 +243,7 @@ for (const epocas of DURACOES) {
   const lista = partidas[epocas];
   const titulosBot = mediaDe(lista.map((p) => p.palmares.filter((x) => p.bots.includes(x.campeao)).length));
   L();
-  L(`Títulos do vencedor: ${num(mediaDe(lista.map((p) => p.titulosVencedor)), 1)} de ${epocas}. Títulos ganhos por bots: ${num(titulosBot, 2)} por partida (**${pct(titulosBot / epocas)} dos títulos**). Condenações na Investigação: ${num(mediaDe(lista.map((p) => p.condenados)), 1)} por partida. Vezes no tabuleiro por treinador: ${num(mediaDe(lista.map((p) => p.lancesVerao)), 0)} no verão e ${num(mediaDe(lista.map((p) => p.lancesInverno)), 0)} no inverno.`);
+  L(`Títulos do vencedor: ${num(mediaDe(lista.map((p) => p.titulosVencedor)), 1)} de ${epocas}. Campeonatos ganhos por bots: ${num(titulosBot, 2)} por partida (**${pct(titulosBot / epocas)}**). Taças ganhas por bots: **${pct(lista.reduce((s, p) => s + p.tacasBot, 0) / Math.max(1, lista.reduce((s, p) => s + p.tacas, 0)))}**. A Taça mudou o vencedor em ${pct(lista.filter((p) => p.tacaMudou).length / lista.length)} das partidas. Condenações na Investigação: ${num(mediaDe(lista.map((p) => p.condenados)), 1)} por partida. ${(() => { const v = lista.map((p) => p.liderGanhou).filter((x) => x != null); return v.length ? `Quem ia à frente a 3 épocas do fim ganhou ${pct(v.filter(Boolean).length / v.length)} das vezes. ` : ''; })()}Vezes no tabuleiro por treinador: ${num(mediaDe(lista.map((p) => p.lancesVerao)), 0)} no verão e ${num(mediaDe(lista.map((p) => p.lancesInverno)), 0)} no inverno.`);
 }
 L();
 const destino = new URL('../../docs/equilibrio.md', import.meta.url);

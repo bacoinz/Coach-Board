@@ -13,7 +13,8 @@ export function fatorIdade(idade) {
 
 /** Valor de mercado em M€. */
 export function valorMercado(overall, idade) {
-  const bruto = V.base * Math.exp(V.curva * (overall - V.overallBase)) * fatorIdade(idade);
+  const pontos = V.curva * (Math.min(overall, V.joelho) - V.overallBase) + V.curvaTopo * Math.max(0, overall - V.joelho);
+  const bruto = V.base * Math.exp(pontos) * fatorIdade(idade);
   return Math.max(V.minimo, arredondar(bruto));
 }
 

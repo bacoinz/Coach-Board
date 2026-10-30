@@ -1,6 +1,6 @@
 // Campeonato: calendário a duas voltas, jornadas com jogos em simultâneo, TV, salários e classificação.
 import { CONFIG } from '../config.js';
-import { baralhar, escolher } from './aleatorio.js';
+import { baralhar, dado, escolher } from './aleatorio.js';
 import { jogador, erro, registar, equipasTreinadores, receber } from './estado.js';
 import { CICLO_TATICAS, criarJogo, jogarPeriodo, pedirSubstituicao } from './jogo.js';
 import { descontar } from './misterio.js';
@@ -56,6 +56,7 @@ const jornadasPorEpoca = (sala) => sala.calendario.length * 2;
 
 function jogosDaJornada(sala) {
   const c = sala.campeonato;
+  if (c.pares) return c.pares;
   const pares = sala.calendario[c.jornada];
   return c.volta === 1 ? pares : pares.map(([a, b]) => [b, a]);
 }
@@ -70,7 +71,7 @@ function abrirJornada(sala, ctx) {
   for (const [a, b] of jogosDaJornada(sala)) {
     for (const id of [a, b]) if (sala.equipas[id].bot) c.taticas[id] = escolher(ctx.aleatorio, CICLO_TATICAS);
   }
-  registar(sala, ctx, `Época ${sala.epoca}, ${c.volta}.ª volta, jornada ${c.jornada + 1}: escolham a tática.`, { tipo: 'fase' });
+  registar(sala, ctx, c.pares ? `Taça, ${c.ronda}: escolham a tática.` : `Época ${sala.epoca}, ${c.volta}.ª volta, jornada ${c.jornada + 1}: escolham a tática.`, { tipo: 'fase' });
   verificarTaticas(sala, ctx);
 }
 
@@ -133,9 +134,14 @@ function homemDoJogo(jogo) {
 
 function concluirJornada(sala, ctx) {
   const c = sala.campeonato;
+  if (c.pares) return concluirRondaTaca(sala, ctx);
   for (const jogo of c.jogos) {
     const [a, b] = jogo.lados;
     jogo.homem = homemDoJogo(jogo);
+    if (jogo.homem) {
+      const est = (sala.estatisticas[jogo.homem.jogador] ??= { golos: 0, assistencias: 0, minutos: 0, jogos: 0, nome: jogo.homem.nome, equipa: jogo.homem.equipa });
+      est.homens = (est.homens ?? 0) + 1;
+    }
     for (const [lado, adv] of [[a, b], [b, a]]) {
       const t = sala.tabela[lado.equipa];
       t.j++;
@@ -180,6 +186,94 @@ function concluirJornada(sala, ctx) {
   c.prontos = [];
 }
 
+// --- Taça: a eliminar, 1.º contra 2.º, 3.º contra 4.º… da liga dessa época ---
+
+export function nomeRonda(equipas) {
+  if (equipas <= 2) return 'final';
+  if (equipas <= 4) return 'meias-finais';
+  if (equipas <= 8) return 'quartos de final';
+  return 'oitavos de final';
+}
+
+/** Dois a dois, pela ordem. Com número ímpar, o último passa à ronda seguinte sem jogar. */
+export function emparelhar(equipas) {
+  const pares = [];
+  for (let i = 0; i + 1 < equipas.length; i += 2) pares.push([equipas[i], equipas[i + 1]]);
+  return pares;
+}
+
+/** Pela ordem da liga: só os treinadores e, se forem ímpares, o bot mais bem classificado, para ficarem em número par. */
+export function participantesTaca(sala) {
+  const ordem = ordenarTabela(sala.tabela).map((l) => l.equipa);
+  const treinadores = ordem.filter((id) => !sala.equipas[id].bot);
+  if (treinadores.length % 2 === 0) return treinadores;
+  const bot = ordem.find((id) => sala.equipas[id].bot);
+  return ordem.filter((id) => !sala.equipas[id].bot || id === bot);
+}
+
+export function iniciarTaca(sala, ctx) {
+  sala.fase = 'campeonato';
+  sala.estatisticasTaca = {};
+  sala.campeonato = { volta: 2, jornada: 0, competicao: 'taca', restantes: participantesTaca(sala), pares: [], fase: 'taticas', taticas: {}, jogos: [], prontos: [], proximoPeriodo: null };
+  registar(sala, ctx, `Começa a Taça da época ${sala.epoca}.`, { tipo: 'fase' });
+  abrirRondaTaca(sala, ctx);
+}
+
+function abrirRondaTaca(sala, ctx) {
+  const c = sala.campeonato;
+  c.pares = emparelhar(c.restantes);
+  c.ronda = nomeRonda(c.restantes.length);
+  abrirJornada(sala, ctx);
+}
+
+/** Desempate: 5 penáltis de cada lado e depois morte súbita, cada um com o dado de um penálti normal. */
+function penaltis(rng) {
+  const chuta = () => (dado(rng) >= J.acontecimentos.penaltiMinimo ? 1 : 0);
+  let [a, b] = [0, 0];
+  for (let i = 0; i < CONFIG.taca.penaltis; i++) {
+    a += chuta();
+    b += chuta();
+  }
+  while (a === b) {
+    a += chuta();
+    b += chuta();
+  }
+  return [a, b];
+}
+
+function concluirRondaTaca(sala, ctx) {
+  const c = sala.campeonato;
+  const vencedores = new Map();
+  for (const jogo of c.jogos) {
+    const [a, b] = jogo.lados;
+    jogo.homem = homemDoJogo(jogo);
+    if (a.golos === b.golos) jogo.penaltis = penaltis(ctx.aleatorio);
+    const [ga, gb] = jogo.penaltis ?? [a.golos, b.golos];
+    const vencedor = ga > gb ? a.equipa : b.equipa;
+    jogo.vencedor = vencedor;
+    receber(sala, vencedor, CONFIG.taca.premioVitoria);
+    for (const lado of [a, b]) {
+      const somar = (mapa, campo) => {
+        for (const [id, n] of Object.entries(mapa)) {
+          const est = (sala.estatisticasTaca[id] ??= { golos: 0, assistencias: 0, nome: ctx.base.get(Number(id))?.curto, equipa: lado.equipa });
+          est[campo] += n;
+        }
+      };
+      somar(lado.marcadores, 'golos');
+      somar(lado.assistencias, 'assistencias');
+    }
+    vencedores.set(a.equipa, vencedor);
+    vencedores.set(b.equipa, vencedor);
+    registar(sala, ctx, `Taça: ${sala.equipas[a.equipa].nome} ${a.golos}-${b.golos} ${sala.equipas[b.equipa].nome}${jogo.penaltis ? ` (${ga}-${gb} nos penáltis)` : ''}. Passa ${sala.equipas[vencedor].nome}.`, { tipo: 'resultado' });
+  }
+  // Mantém-se a ordem da liga: quem não jogou, passa.
+  c.restantes = [...new Set(c.restantes.map((id) => vencedores.get(id) ?? id))];
+  if (c.restantes.length === 1) receber(sala, c.restantes[0], CONFIG.taca.premioVencedor);
+  c.fase = 'resultados';
+  c.proximoPeriodo = null;
+  c.prontos = [];
+}
+
 /** Treinador pede a substituição do jovem durante os jogos. */
 export function substituir(sala, ctx, equipaId, sai) {
   const c = sala.campeonato;
@@ -203,6 +297,11 @@ export function continuar(sala, ctx, equipaId) {
 
 function seguir(sala, ctx) {
   const c = sala.campeonato;
+  if (c.pares) {
+    if (c.restantes.length === 1) return { ok: true, fimDeTaca: true };
+    abrirRondaTaca(sala, ctx);
+    return { ok: true };
+  }
   c.jornada++;
   if (c.jornada >= sala.calendario.length) return { ok: true, fimDeVolta: true };
   abrirJornada(sala, ctx);

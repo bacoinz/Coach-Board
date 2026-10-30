@@ -9,6 +9,7 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
   - a duração: **3, 5, 8 ou 10 épocas**;
   - as **equipas bot** (opcional): quantas e se são de overall **inferior** ou **equivalente** ao dos treinadores.
 - **[A]** 2 a 8 treinadores e no máximo 10 equipas no total (contando os bots).
+- Na opção **sem bots**, se os treinadores forem ímpares entra **um bot**, para todos jogarem em todas as jornadas.
 - Cada treinador cria a equipa: **nome, cores** (principal e secundária), **equipamento** (liso, riscas verticais,
   riscas horizontais, faixa, metades) e **emblema** (imagem redimensionada para 256 px).
 - Cada equipa recebe:
@@ -135,6 +136,12 @@ que vale no verão. Vale 3 M€ na época 1, duplica até
 | Papelada em atraso | perdes a próxima vez no tabuleiro |
 | O craque quer sair | a cláusula do teu melhor jogador fica em 1× até à próxima janela |
 | Farto disto tudo | um jogador ao acaso, fora dos 3 melhores, vai embora ao preço base |
+
+**Fim da partida:** são a última época numa partida de 3, as 2 últimas numa de 5, e as 3 últimas numa de 8 ou 10. Nessas
+épocas:
+- saem mais cartas más, **70%** em vez de metade, e o dinheiro que tiram **dobra**;
+- nos jogos, a **Força fica entre −1 e +1**;
+- joga-se a **Taça** (secção 4.5).
 
 A Digressão pela Ásia só sai assim no verão: no inverno a mesma carta é **Amigáveis nos EUA**.
 
@@ -281,11 +288,24 @@ A mesma tática dos dois lados é neutra.
   - **[A]** Entra logo nesse jogo.
   - Pode ser comprado na abertura da janela seguinte, ao valor de mercado. Se não for comprado, volta ao baralho.
 
+### 4.5 Taça
+- Joga-se nas últimas épocas da partida (ver 3.4.2), no fim da época, depois da liga e antes da janela de verão.
+- Entram **só os treinadores**, pela classificação da liga dessa época. Se forem ímpares, entra também o bot mais bem
+  classificado, para ficarem em número par.
+- A eliminar, a um jogo: **1.º contra 2.º, 3.º contra 4.º, 5.º contra 6.º**… e os vencedores continuam pela mesma ordem.
+- Escolhe-se a tática antes de cada jogo. Um empate resolve-se nos **penáltis**: 5 de cada lado e depois morte súbita, cada
+  um com o dado de um penálti normal (golo com 3–6).
+- **[A]** Cada eliminatória ganha dá 1 M€, e ganhar a Taça dá mais 3 M€. Não há TV nem salários.
+- Há uma tabela de **marcadores e assistências só da Taça**. **[A]** Estes golos não contam para as da liga, nem os minutos
+  para o crescimento dos jovens.
+- **[A]** O bot, quando entra, tem uma penalização maior do que na liga, para ganhar muito raramente.
+
 ## 5. Marcas e patrocínios
 - Cada equipa tem **1 marca e 2 patrocínios**, e nunca dois patrocínios de valor alto ao mesmo tempo.
 - **Exclusivos**: cada marca e cada patrocinador só está numa equipa de cada vez.
 - Pagam **só ao assinar** (prémio de assinatura por categoria).
-- A marca muda no máximo **uma vez por época**. Os patrocínios mudam no máximo **uma vez por janela**.
+- A marca muda no máximo **uma vez por época**. Os patrocínios mudam no máximo **um por janela**, e **o mesmo lugar não
+  muda duas vezes na mesma época**: numa época podes mudar os dois, um no verão e o outro no inverno.
 - Quem não muda recebe um **prémio de extensão**: o da marca no fim da época, o dos patrocínios no fim de cada janela.
 - Os logótipos aparecem no equipamento (em `assets/marcas/` e `assets/patrocinios/`). Enquanto não houver PNG,
   aparece o nome em texto.
@@ -342,13 +362,28 @@ dados** no tabuleiro.
   - tabelas de marcadores e de assistências;
   - equipa da época (com jogadores de várias equipas);
   - jogador do ano.
-- **Idade**: todos fazem +1 ano. O overall estagna a partir dos 32 e desce a partir dos 35.
+- **Idade**: todos os jogadores das equipas fazem +1 ano. Os jogadores do baralho ficam como na base, senão deixava de
+  haver jovens para o draft; quem é vendido à banca volta ao baralho como estava na base.
+- **Overall** de quem não é da formação, pela idade na época que acaba:
+
+  | Idade | Variação |
+  |---|---|
+  | até 23, com overall até 84 | +1 (15%), +2 (60%) ou +3 (25%) |
+  | até 23, com overall acima de 84 | +1 (80%) ou +2 (20%) |
+  | 24 a 30, com overall até 88 | +1 (80%) ou +2 (20%) |
+  | 24 a 30, com overall acima de 88 | +1 (50%) ou fica igual (50%) |
+  | 31 a 33 | +1 (30%) ou fica igual (70%) |
+  | 34 ou mais | −1 com 20% aos 34, mais 10% por cada ano: 30% aos 35, 40% aos 36… |
+
+  O **rendimento** da época inclina estas probabilidades (até 50%): médios e avançados pelos golos e assistências por jogo,
+  defesas e guarda-redes pelos golos que a equipa sofreu em relação à média da liga. Quem jogou menos de 20% dos minutos não
+  conta.
 - Crescimento e promoção dos jovens (3.3).
 - **Prémio de extensão** para quem não mudou de marca.
 
 ## 8. Fim da partida
-Ao fim das épocas escolhidas, ganha quem tiver **mais campeonatos**. O desempate é pelo **total de pontos de todas as
-épocas**. No fim mostra-se o palmarés.
+Ao fim das épocas escolhidas, ganha quem tiver **mais títulos**: um campeonato vale 1 e uma **Taça vale 0,5**. O desempate é
+pelo **total de pontos de todas as épocas**. No fim mostra-se o palmarés.
 
 ## 9. Dados dos jogadores
 - Base do EAFC (derivada do SoFIFA): nome, idade, nacionalidade, liga, posição principal e alternativas, overall,

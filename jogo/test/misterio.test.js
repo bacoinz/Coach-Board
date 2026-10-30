@@ -93,6 +93,27 @@ describe('baralho Mistério', () => {
       }
     }
   });
+  it('nas últimas épocas saem mais cartas más; antes é meio por meio', () => {
+    const conta = (epocas, epoca) => {
+      const ctx = contexto(31);
+      const sala = salaNoTabuleiro(2, { epocas }, ctx);
+      sala.epoca = epoca;
+      const eq = vezDe(sala);
+      let mas = 0;
+      for (let i = 0; i < 1000; i++) {
+        tirarMisterio(sala, ctx, eq);
+        if (!sala.janela.ultimaCarta.bom) mas++;
+        sala.janela.pendente = null;
+        sala.janela.leilao = null;
+      }
+      return mas / 1000;
+    };
+    expect(conta(10, 7)).toBeCloseTo(0.5, 1);
+    expect(conta(10, 8)).toBeCloseTo(CONFIG.misterio.fimDePartida.probabilidadeMa, 1);
+    expect(conta(10, 10)).toBeCloseTo(CONFIG.misterio.fimDePartida.probabilidadeMa, 1);
+    expect(conta(3, 2)).toBeCloseTo(0.5, 1);
+    expect(conta(3, 3)).toBeCloseTo(CONFIG.misterio.fimDePartida.probabilidadeMa, 1);
+  });
   it('uma carta boa conta como ajuda, com o seu peso; uma má não', () => {
     const ctx = contexto();
     const sala = salaNoTabuleiro(2, {}, ctx);

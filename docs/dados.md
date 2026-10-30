@@ -51,7 +51,8 @@ A base também guarda as 6 facetas de cada carta (VEL, REM, PAS, DRI, DEF, FÍS;
 VEL, POS), que aparecem nas cartas de jogador.
 
 ## Fórmulas (`src/config.js` → `valores`, `src/motor/valores.js`)
-- **Valor de mercado** = 8 M€ × e^(0,2 × (overall − 75)) × fator da idade. Cada ponto de overall vale ~22% mais.
+- **Valor de mercado** = 8 M€ × e^(0,2 × (overall − 75)) × fator da idade. Cada ponto de overall vale ~22% mais até aos 88 e
+  ~8% mais daí para cima (`joelho` e `curvaTopo`), para os craques das partidas longas não ficarem impossíveis de pagar.
 - **Fator da idade:**
 
   | Idade | ≤ 21 | 22–24 | 25–28 | 29–30 | 31–32 | 33–34 | 35+ |
@@ -78,21 +79,21 @@ VEL, POS), que aparecem nas cartas de jogador.
 | 82 | 42,2 | 38,9 | 32,4 | 27,6 | 21,1 | 14,6 | 9,7 |
 | 85 | 76,8 | 70,9 | 59,1 | 50,2 | 38,4 | 26,6 | 17,7 |
 | 88 | 140,0 | 129,3 | 107,7 | 91,6 | 70,0 | 48,5 | 32,3 |
-| 90 | 208,9 | 192,8 | 160,7 | 136,6 | 104,4 | 72,3 | 48,2 |
+| 90 | 164,3 | 151,7 | 126,4 | 107,4 | 82,2 | 56,9 | 37,9 |
 
 ### Exemplos da base
 
 | Jogador | Overall | Idade | Valor | Cláusula |
 |---|---:|---:|---:|---:|
-| Kylian Mbappé | 91 | 27 | 196,3 | 294,5 |
-| Lamine Yamal | 90 | 19 | 208,9 | 313,4 |
-| Pedri | 90 | 23 | 192,8 | 289,2 |
-| Vitinha | 90 | 26 | 160,7 | 241,1 |
-| Bruno Fernandes | 89 | 31 | 85,5 | 128,3 |
+| Kylian Mbappé | 91 | 27 | 136,9 | 205,4 |
+| Lamine Yamal | 90 | 19 | 164,3 | 246,5 |
+| Vitinha | 90 | 26 | 126,4 | 189,6 |
+| Bruno Fernandes | 89 | 31 | 75,8 | 113,7 |
+| Cristiano Ronaldo | 84 | 41 | 14,5 | 21,8 |
+| Pedri | 90 | 23 | 151,7 | 227,6 |
 | Rúben Dias | 87 | 29 | 75,0 | 112,5 |
 | Diogo Costa | 86 | 26 | 72,2 | 108,3 |
 | Gonçalo Ramos | 80 | 25 | 21,7 | 32,6 |
-| Cristiano Ronaldo | 84 | 41 | 14,5 | 21,8 |
 
 Um plantel inicial (11 jogadores com média 75) vale à volta de 90–110 M€, conforme as idades. O orçamento inicial, o dinheiro de TV e os prémios de
 patrocínio vão para a configuração no passo 3 e afinam-se com a simulação do passo 4.

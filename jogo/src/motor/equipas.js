@@ -66,7 +66,11 @@ export function darContratosIniciais(sala, ctx, equipaId) {
   const e = sala.equipas[equipaId];
   e.marca = tirar([MARCAS.iniciais, MARCAS.baixas]);
   e.patrocinios = [tirar([PATROCINIOS.iniciais, PATROCINIOS.baixas]), tirar([PATROCINIOS.iniciais, PATROCINIOS.baixas])];
-  e.mudancas = { marca: 0, patrocinios: 0 };
+  e.categorias = {
+    marca: MARCAS.iniciais.includes(e.marca) ? 'iniciais' : 'baixas',
+    patrocinios: e.patrocinios.map((n) => (PATROCINIOS.iniciais.includes(n) ? 'iniciais' : 'baixas')),
+  };
+  e.mudancas = { marca: 0, patrocinios: 0, trocados: [false, false] };
   receber(sala, equipaId, I.premioMarcaInicial + 2 * I.premioPatrocinioInicial);
 }
 
@@ -80,7 +84,10 @@ export function prepararEquipa(sala, ctx, equipaId) {
 
 /** Cria as equipas bot (só jogam o campeonato). */
 export function criarBots(sala, ctx) {
-  const { bots, nivelBots } = sala.config;
+  const { nivelBots } = sala.config;
+  // "Sem bots" com treinadores ímpares: entra um bot, para todos jogarem em todas as jornadas.
+  const treinadores = Object.values(sala.equipas).filter((e) => e.treinador && !e.espera).length;
+  const bots = sala.config.bots || treinadores % 2;
   for (let i = 0; i < bots; i++) {
     const id = `bot${i + 1}`;
     sala.equipas[id] = novaEquipa({ id, nome: NOMES_BOTS[i % NOMES_BOTS.length], kit: KITS_BOTS[i % KITS_BOTS.length] });

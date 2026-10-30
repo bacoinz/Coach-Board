@@ -6,6 +6,7 @@ import { faltaParaComecar } from './sala-logica.js';
 import { ordenarTabela } from './campeonato.js';
 import { modificador, podemSair } from './jogo.js';
 import { rankingFinal } from './partida.js';
+import { topTaca } from './fim-epoca.js';
 
 function vistaJogador(sala, ctx, id) {
   const j = jogador(sala, ctx, id);
@@ -55,17 +56,21 @@ function vistaCampeonato(sala, ctx) {
   const emTaticas = c.fase === 'taticas';
   const pares = sala.calendario[Math.min(c.jornada, sala.calendario.length - 1)] ?? [];
   return {
+    competicao: c.competicao ?? 'liga',
+    ronda: c.ronda ?? null,
     volta: c.volta,
     jornada: c.jornada,
     jornadas: sala.calendario.length,
     fase: c.fase,
     prontos: emTaticas ? Object.keys(c.taticas) : c.prontos,
     proximoPeriodo: c.proximoPeriodo,
-    calendario: pares.map(([a, b]) => (c.volta === 1 ? [a, b] : [b, a])),
+    calendario: c.pares ?? pares.map(([a, b]) => (c.volta === 1 ? [a, b] : [b, a])),
     jogos: c.jogos.map((jogo) => ({
       periodo: jogo.periodo,
       acabou: jogo.acabou,
       homem: jogo.homem ?? null,
+      penaltis: jogo.penaltis ?? null,
+      vencedor: jogo.vencedor ?? null,
       eventos: jogo.eventos,
       lados: jogo.lados.map((l, i) => ({
         equipa: l.equipa,
@@ -112,6 +117,8 @@ export function estadoPublico(sala, ctx) {
       cartas: e.cartas,
       redes: e.redes,
       marca: e.marca,
+      categorias: e.categorias,
+      mudancas: e.mudancas,
       patrocinios: e.patrocinios,
       efeitos: e.efeitos ?? [],
       limiteContratacoes: e.limiteContratacoes ?? null,
@@ -156,7 +163,10 @@ export function estadoPublico(sala, ctx) {
     campeonato: vistaCampeonato(sala, ctx),
     tabela: sala.tabela ? ordenarTabela(sala.tabela) : null,
     estatisticas: topEstatisticas(sala),
+    estatisticasTaca: sala.estatisticasTaca ? topTaca(sala, 5) : null,
     ranking: sala.fase === 'fim' ? rankingFinal(sala) : null,
+    premios: sala.premios ?? [],
+    fimEpoca: sala.fase === 'fimEpoca' ? sala.fimEpoca : null,
     classificacao: sala.classificacao,
     palmares: sala.palmares,
     log: sala.log.slice(-60),
