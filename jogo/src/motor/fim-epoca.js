@@ -95,7 +95,7 @@ export function calcularPremios(sala, ctx, tabela) {
     const overall = sala.jogadores[id]?.overall ?? j?.overall ?? 0;
     return { id: Number(id), nome: est.nome, equipa: est.equipa, golos: est.golos, assistencias: est.assistencias, homens: est.homens ?? 0, minutos: est.minutos, linha: LINHA[j?.posicao], nota: nota(est, overall) };
   }).filter((x) => x.minutos > 0);
-  const top = (campo, n = 3) => lista.filter((x) => x[campo] > 0).sort((a, b) => b[campo] - a[campo]).slice(0, n).map(({ id, nome, equipa, [campo]: v }) => ({ id, nome, equipa, valor: v }));
+  const top = (campo, n = 5) => lista.filter((x) => x[campo] > 0).sort((a, b) => b[campo] - a[campo]).slice(0, n).map(({ id, nome, equipa, [campo]: v }) => ({ id, nome, equipa, valor: v }));
   const melhores = [...lista].sort((a, b) => b.nota - a.nota);
   // A equipa da época: 1 GR, 4 defesas, 3 médios e 3 avançados, de qualquer equipa.
   const equipa = Object.entries(E.equipaDaEpoca).flatMap(([linha, n]) =>

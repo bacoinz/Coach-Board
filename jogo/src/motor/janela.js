@@ -1,7 +1,7 @@
 // A janela de transferências: formação → draft → tabuleiro → fecho.
 import { CONFIG } from '../config.js';
 import { baralhar } from './aleatorio.js';
-import { jogador, transferir, reservar, libertar, pagar, receber, registar, equipasTreinadores, erro, M } from './estado.js';
+import { jogador, transferir, reservar, libertar, pagar, receber, registar, equipasTreinadores, erro, M, podePagar, textoSaldo } from './estado.js';
 import { FORMACOES, melhorOnze, onzeEscolhido, overallNaPosicao } from './formacao.js';
 import { opcoesDraft, tirarEmprestimo } from './cartas.js';
 import { iniciarTabuleiro, acabou, todosAcabaram } from './tabuleiro.js';
@@ -56,7 +56,7 @@ export function comprarEmprestado(sala, ctx, equipaId, id) {
   if (sala.fase !== 'janela' || sala.janela.fase !== 'formacao') return erro('Só na abertura da janela.');
   const jg = jogador(sala, ctx, id);
   if (!jg || jg.equipa !== equipaId || !jg.emprestadoLesao) return erro('Esse jogador não está emprestado a ti.');
-  if (sala.equipas[equipaId].dinheiro < jg.valor) return erro(`Precisas de ${M(jg.valor)}.`);
+  if (!podePagar(sala, equipaId, jg.valor)) return erro(textoSaldo(sala));
   pagar(sala, equipaId, jg.valor);
   const d = sala.jogadores[id];
   delete d.emprestado;
@@ -125,7 +125,7 @@ export function escolherDraft(sala, ctx, equipaId, id) {
   } else {
     if (!d.opcoes.includes(id)) return erro('Escolhe uma das três opções.');
     const preco = precoOpcao(sala, ctx, id);
-    if (sala.equipas[equipaId].dinheiro < preco) return erro(`Precisas de ${M(preco)}.`);
+    if (!podePagar(sala, equipaId, preco)) return erro(textoSaldo(sala));
     pagar(sala, equipaId, preco);
     d.opcoes = d.opcoes.filter((x) => x !== id);
     transferir(sala, id, equipaId, atual.tipo === 'extra' ? { soBanca: true } : {});
@@ -166,11 +166,36 @@ export function escolherOnze(sala, ctx, equipaId, lugares) {
   return { ok: true };
 }
 
+/** Não tem nada que possa vender: fica a zero, senão a partida ficava presa. */
+function perdoarSemJogadores(sala, ctx, e) {
+  const vendaveis = e.plantel.filter((id) => !jogador(sala, ctx, id).emprestado);
+  if (e.dinheiro >= 0 || vendaveis.length) return;
+  e.dinheiro = 0;
+  registar(sala, ctx, `${e.nome} já não tem jogadores para vender: a dívida é perdoada.`, { tipo: 'banca' });
+}
+
+/** O anfitrião fecha a janela por quem não está: os jogadores mais valiosos vão para a banca até a dívida acabar. */
+function liquidarDividas(sala, ctx) {
+  for (const e of equipasTreinadores(sala)) {
+    const porValor = e.plantel.map((id) => jogador(sala, ctx, id)).filter((x) => !x.emprestado).sort((a, b) => b.valor - a.valor);
+    for (const jg of porValor) {
+      if (e.dinheiro >= 0) break;
+      const preco = precoBase(jg.valor);
+      receber(sala, e.id, preco);
+      transferir(sala, jg.id, null);
+      registar(sala, ctx, `${e.nome} estava em saldo negativo: ${jg.curto} vai para a banca por ${M(preco)}.`, { tipo: 'banca' });
+    }
+    perdoarSemJogadores(sala, ctx, e);
+  }
+}
+
 /** Quem já completou as voltas marca que está pronto para fechar a janela. */
 export function prontoFechar(sala, ctx, equipaId, pronto = true) {
   const j = sala.janela;
   if (sala.fase !== 'janela' || j.fase !== 'tabuleiro') return erro('Não estamos no tabuleiro.');
   if (!acabou(j, equipaId)) return erro('Completa primeiro as voltas.');
+  perdoarSemJogadores(sala, ctx, sala.equipas[equipaId]);
+  if (pronto && sala.equipas[equipaId].dinheiro < 0) return erro('Estás em saldo negativo: leiloa jogadores até ficares sem dívida.');
   j.prontos = j.prontos.filter((x) => x !== equipaId);
   if (pronto) j.prontos.push(equipaId);
   verificarFecho(sala, ctx);
@@ -181,6 +206,8 @@ export function prontoFechar(sala, ctx, equipaId, pronto = true) {
 export function verificarFecho(sala, ctx) {
   const j = sala.janela;
   if (sala.fase !== 'janela' || j?.fase !== 'tabuleiro') return false;
+  // Quem comprou depois de estar pronto e ficou em dívida tem de a resolver primeiro.
+  j.prontos = j.prontos.filter((id) => sala.equipas[id].dinheiro >= 0);
   if (!todosAcabaram(j) || !j.ordem.every((id) => j.prontos.includes(id)) || j.leilao || j.contestacao || j.pendente) return false;
   abrirFecho(sala, ctx);
   return true;
@@ -193,6 +220,7 @@ export function forcarFecho(sala, ctx) {
   if (j.leilao || j.contestacao) return erro('Há um leilão ou um Agente por resolver.');
   if (j.pendente?.jogador) libertar(sala, [j.pendente.jogador]);
   j.pendente = null;
+  liquidarDividas(sala, ctx);
   abrirFecho(sala, ctx);
   return { ok: true };
 }

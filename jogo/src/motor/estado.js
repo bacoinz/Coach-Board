@@ -66,6 +66,19 @@ export function transferir(sala, id, equipaId, extra = {}) {
   libertar(sala, [id]);
 }
 
+/** Pode gastar isto? Durante a janela o saldo pode ficar negativo, até ao limite. */
+export const podePagar = (sala, equipaId, valor) => sala.equipas[equipaId].dinheiro - valor >= saldoMinimo(sala);
+export const textoSaldo = (sala) => `O teu saldo não pode descer abaixo de −${Math.abs(saldoMinimo(sala))} M€.`;
+
+/** Fase do baralho do Mercado nesta época (1–7). */
+export function faseMercado(sala, epoca = sala.epoca) {
+  const fases = CONFIG.mercado.fasesPorDuracao[sala.config.epocas] ?? CONFIG.mercado.fasesPorDuracao[3];
+  return fases[Math.min(epoca, fases.length) - 1];
+}
+
+/** O saldo mais baixo permitido nesta época: a dívida possível cresce com os preços do Mercado. */
+export const saldoMinimo = (sala) => -CONFIG.transferencias.dividaPorFase[faseMercado(sala)];
+
 /** Mexe no dinheiro de uma equipa, sem erros de vírgula flutuante. */
 export function pagar(sala, equipaId, valor) {
   const e = sala.equipas[equipaId];

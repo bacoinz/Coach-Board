@@ -1,20 +1,20 @@
 // Marcas e patrocinadores, por categoria (as regras de cada categoria estão em docs/regras.md, secção 5).
 
 export const MARCAS = {
-  grandes: ['Naik', 'Abadidas', 'Pumba', 'Old Balance'],
+  grandes: ['Like', 'Abidas', 'Fuma', 'Old Balance'],
   medias: ['Ombru', 'Lappa', 'Castrole', 'Marcon', 'Hammer'],
-  baixas: ['Lergea', 'Rikelme', 'Erreia', 'Toma', 'Kotto', 'Upper Armor'],
-  iniciais: ['Larcatoni', 'CTD', 'Diadura', 'Girvova', 'Partick'],
+  baixas: ['Lergea', 'Rikelme', 'Erreia', 'Toma', 'Cotto', 'Upper Armour'],
+  iniciais: ['Carlatoni', 'CTD', 'Diadura', 'Givulva', 'Batrick'],
 };
 
 export const PATROCINIOS = {
-  grandes: ['Scotify', 'Fly Emigreats', 'Tecatar Airways', 'Naointendo', 'CEGA', 'SONIA', 'BID'],
-  medias: ['Betrano', 'Betcrica', 'Solgreen', 'LeBollo', 'TimViewer', 'Jipe', 'Repsun'],
-  baixas: ['Super Cock', 'Cerveja Conal', 'Estrella Dapicia', 'GIDI', 'MEU', 'NOZ', 'Palcard', 'Vodafode'],
+  grandes: ['Sportify', 'Fly Emigrants', 'Ratar Airways', 'Nãotendo', 'CEGA', 'SONIA'],
+  medias: ['Betanus', 'Betcrica', 'Solvermelho', 'LeBollo', 'TimViewer23', 'Jipe'],
+  baixas: ['Super Cock', 'Cerveja Conal', 'GIDI', 'MEU', 'NOZ', 'Palcard', 'Vodafode', 'Sabres'],
   iniciais: [
-    'JF Canha', 'SPARVO', 'Jardins Paulo Meira', 'CarCanhola', 'Restaurante "Peixaxa"', 'Marisqueira "Mexilhão D\'Molho"',
-    'Construções Lomba', 'Café Central de Torres Novas', 'Colchões Camarrata', 'Bar de Alterne "O Pau"', 'Mastur Bar',
-    'Bar Dalloca', 'REMIX', 'GandaPreço', "Águas d'Mijo", 'Convento de Freire', 'Ping Doce', 'Arquipélago',
+    'JF Canha', 'SPARVO', 'Jardins Paulo Meira', 'CarCanhola', 'Restaurante Peixaxa',
+    'Construções Lomba', 'Café o Relógio', 'Colchões Camarrata', 'Bar de Alterne O Pau', 'Mastur Bar',
+    'Bar Dalloca', 'REMIX', 'GandaPreço', 'Água dos Mijos', 'Convento de Freires', 'Ping Doce', 'Arquipélago',
   ],
 };
 

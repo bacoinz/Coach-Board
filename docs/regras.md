@@ -11,7 +11,8 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
 - **[A]** 2 a 8 treinadores e no máximo 10 equipas no total (contando os bots).
 - Na opção **sem bots**, se os treinadores forem ímpares entra **um bot**, para todos jogarem em todas as jornadas.
 - Cada treinador cria a equipa: **nome, cores** (principal e secundária), **equipamento** (liso, riscas verticais,
-  riscas horizontais, faixa, metades) e **emblema** (imagem redimensionada para 256 px).
+  riscas horizontais, faixa, metades, mangas de outra cor) e **emblema** (criado no jogo ou uma imagem, sozinha ou
+  dentro de um escudo, sempre com 256 px).
 - Cada equipa recebe:
   - o **mesmo orçamento**;
   - **11 jogadores** com overall entre 70 e 78 e média 75. **[A]** São 1 GR, 4 defesas, 4 médios e 2 avançados;
@@ -72,8 +73,8 @@ Em cada janela dá-se **uma volta**: com **um dado no verão**; no **inverno**, 
 com um dado e os seguintes com dois.
 
 **SAD:** quem pára na casa recebe uma **injeção de capital**; quem só passa recebe metade. No **inverno** vale metade do
-que vale no verão. Vale 3 M€ na época 1, duplica até
-à época 3, multiplica por 1,5 até à 7 e por 1,2 daí em diante: 3 · 6 · 12 · 18 · 27 · 40,5 · 60,8 · 72,9 · 87,5 · 105 M€.
+que vale no verão. Cresce com a fase do Mercado (3 · 6 · 12 · 18 · 27 · 40 · 60 M€), por isso depende da duração da
+partida. Em 3 épocas: 3 · 18 · 60 M€. Em 5: 3 · 12 · 18 · 40 · 60 M€. Em 10: 3 · 6 · 6 · 12 · 18 · 18 · 27 · 40 · 40 · 60 M€.
 
 **Uma vez** **[A]** (pela ordem do draft):
 1. propostas, se quiseres (ver 3.5);
@@ -218,6 +219,18 @@ percentagens e fases estão em `CONFIG.mercado`.
   - **trocas diretas** acordadas entre os dois treinadores, sem leilão.
 - **[A]** Enquanto decorre um leilão, o tabuleiro fica parado.
 
+### 3.5.1 Saldo negativo
+- Durante a janela pode-se gastar mais do que se tem (compras, leilões, propostas, Agente e draft), até um
+  limite que cresce com a fase do Mercado: **−40 · −50 · −60 · −70 · −85 · −100 · −120 M€** (`CONFIG.transferencias.dividaPorFase`).
+- Só se avança para o fecho da janela **sem dívida**. Quem comprar depois de estar pronto e ficar em dívida deixa de
+  estar pronto.
+- Em dívida não se vende à banca: o jogador vai a **leilão**, a começar em **80% do valor de mercado** (não da cláusula),
+  e o dono não pode recusar. Só se ninguém licitar é que vai para a banca, ao preço base. Os jogadores da segunda escolha
+  do draft, que só se vendem à banca, continuam a ir diretos.
+- **[A]** Se o anfitrião forçar o fecho, os jogadores mais valiosos de quem está em dívida vão para a banca até a dívida
+  acabar. Quem já não tiver nada para vender fica a zero.
+- As cartas más e as multas não aumentam uma dívida.
+
 ### 3.6 Fecho da janela
 - A janela fecha quando todos completaram as voltas e confirmaram **Fechar janela** (ou quando o anfitrião força).
 - Durante a janela o plantel não tem limite. No fecho, só podes ficar com o **onze**, que tem de encaixar na formação
@@ -230,7 +243,8 @@ percentagens e fases estão em `CONFIG.mercado`.
 - Todos contra todos, a duas voltas (treinadores e bots). **[A]** Com número ímpar de equipas, há uma folga por
   jornada.
 - Vitória 3, empate 1, derrota 0. Desempate pela diferença de golos.
-- **Dinheiro de TV igual para todos**, pago a cada jornada. Os **salários** são cobrados a cada jornada.
+- **Dinheiro de TV igual para todos**, pago a cada jornada, e cada vez maior: acompanha os preços do Mercado da época
+  seguinte (40 a 170 M€ por época, em `CONFIG.campeonato.tvPorFase`). Os **salários** são cobrados a cada jornada.
 - Não há prémios de classificação.
 - Os jogos de uma jornada decorrem **todos ao mesmo tempo**. **[A]** Cada período dura ~4 s no ecrã.
 - **[A]** A jornada seguinte começa quando todos carregam em **Continuar** (ou quando o anfitrião força).
@@ -342,17 +356,17 @@ grande investimento, e pagam **igual ou mais** do que os grandes.
 
 ### 5.2 Lista
 - **Marcas**
-  - grandes: Naik, Abadidas, Pumba, Old Balance;
+  - grandes: Like, Abidas, Fuma, Old Balance;
   - médias: Ombru, Lappa, Castrole, Marcon, Hammer;
-  - baixas: Lergea, Rikelme, Erreia, Toma, Kotto, Upper Armor;
-  - iniciais: Larcatoni, CTD, Diadura, Girvova, Partick.
+  - baixas: Lergea, Rikelme, Erreia, Toma, Cotto, Upper Armour;
+  - iniciais: Carlatoni, CTD, Diadura, Givulva, Batrick.
 - **Patrocínios**
-  - altos: Scotify, Fly Emigreats, Tecatar Airways, Naointendo, CEGA, SONIA, BID;
-  - médios: Betrano, Betcrica, Solgreen, LeBollo, TimViewer, Jipe, Repsun;
-  - baixos: Super Cock, Cerveja Conal, Estrella Dapicia, GIDI, MEU, NOZ, Palcard, Vodafode;
-  - iniciais: JF Canha, SPARVO, Jardins Paulo Meira, CarCanhola, Restaurante "Peixaxa", Marisqueira "Mexilhão
-    D'Molho", Construções Lomba, Café Central de Torres Novas, Colchões Camarrata, Bar de Alterne "O Pau", Mastur Bar,
-    Bar Dalloca, REMIX, GandaPreço, Águas d'Mijo, Convento de Freire, Ping Doce, Arquipélago.
+  - altos: Sportify, Fly Emigrants, Ratar Airways, Nãotendo, CEGA, SONIA;
+  - médios: Betanus, Betcrica, Solvermelho, LeBollo, TimViewer23, Jipe;
+  - baixos: Super Cock, Cerveja Conal, GIDI, MEU, NOZ, Palcard, Vodafode, Sabres;
+  - iniciais: JF Canha, SPARVO, Jardins Paulo Meira, CarCanhola, Restaurante Peixaxa,
+    Construções Lomba, Café o Relógio, Colchões Camarrata, Bar de Alterne O Pau, Mastur Bar,
+    Bar Dalloca, REMIX, GandaPreço, Água dos Mijos, Convento de Freires, Ping Doce, Arquipélago.
 
 ## 6. Janela de inverno
 Abre com três coisas:

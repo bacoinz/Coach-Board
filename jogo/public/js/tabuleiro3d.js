@@ -4,7 +4,7 @@
 import * as THREE from '/vendor/three.min.js';
 import { CONFIG } from './comum/config.gen.js';
 import { Relvado } from './relvado.js';
-import { CASA, desenharSimbolo, pintarFundo, textoAjustado } from './casas.js';
+import { CASA, pintarCasa, pintarCostas } from './casas.js';
 
 // As texturas desenham texto: só depois de a letra estar carregada.
 await document.fonts?.load('800 40px Inter').catch(() => {});
@@ -71,82 +71,7 @@ function textura(desenhar, largura, altura) {
   return t;
 }
 
-function texturaCasa(tipo) {
-  const casa = CASA[tipo];
-  const nome = (casa.rotulo ?? casa.nome).toUpperCase();
-  return textura((c, W, H) => {
-    pintarFundo(c, tipo, W, H);
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    if (tipo === 'inicio') return pintarBalneario(c, W, H);
-    if (tipo === 'sad') return pintarSAD(c, W, H);
-    if (casa.inteira) {
-      c.shadowColor = '#0009';
-      c.shadowBlur = 12;
-      c.shadowOffsetY = 3;
-      c.fillStyle = casa.texto;
-      textoAjustado(c, nome, W / 2, H / 2, W * 0.92, 92);
-      return;
-    }
-    // O símbolo em grande, cortado pelo fundo da casa, e o nome numa faixa branca.
-    const S = H * 0.86;
-    const faixa = H * 0.27;
-    desenharSimbolo(c, tipo, (W - S) / 2, faixa + H * 0.05, S);
-    const g = c.createLinearGradient(0, 0, 0, faixa);
-    g.addColorStop(0, '#ffffff');
-    g.addColorStop(1, '#ece6da');
-    c.fillStyle = g;
-    c.fillRect(0, 0, W, faixa);
-    c.fillStyle = '#0005';
-    c.fillRect(0, faixa, W, 4);
-    c.fillStyle = '#17110c';
-    textoAjustado(c, nome, W / 2, faixa / 2 + 3, W * 0.94, 56);
-  }, 512, 320);
-}
-
-/** O canto de partida: os cacifos ao fundo, o nome e a seta a mostrar para onde se anda. */
-function pintarBalneario(c, W, H) {
-  const { texto } = CASA.inicio;
-  c.save();
-  c.globalAlpha = 0.24;
-  c.strokeStyle = texto;
-  c.fillStyle = texto;
-  c.lineWidth = 5;
-  const n = 6;
-  const largura = (W - 40) / n;
-  for (let i = 0; i < n; i++) {
-    const x = 20 + i * largura;
-    c.strokeRect(x + 3, 14, largura - 6, H * 0.3);
-    c.fillRect(x + largura - 22, 24, 8, 26);
-  }
-  c.fillRect(20, H * 0.33 + 14, W - 40, 12);
-  c.restore();
-  c.fillStyle = texto;
-  textoAjustado(c, 'BALNEÁRIO', W / 2, H * 0.57, W * 0.86, 76);
-  const y = H * 0.82;
-  c.beginPath();
-  c.moveTo(W * 0.92, y - 17);
-  c.lineTo(W * 0.27, y - 17);
-  c.lineTo(W * 0.27, y - 42);
-  c.lineTo(W * 0.1, y);
-  c.lineTo(W * 0.27, y + 42);
-  c.lineTo(W * 0.27, y + 17);
-  c.lineTo(W * 0.92, y + 17);
-  c.closePath();
-  c.fill();
-}
-
-/** A mesa da reunião com a administração, com o nome escrito em cima. */
-function pintarSAD(c, W, H) {
-  const S = H * 0.88;
-  const largura = (S * 160) / 90;
-  const y = (H - S) / 2;
-  desenharSimbolo(c, 'sad', (W - largura) / 2, y, S);
-  c.fillStyle = CASA.sad.texto;
-  const meio = y + (S * 54) / 90;
-  textoAjustado(c, 'REUNIÃO COM A', W / 2, meio - 44, largura * 0.5, 30);
-  textoAjustado(c, 'SAD', W / 2, meio + 16, largura * 0.5, 92);
-}
+const texturaCasa = (tipo) => textura((c, W, H) => pintarCasa(c, tipo, W, H), 512, 320);
 
 /** Assentos e público em tons claros: a cor da equipa da casa vem da cor do material. */
 function texturaAssentos() {
@@ -163,24 +88,7 @@ function texturaAssentos() {
   }, 256, 160);
 }
 
-/** As costas de uma carta: o nome em cima e o símbolo da casa em baixo. */
-function texturaBaralho(tipo) {
-  const casa = CASA[tipo];
-  return textura((c, W, H) => {
-    pintarFundo(c, tipo, W, H);
-    c.strokeStyle = '#ffffffd0';
-    c.lineWidth = 11;
-    c.strokeRect(20, 20, W - 40, H - 40);
-    c.fillStyle = casa.texto;
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    const nome = casa.nome.toUpperCase();
-    const linhas = nome.length > 14 ? [nome.slice(0, nome.lastIndexOf(' ')), nome.slice(nome.lastIndexOf(' ') + 1)] : [nome];
-    linhas.forEach((l, i) => textoAjustado(c, l, W / 2, H * 0.17 + i * 54, W - 76, 50));
-    const S = W * 0.64;
-    desenharSimbolo(c, tipo, (W - S) / 2, H * 0.4, S);
-  }, 360, 504);
-}
+const texturaBaralho = (tipo) => textura((c, W, H) => pintarCostas(c, tipo, W, H), 360, 504);
 
 function texturaMoeda(tipo) {
   return textura((c, W) => {

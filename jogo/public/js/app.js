@@ -6,6 +6,9 @@ import { onzeEscolhido, overallNaPosicao } from './comum/formacao.gen.js';
 import { equipamentoSVG, emblemaSVG, PADROES } from './equipamento.js';
 import { moedaEmpresarioSVG, moedaMedicoSVG } from './moedas.js';
 import { CASA, instalarFundos, simboloSVG } from './casas.js';
+import { abrirCriadorEmblema } from './emblemas.js';
+import { botaoCor, corEmEdicao } from './seletor-cor.js';
+import { LOGOS } from './comum/logos.gen.js';
 import { tocar, volume, mudarVolume } from './som.js';
 import { cartaHTML, miniCartaHTML, posicao, nivel } from './carta.js';
 import { campoHTML } from './campo.js';
@@ -104,13 +107,29 @@ function desenhar() {
 
 // --- Lobby ---
 
+// Cada cartão só se desenha quando muda: assim ninguém perde o que está a escrever ou a arrastar quando outro treinador mexe.
+const lobbyDesenhado = new Map();
+function cartaoLobby(id, html) {
+  if (lobbyDesenhado.get(id) === html && $(`#${id}`).innerHTML) return;
+  lobbyDesenhado.set(id, html);
+  $(`#${id}`).innerHTML = html;
+}
+
 function desenharLobby() {
   const eu = minhaEquipa();
   const anf = souAnfitriao();
-  const editorAberto = $('#editor-equipa')?.contains(document.activeElement);
+  if (!$('#lobby-sala')) {
+    lobbyDesenhado.clear();
+    $('#lobby').innerHTML = `
+      <section id="lobby-sala" class="cartao lobby-area-sala"></section>
+      <section id="lobby-treinadores" class="cartao lobby-area-treinadores"></section>
+      <section id="lobby-config" class="cartao lobby-config lobby-area-config"></section>
+      <section id="editor-equipa" class="cartao lobby-area-equipa"></section>
+      <section id="lobby-pronto" class="cartao lobby-area-pronto"></section>`;
+  }
   const equipas = S.treinadores.filter((t) => !t.saiu).map((t) => {
     const e = equipa(t.equipa);
-    return `<li class="linha-equipa${t.id === EU.id ? ' eu' : ''}${t.ligado ? '' : ' desligado'}">${kit(e, 38)}
+    return `<li class="linha-equipa${t.id === EU.id ? ' eu' : ''}${t.ligado ? '' : ' desligado'}">${emblemaSVG(e, 38)}${kit(e, 38)}
       <span class="quem"><strong>${esc(e.nome)}</strong><small><span class="ponto" style="display:inline-block;background:${t.cor}"></span> ${esc(t.nome)}${S.anfitriao === t.id ? ' <span class="coroa" title="Anfitrião">👑</span>' : ''}</small></span>
       <span class="etiqueta${t.pronto ? ' etiqueta-pronto' : ''}">${t.pronto ? 'Pronto' : 'A preparar'}</span></li>`;
   }).join('');
@@ -121,54 +140,69 @@ function desenharLobby() {
   const botExtra = S.config.bots === 0 && treinadores % 2 === 1;
   const total = treinadores + S.config.bots + (botExtra ? 1 : 0);
   const jornadas = 2 * (total % 2 ? total : total - 1);
-  const html = `
-    <section class="cartao ocupa-tudo">
+  const { maxBots } = CONFIG.sala;
+  cartaoLobby('lobby-sala', `
       <div class="lobby-sala">
         <div><p class="rotulo">Sala</p><p class="codigo-grande">${S.codigo}</p></div>
         <button class="btn btn-fantasma" type="button" data-acao="copiar">Copiar link</button>
       </div>
-      <p class="nota">Partilha o link no Discord. Quem entrar depois de a partida começar fica a ver até à janela seguinte.</p>
-    </section>
-    <section class="cartao">
-      <p class="rotulo">Treinadores <small>(${S.treinadores.filter((t) => !t.saiu).length}/${CONFIG.sala.maxTreinadores})</small></p>
-      <ul class="lista-equipas">${equipas}</ul>
-    </section>
-    <section class="cartao lobby-config">
+      <p class="nota">Partilha o link no Discord. Quem entrar depois de a partida começar fica a ver até à janela seguinte.</p>`);
+  cartaoLobby('lobby-treinadores', `
+      <p class="rotulo">Treinadores <small>(${treinadores}/${CONFIG.sala.maxTreinadores})</small></p>
+      <ul class="lista-equipas">${equipas}</ul>`);
+  cartaoLobby('lobby-config', `
       <p class="rotulo">Duração</p>
       <div class="segmentos" role="radiogroup" aria-label="Duração">${CONFIG.sala.epocas.map((n) => seg('epocas', n, `${n} épocas`)).join('')}</div>
-      <p class="rotulo">Equipas bot</p>
-      <div class="segmentos" role="radiogroup" aria-label="Número de bots">${[0, 1, 2, 3, 4, 5, 6].map((n) => seg('bots', n, String(n))).join('')}</div>
+      <label class="rotulo slider-rotulo" for="slider-bots">Equipas bot <strong id="valor-bots">${S.config.bots}</strong></label>
+      <input id="slider-bots" class="slider" type="range" min="0" max="${maxBots}" step="1" value="${S.config.bots}" style="--p:${(S.config.bots / maxBots) * 100}%" ${anf ? '' : 'disabled'}>
+      <div class="slider-marcas" aria-hidden="true">${Array.from({ length: maxBots + 1 }, (_, n) => `<span>${n}</span>`).join('')}</div>
       <div class="segmentos" role="radiogroup" aria-label="Nível dos bots">${seg('nivelBots', 'inferior', 'Inferior', 'overall mais baixo')}${seg('nivelBots', 'equivalente', 'Equivalente', 'como os treinadores')}</div>
-      <p class="nota">${anf ? 'És o anfitrião.' : 'Só o anfitrião muda a configuração.'} ${total} equipas = ${jornadas} jornadas por época.${botExtra ? ' Como são ímpares, entra 1 bot para todos jogarem sempre.' : ''}</p>
-    </section>
-    <section id="editor-equipa" class="cartao ocupa-tudo"></section>
-    <section class="cartao ocupa-tudo">
-      <button class="btn ${treinador(EU.id).pronto ? 'btn-fantasma' : 'btn-principal'}" type="button" data-acao="pronto">${treinador(EU.id).pronto ? 'Afinal, ainda não' : 'Estou pronto'}</button>
-      ${anf ? `<button class="btn btn-principal" type="button" data-acao="comecar" ${S.faltaParaComecar ? 'disabled' : ''}>Começar partida</button>` : ''}
-      <p class="nota centro">${esc(S.faltaParaComecar ?? (anf ? 'Todos prontos: podes começar.' : 'À espera do anfitrião.'))}</p>
-    </section>`;
-  const editor = $('#editor-equipa')?.innerHTML;
-  $('#lobby').innerHTML = html;
-  if (editorAberto && editor) $('#editor-equipa').innerHTML = editor;
-  else desenharEditor(eu);
+      <p class="nota">${anf ? 'És o anfitrião.' : 'Só o anfitrião muda a configuração.'} ${total} equipas = ${jornadas} jornadas por época.${botExtra ? ' Como são ímpares, entra 1 bot para todos jogarem sempre.' : ''}</p>`);
+  desenharEditor(eu);
+  cartaoLobby('lobby-pronto', `
+      <div class="lobby-botoes">
+        <button class="btn ${treinador(EU.id).pronto ? 'btn-fantasma' : 'btn-principal'}" type="button" data-acao="pronto">${treinador(EU.id).pronto ? 'NÃO ESTOU PRONTO' : 'Estou pronto'}</button>
+        ${anf ? `<button class="btn btn-principal" type="button" data-acao="comecar" ${S.faltaParaComecar ? 'disabled' : ''}>Começar partida</button>` : ''}
+      </div>
+      <p class="nota centro">${esc(S.faltaParaComecar ?? (anf ? 'Todos prontos: podes começar.' : 'À espera do anfitrião.'))}</p>`);
 }
 
+function previaEquipaHTML(e) {
+  return `<button class="emblema-botao" type="button" data-acao="abrir-emblema" aria-label="Mudar o emblema">${emblemaSVG(e, 88)}<span>${e.emblema ? 'Mudar emblema' : 'Criar emblema'}</span></button>
+    ${equipamentoSVG({ ...e.kit, tamanho: 132 })}`;
+}
+
+function padroesHTML(kitAtual) {
+  return PADROES.map((p) => `
+    <button class="segmento" type="button" role="radio" aria-checked="${p.id === kitAtual.padrao}" data-padrao="${p.id}" title="${p.nome}">${equipamentoSVG({ ...kitAtual, padrao: p.id, tamanho: 44 })}<small>${p.curto}</small></button>`).join('');
+}
+
+/** O equipamento e o emblema mudam logo; o nome e as cores não se tocam enquanto o treinador mexe neles. */
 function desenharEditor(e) {
-  $('#editor-equipa').innerHTML = `
-    <p class="rotulo">A tua equipa</p>
-    <div class="editor-equipa">
-      <div class="editor-previa">${equipamentoSVG({ ...e.kit, tamanho: 112 })}
-        <div class="emblema-vazio" title="O emblema chega no passo 7">Emblema<br>(em breve)</div></div>
-      <div class="lobby-config">
-        <input id="nome-equipa" class="campo" maxlength="24" value="${esc(e.nome)}" aria-label="Nome da equipa">
-        <div class="cores">
-          <label class="cor"><input id="cor-1" type="color" value="${e.kit.principal}"> Principal</label>
-          <label class="cor"><input id="cor-2" type="color" value="${e.kit.secundaria}"> Secundária</label>
+  const caixa = $('#editor-equipa');
+  if (!caixa.innerHTML) {
+    caixa.innerHTML = `
+      <p class="rotulo">A tua equipa</p>
+      <div class="editor-equipa">
+        <div class="editor-previa"></div>
+        <div class="lobby-config">
+          <input id="nome-equipa" class="campo" maxlength="24" aria-label="Nome da equipa">
+          <div class="cores">${botaoCor(e.kit.principal, 'Principal', 'id="cor-1"')}${botaoCor(e.kit.secundaria, 'Secundária', 'id="cor-2"')}</div>
+          <div class="padroes" role="radiogroup" aria-label="Equipamento"></div>
         </div>
-        <div class="padroes" role="radiogroup" aria-label="Equipamento">${PADROES.map((p) => `
-          <button class="segmento" role="radio" aria-checked="${p.id === e.kit.padrao}" data-padrao="${p.id}" title="${p.nome}">${equipamentoSVG({ ...e.kit, padrao: p.id, tamanho: 34 })}<small>${p.curto}</small></button>`).join('')}</div>
-      </div>
-    </div>`;
+      </div>`;
+  }
+  const nome = $('#nome-equipa');
+  if (document.activeElement !== nome) nome.value = e.nome;
+  for (const [id, cor] of [['#cor-1', e.kit.principal], ['#cor-2', e.kit.secundaria]]) {
+    const b = $(id);
+    if (corEmEdicao(b)) continue;
+    b.value = cor;
+    b.querySelector('.cor-amostra').style.background = cor;
+  }
+  const kitAtual = { ...e.kit, principal: $('#cor-1').value, secundaria: $('#cor-2').value };
+  $('.editor-previa').innerHTML = previaEquipaHTML({ ...e, kit: kitAtual });
+  $('.padroes').innerHTML = padroesHTML(kitAtual);
 }
 
 // --- Jogo ---
@@ -328,6 +362,7 @@ function centroTabuleiro() {
 }
 
 function painelAcao() {
+  if (S.fase !== 'fimEpoca') passoFimEpoca = 1;
   if (S.fase === 'fim') return painelFim();
   if (S.fase === 'fimEpoca') return painelFimEpoca();
   if (S.fase === 'campeonato') return painelCampeonato();
@@ -340,6 +375,9 @@ function painelAcao() {
   return painelTabuleiro(e);
 }
 
+/** Durante a janela pode-se ficar em saldo negativo, até ao limite. */
+const podePagar = (e, valor) => e.dinheiro - valor >= S.saldoMinimo;
+
 function painelFormacao(e) {
   const j = S.janela;
   const falta = Object.values(S.equipas).filter((x) => x.treinador && !x.espera && !j.prontos.includes(x.id)).map((x) => esc(x.nome));
@@ -350,7 +388,7 @@ function painelFormacao(e) {
     <div class="segmentos">${botoes}</div>
     ${emprestados.map((x) => `<div class="destaque-carta"><div class="carta-clicavel" data-jogador="${x.id}">${cartaHTML(x, { tamanho: 'pequena' })}</div>
       <div class="leilao-info info-esquerda"><p>${esc(x.curto)} estava emprestado e sai quando escolheres a formação. Podes comprá-lo.</p>
-      <button class="btn btn-principal" data-acao="comprar_emprestado" data-jogador="${x.id}" ${e.dinheiro < x.valor ? 'disabled' : ''}>Comprar por ${dinheiro(x.valor)}</button></div></div>`).join('')}
+      <button class="btn btn-principal" data-acao="comprar_emprestado" data-jogador="${x.id}" ${podePagar(e, x.valor) ? '' : 'disabled'}>Comprar por ${dinheiro(x.valor)}</button></div></div>`).join('')}
     <p class="nota">${falta.length ? `Falta: ${falta.join(', ')}` : ''}</p>`;
 }
 
@@ -372,7 +410,7 @@ function painelDraft(e) {
   const tipo = atual.tipo === 'jovem' ? 'jovem promessa' : 'segunda escolha (só se vende à banca)';
   const cartas = d.opcoes.map(({ id, preco }) => {
     const jg = jogador(id);
-    const botao = minha ? `<button class="btn btn-principal btn-mini" data-acao="draft" data-jogador="${id}" ${e.dinheiro < preco ? 'disabled' : ''}>Escolher · ${dinheiro(preco)}</button>` : `<span class="nota">${dinheiro(preco)}</span>`;
+    const botao = minha ? `<button class="btn btn-principal btn-mini" data-acao="draft" data-jogador="${id}" ${podePagar(e, preco) ? '' : 'disabled'}>Escolher · ${dinheiro(preco)}</button>` : `<span class="nota">${dinheiro(preco)}</span>`;
     return `<div class="opcao"><div class="carta-clicavel" data-jogador="${id}">${cartaHTML(jg, { tamanho: 'pequena' })}</div>${botao}</div>`;
   }).join('');
   return `<h2 class="painel-titulo">Draft</h2>
@@ -391,7 +429,7 @@ function painelLeilao(e) {
   const participo = l.participantes.includes(e.id) && !l.desistiram.includes(e.id);
   const souLider = l.lider === e.id;
   const minimo = l.lider ? Math.round((l.valor + CONFIG.leilao.incrementoMinimo) * 10) / 10 : l.minimo;
-  const origem = l.origem === 'mesa' ? 'Leilão da carta' : `Proposta por um jogador de ${nomeEquipa(l.vendedor)}${l.obrigatorio ? ' · cláusula batida: venda obrigatória' : ''}`;
+  const origem = l.origem === 'mesa' ? 'Leilão da carta' : l.origem === 'divida' ? `Leilão forçado: ${nomeEquipa(l.vendedor)} está em saldo negativo` : `Proposta por um jogador de ${nomeEquipa(l.vendedor)}${l.obrigatorio ? ' · cláusula batida: venda obrigatória' : ''}`;
   const ativos = l.participantes.filter((x) => x !== l.lider && !l.desistiram.includes(x)).map(nomeEquipa);
   let acoes = '';
   if (l.fase === 'decisao') {
@@ -403,13 +441,14 @@ function painelLeilao(e) {
     const valor = lanceProposto != null && lanceProposto >= minimo ? lanceProposto : minimo;
     acoes = `<div class="lance-linha"><div class="lance">
         <input id="valor-lance" class="campo" type="number" step="0.5" min="${minimo}" value="${valor}" aria-label="Valor do lance (M€)">
-        <button class="btn btn-principal" data-acao="licitar" ${e.dinheiro < minimo ? 'disabled' : ''}>Licitar</button>
+        <button class="btn btn-principal" data-acao="licitar" ${podePagar(e, minimo) ? '' : 'disabled'}>Licitar</button>
       </div>
       <div class="linha-botoes">
         ${[0, 1, 5].map((x) => `<button class="btn btn-mini" data-acao="lance-rapido" data-valor="${Math.round((minimo + x) * 10) / 10}">${dinheiro(minimo + x)}</button>`).join('')}
-        <button class="btn btn-contorno btn-mini" data-acao="desistir">${l.origem === 'mesa' ? 'Passar' : 'Desistir'}</button>
+        <button class="btn btn-contorno btn-mini" data-acao="desistir">${l.origem === 'proposta' ? 'Desistir' : 'Passar'}</button>
       </div></div>`;
   } else if (souLider) acoes = '<p><strong>Tens o lance mais alto.</strong></p>';
+  else if (l.origem === 'divida' && l.vendedor === e.id) acoes = `<p class="nota">O jogador é vendido a quem der mais. Se ninguém licitar, vai para a banca por ${dinheiro(jg.valor * CONFIG.valores.precoBase)}.</p>`;
   else acoes = `<p class="nota">${l.desistiram.includes(e.id) ? 'Já passaste.' : 'Não podes licitar neste leilão.'}</p>`;
   return `<h2 class="painel-titulo">${origem}</h2>
     <div class="destaque-carta"><div class="carta-clicavel" data-jogador="${jg.id}">${cartaHTML(jg)}</div>
@@ -450,8 +489,8 @@ function painelTabuleiro(e) {
           <p class="nota">Valor ${dinheiro(jg.valor)}</p>
           <p class="nota">${esc(jg.clube)} · ${jg.idade} anos</p>
           ${p.equipa === e.id
-            ? `<div class="linha-botoes"><button class="btn btn-principal" data-acao="comprar" ${e.dinheiro < preco || sancionado ? 'disabled' : ''}>Comprar</button><button class="btn btn-contorno" data-acao="passar">Passar</button></div>
-               <p class="nota">${sancionado ? 'Estás sancionado: já não podes contratar nesta janela.' : 'Se passares, vai a leilão pelo preço original mas não podes participar.'}</p>`
+            ? `<div class="linha-botoes"><button class="btn btn-principal" data-acao="comprar" ${!podePagar(e, preco) || sancionado ? 'disabled' : ''}>Comprar</button><button class="btn btn-contorno" data-acao="passar">Passar</button></div>
+               <p class="nota">${sancionado ? 'Estás sancionado: já não podes contratar nesta janela.' : 'Se passares, vai a leilão pelo preço original mas não podes participar.'}${e.dinheiro < preco ? ' Se comprares, ficas em saldo negativo e tens de o resolver antes do fim da janela.' : ''}</p>`
             : `<p class="nota">${nomeEquipa(p.equipa)} decide se compra.</p>`}
         </div></div>`;
   } else if (p?.tipo === 'rede') {
@@ -464,9 +503,12 @@ function painelTabuleiro(e) {
     const dono = equipa(p.equipa);
     html += `${cabecalhoCasa('patrocinio')}
       <div class="carta-evento evento-patrocinio">
-        <p class="rotulo">${contrato}</p>
-        <p class="evento-titulo">${esc(p.nome)}</p>
-        <p>Prémio de assinatura: <strong>${dinheiro(p.premio)}</strong></p>
+        ${LOGOS[p.nome] ? `<img class="patrocinio-logo" src="${LOGOS[p.nome]}" alt="${esc(p.nome)}">` : simboloSVG('patrocinio', 76)}
+        <div>
+          <p class="rotulo">${contrato}</p>
+          ${LOGOS[p.nome] ? '' : `<p class="evento-titulo">${esc(p.nome)}</p>`}
+          <p>Prémio de assinatura: <strong>${dinheiro(p.premio)}</strong></p>
+        </div>
       </div>
       ${p.equipa !== e.id ? `<p class="nota">${nomeEquipa(p.equipa)} decide.</p>` : p.bloqueio
         ? `<p class="nota">${esc(p.bloqueio)}</p><button class="btn btn-contorno" data-acao="patrocinio">Recusar</button>`
@@ -494,15 +536,16 @@ function acaoBarra(e) {
   const minha = j.ordem[j.vez] === e.id && !todos;
   const botoes = [];
   if (minha) botoes.push(!j.lancou && !acabei ? '<button class="btn btn-branco" data-acao="lancar">Lançar dados</button>' : '<button class="btn btn-branco" data-acao="terminar_vez">Terminar a vez</button>');
+  const divida = e.dinheiro < 0 ? `<span class="barra-sancao">Saldo negativo: leiloa jogadores do plantel</span>` : '';
   const sancao = e.limiteContratacoes != null ? `<span class="barra-sancao">Sanção: ${e.limiteContratacoes === 0 ? 'não podes contratar' : `só mais ${e.limiteContratacoes} ${e.limiteContratacoes === 1 ? 'contratação' : 'contratações'}`}</span>` : '';
   // Depois de dar a volta e de terminar a última vez, só falta ir para o campeonato.
   if (acabei && !minha) {
     const pronto = j.prontos.includes(e.id);
     const texto = j.tipo === 'verao' ? 'Começar campeonato' : 'Começar a 2.ª volta do campeonato';
-    botoes.push(`<button class="btn ${pronto ? 'btn-fantasma' : 'btn-principal'}" data-acao="pronto_fechar" data-pronto="${pronto ? '' : '1'}">${pronto ? 'Afinal, ainda não' : texto}</button>`);
+    botoes.push(`<button class="btn ${pronto ? 'btn-fantasma' : 'btn-principal'}" data-acao="pronto_fechar" data-pronto="${pronto ? '' : '1'}" ${e.dinheiro < 0 ? 'disabled' : ''}>${pronto ? 'NÃO ESTOU PRONTO' : texto}</button>`);
   }
   const dica = acabei && !minha ? (todos ? '' : 'Deste a volta: à espera dos outros treinadores.') : minha ? 'Na tua vez também podes fazer propostas: clica num jogador no plantel de outra equipa.' : 'Enquanto esperas, podes vender à banca e propor trocas.';
-  return `${dica ? `<p class="nota barra-dica">${dica}</p>` : ''}${sancao}${botoes.join('')}`;
+  return `${dica && !divida ? `<p class="nota barra-dica">${dica}</p>` : ''}${divida}${sancao}${botoes.join('')}`;
 }
 
 function painelTrocas(e) {
@@ -767,42 +810,190 @@ function painelCampeonato() {
   return `${titulo}${c.competicao === 'taca' ? tabelaTacaHTML(S.estatisticasTaca) : tabelaLigaHTML()}`;
 }
 
-/** Os prémios de uma época. */
-function premiosHTML(p) {
-  const lista = (titulo, itens) => (itens.length ? `<p class="rotulo">${titulo}</p><ul class="palmares">${itens.map((m) => `<li><span>${esc(m.nome)} <small>${nomeEquipa(m.equipa)}</small></span><span class="titulos">${m.valor}</span></li>`).join('')}</ul>` : '');
-  const LINHAS = { GR: 'GR', DEF: 'Defesas', MED: 'Médios', AV: 'Avançados' };
-  const equipaEpoca = Object.entries(LINHAS).map(([l, nome]) => {
-    const nomes = p.equipa.filter((x) => x.linha === l).map((x) => esc(x.nome)).join(', ');
-    return nomes ? `<li><span>${nome}</span><span>${nomes}</span></li>` : '';
-  }).join('');
-  return `<div class="carta-evento evento-bom">
-      <p class="rotulo">Campeão da época ${p.epoca}</p>
-      <p class="evento-titulo">${nomeEquipa(p.campeao)}</p>
-      <p>${p.pontos} pontos${p.jogador ? ` · Jogador do ano: <strong>${esc(p.jogador.nome)}</strong>` : ''}${p.taca ? ` · Taça: <strong>${nomeEquipa(p.taca)}</strong>` : ''}</p>
+// --- Fim da época ---
+
+let abaFimEpoca = 'marcadores';
+let passoFimEpoca = 1; // 1: o campeão; 2: as melhorias do meu plantel
+let epocaCelebrada = null;
+
+const TACA_SVG = `<svg class="fim-taca" viewBox="0 0 120 130" aria-hidden="true">
+  <defs><linearGradient id="ouro" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".45" stop-color="#f2c14e"/><stop offset="1" stop-color="#a86f12"/></linearGradient></defs>
+  <path d="M28 14H10v14c0 19 13 31 28 33M92 14h18v14c0 19-13 31-28 33" fill="none" stroke="url(#ouro)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M28 6h64v30c0 25-13 42-32 42S28 61 28 36Z" fill="url(#ouro)"/>
+  <path d="M38 12v24c0 14 5 25 13 31" fill="none" stroke="#fff8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M53 78h14v18H53Z" fill="url(#ouro)"/>
+  <path d="M40 96h40a6 6 0 0 1 6 6v8H34v-8a6 6 0 0 1 6-6Z" fill="url(#ouro)"/>
+  <path d="M28 110h64a4 4 0 0 1 4 4v10H24v-10a4 4 0 0 1 4-4Z" fill="#4a2f0e"/>
+  <path d="M60 24l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1Z" fill="#fff6c9"/>
+</svg>`;
+
+/** Confétis por cima de tudo, com as cores do campeão e dourado, durante uns segundos. */
+function lancarConfetis(cores) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'confetis';
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+  document.body.append(canvas);
+  const c = canvas.getContext('2d');
+  const paleta = [...cores, '#f2c14e', '#ffffff'];
+  const pecas = Array.from({ length: 220 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -20 - Math.random() * canvas.height,
+    w: 6 + Math.random() * 7,
+    h: 9 + Math.random() * 9,
+    vy: 2.2 + Math.random() * 3,
+    vx: (Math.random() - 0.5) * 1.6,
+    a: Math.random() * 6.28,
+    va: (Math.random() - 0.5) * 0.25,
+    cor: paleta[Math.floor(Math.random() * paleta.length)],
+  }));
+  const inicio = performance.now();
+  const passo = (agora) => {
+    const t = agora - inicio;
+    c.clearRect(0, 0, canvas.width, canvas.height);
+    c.globalAlpha = t > 5500 ? Math.max(0, 1 - (t - 5500) / 1000) : 1;
+    for (const p of pecas) {
+      p.y += p.vy;
+      p.x += p.vx + Math.sin(p.a) * 0.7;
+      p.a += p.va;
+      if (p.y > canvas.height + 20 && t < 4000) p.y = -20;
+      c.save();
+      c.translate(p.x, p.y);
+      c.rotate(p.a);
+      c.scale(1, Math.abs(Math.cos(p.a)) * 0.8 + 0.2);
+      c.fillStyle = p.cor;
+      c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      c.restore();
+    }
+    if (t < 6500) requestAnimationFrame(passo);
+    else canvas.remove();
+  };
+  requestAnimationFrame(passo);
+}
+
+/** Uma vez por ecrã: os confétis e o som, mesmo que o painel se volte a desenhar. */
+function celebrar(chave, e) {
+  if (epocaCelebrada === chave) return;
+  epocaCelebrada = chave;
+  lancarConfetis([e.kit.principal, e.kit.secundaria]);
+  tocar('golo');
+}
+
+/** A equipa da época num campo, em 4-3-3: cada jogador no lugar da sua linha, de preferência na sua posição. */
+function campoEquipaEpoca(p) {
+  const formacao = '4-3-3';
+  const porLinha = (l) => p.equipa.filter((x) => x.linha === l).map((x) => S.jogadores[x.id]).filter(Boolean);
+  const livres = { GR: porLinha('GR'), DEF: porLinha('DEF'), MED: porLinha('MED'), AV: porLinha('AV') };
+  const posicoes = CONFIG.formacoes[formacao];
+  const lugares = posicoes.map((posicaoLugar) => ({ posicao: posicaoLugar, jogador: null }));
+  const colocar = (certo) => posicoes.forEach((posicaoLugar, i) => {
+    if (lugares[i].jogador != null) return;
+    const fila = livres[CONFIG.posicoes.linha[posicaoLugar]];
+    const k = certo ? fila.findIndex((x) => x.posicao === posicaoLugar) : 0;
+    if (k >= 0 && fila[k]) lugares[i].jogador = fila.splice(k, 1)[0].id;
+  });
+  colocar(true);
+  colocar(false);
+  return `<div class="campo-caixa fim-campo">${campoHTML(formacao, lugares, S.jogadores)}</div>`;
+}
+
+function listaPremio(titulo, itens) {
+  if (!itens?.length) return '';
+  const linhas = itens.map((m, i) => `<li><span class="fim-posicao">${i + 1}</span>${emblemaSVG(equipa(m.equipa), 22)}<span class="fim-nome">${esc(m.nome)}<small>${nomeEquipa(m.equipa)}</small></span><span class="titulos">${m.valor}</span></li>`).join('');
+  return `<p class="rotulo">${titulo}</p><ul class="palmares fim-lista">${linhas}</ul>`;
+}
+
+function listaMomentos(titulo, classe, itens) {
+  return `<div class="fim-momentos ${classe}"><p class="rotulo">${titulo}</p>${itens?.length ? `<ul>${itens.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : '<p class="nota">Nada a assinalar.</p>'}</div>`;
+}
+
+function ecraCampeao(f, p, e) {
+  const campeao = equipa(p.campeao);
+  const m = f.momentos ?? {};
+  const meus = e ? m.equipas?.[e.id] : null;
+  celebrar(`epoca-${p.epoca}`, campeao);
+  const separador = (aba, texto) => `<button class="separador-btn" role="tab" aria-selected="${abaFimEpoca === aba}" data-acao="fim-aba" data-aba="${aba}">${texto}</button>`;
+  const lateral = abaFimEpoca === 'equipa'
+    ? campoEquipaEpoca(p)
+    : `${listaPremio('Melhores marcadores', p.marcadores)}${listaPremio('Assistências', p.assistentes)}${listaPremio('Marcadores da Taça', p.tacaMarcadores)}${listaPremio('Assistências da Taça', p.tacaAssistentes)}`;
+  const pronto = e && f.prontos.includes(e.id);
+  const semMelhorias = f.ultima || !f.mudancas.some((x) => x.equipa === e?.id);
+  const botao = !e || e.espera ? '' : pronto ? '<p class="nota centro">À espera dos outros treinadores.</p>'
+    : semMelhorias ? `<button class="btn btn-principal" data-acao="continuar">${f.ultima ? 'Ver o palmarés' : 'Seguir para a próxima época'}</button>`
+      : '<button class="btn btn-principal" data-acao="fim-continuar">Continuar</button>';
+  return `<div class="fim-epoca">
+    <header class="fim-topo">
+      ${TACA_SVG}
+      <div class="fim-campeao">${emblemaSVG(campeao, 132)}</div>
+      <div class="fim-titulo">
+        <p class="rotulo">Campeão da época ${p.epoca}</p>
+        <h2>${esc(campeao.nome)}</h2>
+        <p>${mister(campeao)} · ${p.pontos} pontos${p.jogador ? ` · Jogador do ano: <strong>${esc(p.jogador.nome)}</strong>` : ''}${p.taca ? ` · Taça: <strong>${nomeEquipa(p.taca)}</strong>` : ''}</p>
+      </div>
+    </header>
+    <div class="fim-grelha">
+      <div class="fim-coluna">
+        <section class="fim-cartao"><p class="rotulo">Classificação</p>${tabelaLigaHTML()}</section>
+        <section class="fim-cartao">
+          <div class="fim-momentos-grelha">
+            ${meus ? listaMomentos('Os teus melhores momentos', 'momentos-bons', meus.bons) + listaMomentos('Os teus piores momentos', 'momentos-maus', meus.maus) : ''}
+            ${listaMomentos('O melhor da época', 'momentos-bons', m.geral?.bons)}
+            ${listaMomentos('O pior da época', 'momentos-maus', m.geral?.maus)}
+          </div>
+        </section>
+      </div>
+      <section class="fim-cartao fim-lateral">
+        <div class="separadores" role="tablist">${separador('marcadores', 'Marcadores e assistências')}${separador('equipa', 'Equipa da época')}</div>
+        ${lateral}
+      </section>
     </div>
-    ${lista('Marcadores', p.marcadores)}${lista('Assistências', p.assistentes)}
-    ${p.taca ? tabelaTacaHTML(p) : ''}
-    ${equipaEpoca ? `<p class="rotulo">Equipa da época</p><ul class="palmares">${equipaEpoca}</ul>` : ''}`;
+    <div class="fim-botao">${botao}</div>
+  </div>`;
+}
+
+/** Depois do campeão, o que mudou no meu plantel. Só ao continuar aqui é que a época acaba. */
+function ecraMelhorias(f, p, e) {
+  const minhas = f.mudancas.filter((x) => x.equipa === e.id);
+  const pronto = f.prontos.includes(e.id);
+  const cartas = minhas.map((m) => {
+    const jg = jogador(m.jogador);
+    const dif = m.depois - m.antes;
+    return `<div class="melhoria ${dif > 0 ? 'sobe' : dif < 0 ? 'desce' : ''}">
+      ${jg ? `<div class="carta-clicavel" data-jogador="${jg.id}">${cartaHTML(jg, { tamanho: 'pequena' })}</div>` : `<strong>${esc(m.nome)}`}
+      <p class="melhoria-valor"><span>${m.antes}</span> → <strong>${m.depois}</strong> <em>${dif > 0 ? '+' : ''}${dif}</em></p>
+      ${m.promovido ? '<small>Passa ao plantel principal</small>' : ''}
+    </div>`;
+  }).join('');
+  return `<div class="fim-epoca">
+    <h2 class="titulo titulo-medio centro">O teu plantel depois da época ${p.epoca}</h2>
+    <p class="nota centro">Quem jogou bem cresceu, e os anos pesam a quem já tem muitos.</p>
+    <div class="melhorias">${cartas}</div>
+    <div class="fim-botao">${pronto ? '<p class="nota centro">À espera dos outros treinadores.</p>' : '<button class="btn btn-principal" data-acao="continuar">Seguir para a próxima época</button>'}</div>
+  </div>`;
 }
 
 function painelFimEpoca() {
   const f = S.fimEpoca;
   const e = minhaEquipa();
   const p = S.premios.at(-1);
-  const minhas = f.mudancas.filter((m) => m.equipa === e?.id);
-  const mudancas = minhas.length ? `<p class="rotulo">O teu plantel</p><ul class="palmares">${minhas.map((m) => `<li><span>${esc(m.nome)}${m.promovido ? ' <small>passa ao plantel principal</small>' : ''}</span><span class="titulos">${m.antes} → ${m.depois}</span></li>`).join('')}</ul>` : '';
-  const pronto = e && f.prontos.includes(e.id);
-  return `<h2 class="painel-titulo">Fim da época ${p.epoca}</h2>
-    ${premiosHTML(p)}${tabelaLigaHTML()}${mudancas}
-    ${!e || e.espera ? '' : pronto ? '<p class="nota">À espera dos outros treinadores.</p>' : `<button class="btn btn-principal" data-acao="continuar">${f.ultima ? 'Ver o palmarés' : 'Seguir para a próxima época'}</button>`}`;
+  const temMelhorias = e && !f.ultima && f.mudancas.some((x) => x.equipa === e.id);
+  if (temMelhorias && (passoFimEpoca === 2 || f.prontos.includes(e.id))) return ecraMelhorias(f, p, e);
+  return ecraCampeao(f, p, e);
 }
 
 function painelFim() {
   const linhas = S.premios.map((p) => `<li><span>Época ${p.epoca}</span><span>${nomeEquipa(p.campeao)} <span class="titulos">CAMPEÃO</span>${p.taca ? ` · ${nomeEquipa(p.taca)} <span class="titulos">TAÇA</span>` : ''}</span></li>`).join('');
   const ranking = (S.ranking ?? []).map((r, i) => `<tr class="${r.equipa === EU.equipa ? 'eu' : ''}"><td>${i + 1}</td><td class="celula-equipa">${emblemaSVG(equipa(r.equipa), 22)}${nomeEquipa(r.equipa)}</td><td>${r.campeonatos}</td><td>${r.tacas}</td><td>${String(r.titulos).replace('.', ',')}</td><td class="pts">${r.pontos}</td></tr>`).join('');
-  return `<h2 class="painel-titulo">Fim da partida</h2>
+  const vencedor = S.ranking?.[0] && equipa(S.ranking[0].equipa);
+  if (vencedor) celebrar('fim', vencedor);
+  return `<div class="fim-epoca">${vencedor ? `<header class="fim-topo">
+      ${TACA_SVG}
+      <div class="fim-campeao">${emblemaSVG(vencedor, 132)}</div>
+      <div class="fim-titulo"><p class="rotulo">Vencedor da partida</p><h2>${esc(vencedor.nome)}</h2><p>${mister(vencedor)} · ${String(S.ranking[0].titulos).replace('.', ',')} títulos</p></div>
+    </header>` : ''}
     <table class="tabela tabela-liga"><thead><tr><th>#</th><th>Equipa</th><th>Camp.</th><th>Taças</th><th>Títulos</th><th>Pontos</th></tr></thead><tbody>${ranking}</tbody></table>
-    <p class="rotulo">Palmarés</p><ul class="palmares">${linhas}</ul>`;
+    <p class="rotulo">Palmarés</p><ul class="palmares">${linhas}</ul></div>`;
 }
 
 // --- À volta do tabuleiro: os treinadores, a barra de baixo e o menu ---
@@ -826,7 +1017,7 @@ function chipEquipa(e, vez) {
       ${emblemaSVG(e, 38)}
       <span class="chip-texto"><small>${mister(e)}</small><strong>${esc(e.nome)}</strong><span class="chip-moedas">${moedasHTML(e)}</span></span>
     </button>
-    ${e.bot ? '' : `<span class="chip-orcamento">${MOEDAS_ORCAMENTO}${dinheiro(e.dinheiro)}</span>`}
+    ${e.bot ? '' : `<span class="chip-orcamento${e.dinheiro < 0 ? ' saldo-negativo' : ''}">${MOEDAS_ORCAMENTO}${dinheiro(e.dinheiro)}</span>`}
   </div>`;
 }
 
@@ -946,16 +1137,35 @@ function valorContrato(genero, categoria) {
   return CONFIG.patrocinios.premios[genero][categoria];
 }
 
+/** Um contrato no rodapé: o logo, ou o nome enquanto não houver logo. O nome e o valor aparecem ao passar o rato. */
+let contratoAmpliado = null; // o logo que se clicou para ver melhor
+function contratoHTML(nome, genero, categoria) {
+  const info = `<span class="barra-contrato-info" role="tooltip">${esc(nome)}<small>${dinheiro(valorContrato(genero, categoria))}</small></span>`;
+  return LOGOS[nome]
+    ? `<button class="barra-contrato${contratoAmpliado === nome ? ' ampliado' : ''}" type="button" data-contrato="${esc(nome)}"><img class="barra-contrato-logo" src="${LOGOS[nome]}" alt="${esc(nome)}">${info}</button>`
+    : `<span class="barra-contrato barra-contrato-texto" tabindex="0"><span>${esc(nome)}</span>${info}</span>`;
+}
+
+function ampliarContrato(nome) {
+  contratoAmpliado = nome;
+  $$('[data-contrato]').forEach((b) => b.classList.toggle('ampliado', b.dataset.contrato === nome));
+}
+
+// O logo ampliado volta ao tamanho normal quando o rato sai dele.
+document.addEventListener('mouseover', (ev) => {
+  if (contratoAmpliado && !ev.target.closest?.('.barra-contrato.ampliado')) ampliarContrato(null);
+});
+
 function barraMinhaHTML(e) {
   const contratos = e.marca ? [
-    `${esc(e.marca)} <span class="valor-contrato">(${dinheiro(valorContrato('marca', e.categorias?.marca))})</span>`,
-    ...e.patrocinios.map((p, i) => `${esc(p)} <span class="valor-contrato">(${dinheiro(valorContrato('patrocinio', e.categorias?.patrocinios?.[i]))})</span>`),
-  ].join(' · ') : '';
+    contratoHTML(e.marca, 'marca', e.categorias?.marca),
+    ...e.patrocinios.map((p, i) => contratoHTML(p, 'patrocinio', e.categorias?.patrocinios?.[i])),
+  ].join('') : '';
   return `<div class="barra-clube">
       ${emblemaSVG(e, 54)}${kit(e, 48)}
       <div class="barra-clube-texto"><strong>${esc(e.nome)}</strong><small>${mister(e)}</small></div>
     </div>
-    <div class="barra-contratos"><strong class="barra-orcamento">${MOEDAS_ORCAMENTO}${dinheiro(e.dinheiro)}</strong><small>${contratos}</small></div>
+    <div class="barra-contratos"><strong class="barra-orcamento${e.dinheiro < 0 ? ' saldo-negativo' : ''}" title="Nesta época podes gastar até ficares com ${dinheiro(S.saldoMinimo)}">${MOEDAS_ORCAMENTO}${dinheiro(e.dinheiro)}</strong><div class="barra-lista-contratos">${contratos}</div></div>
     <div class="barra-moedas">${moedasHTML(e, 26)}</div>
     <div class="barra-redes">${e.redes.map((r) => `<span class="carta-rede" title="Rede de observação: ${esc(r)}">Rede<small>${esc(r)}</small></span>`).join('')}</div>
     <div class="barra-acao">${acaoBarra(e)}</div>
@@ -1446,7 +1656,12 @@ function abrirJogador(id) {
   const minhaVez = naJanela && j.fase === 'tabuleiro' && j.ordem[j.vez] === e.id && !j.leilao && !j.pendente && !j.contestacao;
   let acoes = '';
   if (naJanela && meu && !jg.emprestado) {
-    acoes += `<button id="pedir-venda" class="btn btn-fantasma" data-acao="pedir-venda">Vender à banca · ${dinheiro(jg.valor * CONFIG.valores.precoBase)}</button>
+    const emDivida = e.dinheiro < 0 && !jg.soBanca;
+    if (emDivida) {
+      const livre = j.fase === 'tabuleiro' && !j.leilao && !j.pendente && !j.contestacao;
+      acoes += `<button class="btn btn-principal" data-acao="leiloar_divida" data-jogador="${id}" ${livre ? '' : 'disabled'}>Leiloar · a partir de ${dinheiro(jg.valor * CONFIG.transferencias.leilaoDivida)}</button>
+        <p class="nota">Estás em saldo negativo: não podes vender à banca. Se ninguém licitar, vai para a banca por ${dinheiro(jg.valor * CONFIG.valores.precoBase)}.${livre ? '' : ' Há uma decisão por resolver: espera um pouco.'}</p>`;
+    } else acoes += `<button id="pedir-venda" class="btn btn-fantasma" data-acao="pedir-venda">Vender à banca · ${dinheiro(jg.valor * CONFIG.valores.precoBase)}</button>
       <div id="confirma-venda" class="confirma-venda" hidden>
         <p>Tens a certeza? Este jogador vai ser removido do teu plantel.</p>
         <div class="linha-botoes"><button class="btn btn-principal" data-acao="vender_banca" data-jogador="${id}">Sim, vender</button><button class="btn btn-contorno" data-acao="cancelar-venda">Cancelar</button></div>
@@ -1552,6 +1767,7 @@ function enviarEquipa() {
 }
 
 const ACOES = {
+  'abrir-emblema': () => abrirCriadorEmblema($('#dialogo-emblema'), equipa(treinador(EU.id).equipa), (dados) => enviar({ t: 'emblema', dados })),
   copiar: () => navigator.clipboard.writeText(`${location.origin}/sala/${S.codigo}`).then(() => toast('Link copiado.')),
   pronto: () => enviar({ t: 'pronto', pronto: !treinador(EU.id).pronto }),
   comecar: () => enviar({ t: 'comecar' }),
@@ -1636,6 +1852,19 @@ const ACOES = {
     enviar({ t: 'inflacionar', jogador: Number(d.jogador) });
     $('#dialogo-jogador').close();
   },
+  leiloar_divida: (d) => {
+    enviar({ t: 'leiloar_divida', jogador: Number(d.jogador) });
+    $('#dialogo-jogador').close();
+  },
+  'fim-aba': (d) => {
+    abaFimEpoca = d.aba;
+    desenharPainel();
+  },
+  'fim-continuar': () => {
+    passoFimEpoca = 2;
+    desenharPainel();
+    $('#col-acao').scrollTop = 0;
+  },
   vender_banca: (d) => {
     enviar({ t: 'vender_banca', jogador: Number(d.jogador) });
     $('#dialogo-jogador').close();
@@ -1664,6 +1893,9 @@ const ACOES = {
 };
 
 document.addEventListener('click', (ev) => {
+  const contrato = ev.target.closest('[data-contrato]');
+  if (contrato || contratoAmpliado) ampliarContrato(contrato && contrato.dataset.contrato !== contratoAmpliado ? contrato.dataset.contrato : null);
+  if (contrato) return;
   if (ev.target.matches('#dialogo-equipa')) {
     const r = ev.target.getBoundingClientRect();
     if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) return ev.target.close();
@@ -1697,9 +1929,24 @@ document.addEventListener('click', (ev) => {
 
 $('#dialogo-carta').addEventListener('cancel', (ev) => ev.preventDefault());
 
+// Enquanto se escolhe, o equipamento acompanha a cor e o slider o número de bots; só se envia no fim.
+document.addEventListener('input', (ev) => {
+  const t = ev.target;
+  if (t.matches('#cor-1, #cor-2')) {
+    const e = minhaEquipa();
+    const kitAtual = { ...e.kit, principal: $('#cor-1').value, secundaria: $('#cor-2').value };
+    $('.editor-previa').innerHTML = previaEquipaHTML({ ...e, kit: kitAtual });
+    $('.padroes').innerHTML = padroesHTML(kitAtual);
+  } else if (t.matches('#slider-bots')) {
+    $('#valor-bots').textContent = t.value;
+    t.style.setProperty('--p', `${(t.value / t.max) * 100}%`);
+  }
+});
+
 document.addEventListener('change', (ev) => {
   const t = ev.target;
   if (t.matches('#nome-equipa, #cor-1, #cor-2')) enviarEquipa();
+  else if (t.matches('#slider-bots')) enviar({ t: 'config', bots: Number(t.value) });
   else if (t.matches('#volume')) {
     mudarVolume(Number(t.value));
     tocar('dado');

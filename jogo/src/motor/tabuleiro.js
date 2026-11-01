@@ -1,8 +1,8 @@
 // O tabuleiro de mercado: vezes, dados, casas e as decisões de cada casa.
 import { CONFIG } from '../config.js';
 import { dado } from './aleatorio.js';
-import { jogador, reservar, libertar, receber, registar, erro, M } from './estado.js';
-import { tirarMercado, tirarJovemTalento, tirarRede } from './cartas.js';
+import { jogador, reservar, libertar, receber, registar, erro, M, podePagar, textoSaldo } from './estado.js';
+import { tirarMercado, tirarJovemTalento, tirarRede, faseMercado } from './cartas.js';
 import { abrirLeilao, executarVenda, prepararJovem } from './negocios.js';
 import { tirarMisterio, investigar, podeContratar } from './misterio.js';
 import { tirarPatrocinio } from './patrocinios.js';
@@ -93,19 +93,14 @@ function andar(sala, ctx, equipaId, n) {
     if (CASAS[i % CASAS.length] !== 'sad') continue;
     const parou = i === depois;
     const { aoPassar, inverno } = CONFIG.tabuleiro.injecaoSAD;
-    const valor = valorSAD(sala.epoca) * (j.tipo === 'inverno' ? inverno : 1) * (parou ? 1 : aoPassar);
+    const valor = valorSAD(sala) * (j.tipo === 'inverno' ? inverno : 1) * (parou ? 1 : aoPassar);
     receber(sala, equipaId, valor);
     registar(sala, ctx, `Injeção de capital da SAD: ${sala.equipas[equipaId].nome} ${parou ? 'pára na casa e' : 'passa e'} recebe ${M(valor)}.`, { tipo: 'carta' });
   }
 }
 
-/** A injeção da SAD cresce a cada época, com o fator de cada escalão. */
-export function valorSAD(epoca) {
-  const { base, fatores } = CONFIG.tabuleiro.injecaoSAD;
-  let valor = base;
-  for (let e = 2; e <= epoca; e++) valor *= fatores.find((f) => e <= f.ate).fator;
-  return valor;
-}
+/** A injeção da SAD cresce com a fase do Mercado desta época. */
+export const valorSAD = (sala) => CONFIG.tabuleiro.injecaoSAD.porFase[faseMercado(sala)];
 
 /**
  * Preço de uma carta do Mercado para quem caiu na casa: 80% do valor, com o desconto da Rede, se for da liga, e o
@@ -198,7 +193,7 @@ export function comprar(sala, ctx, equipaId) {
   const p = j?.pendente;
   if (!p || p.equipa !== equipaId || !['mercado', 'jovens'].includes(p.tipo)) return erro('Não há nada para comprar.');
   const e = sala.equipas[equipaId];
-  if (e.dinheiro < p.preco) return erro(`Precisas de ${M(p.preco)}.`);
+  if (!podePagar(sala, equipaId, p.preco)) return erro(textoSaldo(sala));
   if (!podeContratar(e)) return erro('Estás sancionado: já não podes contratar nesta janela.');
   j.pendente = null;
   executarVenda(sala, ctx, p.jogador, equipaId, p.preco);

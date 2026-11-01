@@ -95,7 +95,7 @@ const cenarios = CENARIOS.map(([nome, a, b]) => ({ nome, a, b, ...jogarCenario(c
 function jogarPartida(semente, epocas, treinadores, bots) {
   const ctx = contexto(semente);
   const sala = novaPartida(ctx, treinadores, { epocas, bots, nivelBots: NIVEL_BOTS });
-  const porEpoca = Array.from({ length: epocas }, () => ({ dinheiro: [], valor: [], onze: [], golos: 0, jogos: 0, compras: 0 }));
+  const porEpoca = Array.from({ length: epocas }, () => ({ inicio: [], dinheiro: [], valor: [], onze: [], golos: 0, jogos: 0, compras: 0 }));
   let epocaAnterior = 1;
   let voltaAnterior = 0;
   const contados = new Set();
@@ -131,6 +131,7 @@ function jogarPartida(semente, epocas, treinadores, bots) {
       if (janela !== janelaAnterior) {
         janelaAnterior = janela;
         janelas[janela.tipo]++;
+        if (janela.tipo === 'verao') for (const e of Object.values(sala.equipas)) if (e.treinador) porEpoca[sala.epoca - 1].inicio.push(e.dinheiro);
       }
     }
     const c = sala.campeonato;
@@ -176,6 +177,7 @@ function resumoEpocas(lista, epocas) {
     return {
       epoca: i + 1,
       golos: mediaDe(d.map((x) => (x.jogos ? x.golos / x.jogos : 0))),
+      inicio: mediaDe(d.flatMap((x) => x.inicio)),
       dinheiro: mediaDe(d.flatMap((x) => x.dinheiro)),
       dinheiroMax: Math.max(...d.flatMap((x) => x.dinheiro), 0),
       valor: mediaDe(d.flatMap((x) => x.valor)),
@@ -230,15 +232,15 @@ for (const c of cenarios) {
 L();
 L('## 3. Partidas inteiras: dinheiro e nível dos plantéis');
 L();
-L(`${N_PARTIDAS} partidas por duração, ${TREINADORES} treinadores e ${BOTS} bots de nível ${NIVEL_BOTS}. Valores médios por treinador **no fim de cada época**. O orçamento inicial é ${CONFIG.inicio.orcamento} M€ e o plantel inicial vale cerca de 100 M€.`);
+L(`${N_PARTIDAS} partidas por duração, ${TREINADORES} treinadores e ${BOTS} bots de nível ${NIVEL_BOTS}. Valores médios por treinador: o dinheiro para gastar **no início do verão** e o que sobra **no fim da época**. O orçamento inicial é ${CONFIG.inicio.orcamento} M€ e o plantel inicial vale cerca de 100 M€.`);
 for (const epocas of DURACOES) {
   L();
   L(`### ${epocas} épocas`);
   L();
-  L('| Época | SAD | Golos por jogo | Orçamento médio | Maior orçamento | Valor do plantel | Overall do onze |');
-  L('|---:|---:|---:|---:|---:|---:|---:|');
+  L('| Época | SAD | Golos por jogo | Início do verão | Fim da época | Maior orçamento | Valor do plantel | Overall do onze |');
+  L('|---:|---:|---:|---:|---:|---:|---:|---:|');
   for (const r of resumoEpocas(partidas[epocas], epocas)) {
-    L(`| ${r.epoca} | ${num(valorSAD(r.epoca), 1)} M€ | ${num(r.golos)} | ${num(r.dinheiro, 0)} M€ | ${num(r.dinheiroMax, 0)} M€ | ${num(r.valor, 0)} M€ | ${num(r.onze, 1)} |`);
+    L(`| ${r.epoca} | ${num(valorSAD({ config: { epocas }, epoca: r.epoca }), 1)} M€ | ${num(r.golos)} | ${num(r.inicio, 0)} M€ | ${num(r.dinheiro, 0)} M€ | ${num(r.dinheiroMax, 0)} M€ | ${num(r.valor, 0)} M€ | ${num(r.onze, 1)} |`);
   }
   const lista = partidas[epocas];
   const titulosBot = mediaDe(lista.map((p) => p.palmares.filter((x) => p.bots.includes(x.campeao)).length));

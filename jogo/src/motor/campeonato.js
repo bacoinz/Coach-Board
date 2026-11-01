@@ -5,6 +5,8 @@ import { jogador, erro, registar, equipasTreinadores, receber } from './estado.j
 import { CICLO_TATICAS, criarJogo, jogarPeriodo, jogarLance, pedirSubstituicao, usarMedico, suplentePorLesao, ficarLesionado, lesaoPorDecidir, resolverLesoes } from './jogo.js';
 import { descontar } from './misterio.js';
 import { salarioJornada } from './valores.js';
+import { momentosDoJogo, quem, registarMomento } from './momentos.js';
+import { faseMercado } from './cartas.js';
 
 const C = CONFIG.campeonato;
 const J = CONFIG.jogo;
@@ -36,6 +38,16 @@ function novaLinha(id) {
 /** Classificação: pontos e, em caso de empate, diferença de golos e golos marcados. */
 export function ordenarTabela(tabela) {
   return Object.values(tabela).sort((a, b) => b.pts - a.pts || b.gm - b.gs - (a.gm - a.gs) || b.gm - a.gm);
+}
+
+/** Acabou a época: a classificação e as estatísticas voltam a zero, com as mesmas equipas. */
+/** A TV desta época: acompanha os preços do Mercado da época seguinte. */
+export const tvDaEpoca = (sala) => C.tvPorFase[faseMercado(sala, sala.epoca + 1)];
+
+export function zerarEpoca(sala) {
+  sala.tabela = Object.fromEntries(equipasNoCampeonato(sala).map((id) => [id, novaLinha(id)]));
+  sala.estatisticas = {};
+  sala.momentos = [];
 }
 
 /** Depois do fecho de uma janela: na de verão começa uma época nova; na de inverno, a segunda volta. */
@@ -156,7 +168,10 @@ function homemDoJogo(jogo) {
 function concluirJornada(sala, ctx) {
   const c = sala.campeonato;
   for (const e of Object.values(sala.equipas)) delete e.emprestadosNovos;
-  for (const jogo of c.jogos) resolverLesoes(sala, ctx, jogo);
+  for (const jogo of c.jogos) {
+    resolverLesoes(sala, ctx, jogo);
+    momentosDoJogo(sala, ctx, jogo);
+  }
   if (c.pares) return concluirRondaTaca(sala, ctx);
   for (const jogo of c.jogos) {
     const [a, b] = jogo.lados;
@@ -196,7 +211,7 @@ function concluirJornada(sala, ctx) {
   // TV igual para todos e salários, cobrados a cada jornada.
   const jornadas = jornadasPorEpoca(sala);
   for (const e of equipasTreinadores(sala)) {
-    receber(sala, e.id, C.tvEpoca / jornadas);
+    receber(sala, e.id, tvDaEpoca(sala) / jornadas);
     const salarios = e.plantel.reduce((s, id) => {
       const j = jogador(sala, ctx, id);
       return j.emprestado ? s : s + salarioJornada(j.valor, jornadas);
@@ -290,7 +305,10 @@ function concluirRondaTaca(sala, ctx) {
   }
   // Mantém-se a ordem da liga: quem não jogou, passa.
   c.restantes = [...new Set(c.restantes.map((id) => vencedores.get(id) ?? id))];
-  if (c.restantes.length === 1) receber(sala, c.restantes[0], CONFIG.taca.premioVencedor);
+  if (c.restantes.length === 1) {
+    receber(sala, c.restantes[0], CONFIG.taca.premioVencedor);
+    registarMomento(sala, { equipa: c.restantes[0], tom: 'bom', peso: 12, texto: `${quem(sala, c.restantes[0]).o} levantou a Taça.` });
+  }
   c.fase = 'resultados';
   c.prontos = [];
 }

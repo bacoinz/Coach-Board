@@ -5,12 +5,13 @@ import { baralhar, comPeso, escolher } from './aleatorio.js';
 import { jogador, mudarJogador, transferir, pagar, receber, registar, M } from './estado.js';
 import { livresQue, tirarRede } from './cartas.js';
 import { precoBase } from './valores.js';
+import { quem, registarMomento } from './momentos.js';
 
 const I = CONFIG.investigacao;
 
-/** Tira dinheiro sem deixar o orçamento negativo (uma carta má nunca bloqueia o clube). */
+/** Tira dinheiro sem deixar o orçamento negativo (uma carta má nunca bloqueia o clube). Quem já está em dívida não perde mais. */
 export function descontar(sala, equipaId, valor) {
-  const tirado = Math.min(sala.equipas[equipaId].dinheiro, valor);
+  const tirado = Math.max(0, Math.min(sala.equipas[equipaId].dinheiro, valor));
   pagar(sala, equipaId, tirado);
   return tirado;
 }
@@ -182,6 +183,7 @@ export function tirarMisterio(sala, ctx, equipaId) {
   if (carta.bom) somarAjuda(e, (carta.peso ?? 1) * CONFIG.investigacao.ajudaMisterio);
   const texto = r.texto ?? carta.texto;
   sala.janela.ultimaCarta = { equipa: equipaId, tipo: 'misterio', bom: carta.bom, titulo: carta.titulo, texto, detalhe: r.detalhe ?? null };
+  registarMomento(sala, { equipa: equipaId, tom: carta.bom ? 'bom' : 'mau', peso: 4, texto: `${carta.titulo}, para ${quem(sala, equipaId).o}: ${texto}` });
   registar(sala, ctx, `Mistério, ${e.nome}: ${carta.titulo}. ${texto}${r.detalhe ? ` (${r.detalhe})` : ''}`, { tipo: 'carta' });
   return r;
 }
@@ -205,6 +207,7 @@ export function investigar(sala, ctx, equipaId) {
   if (ctx.aleatorio() >= probabilidadeCondenacao(sala, equipaId)) {
     sala.janela.ultimaCarta = { equipa: equipaId, tipo: 'investigacao', bom: true, titulo: 'Investigação arquivada', texto: 'Não foram encontradas irregularidades.', detalhe: null };
     registar(sala, ctx, `${e.nome} foi investigado: processo arquivado.`, { tipo: 'carta' });
+    registarMomento(sala, { equipa: equipaId, tom: 'bom', peso: 3, texto: `${quem(sala, equipaId).o} foi investigado e safou-se. Por agora.` });
     return;
   }
   const sancao = comPeso(ctx.aleatorio, Object.entries(I.sancoes));
@@ -222,6 +225,7 @@ export function investigar(sala, ctx, equipaId) {
   const acusacao = escolher(ctx.aleatorio, I.acusacoes);
   sala.janela.ultimaCarta = { equipa: equipaId, tipo: 'investigacao', bom: false, titulo: 'Clube condenado', texto: 'A investigação encontrou irregularidades.', detalhe, acusacao };
   registar(sala, ctx, `${e.nome} foi investigado e condenado: ${detalhe}.`, { tipo: 'carta' });
+  registarMomento(sala, { equipa: equipaId, tom: 'mau', peso: 10, texto: `${quem(sala, equipaId).o} foi condenado por "${acusacao}": ${detalhe}.` });
 }
 
 // --- Limite de contratações (sanção) ---

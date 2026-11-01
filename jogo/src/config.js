@@ -46,13 +46,14 @@ export const CONFIG = {
     epocas: [3, 5, 8, 10],
     maxBots: 6,
     diasSemAtividade: 120,          // depois disto a sala apaga-se
+    emblema: { tamanho: 256, maxKB: 200 }, // píxeis do lado e peso máximo de cada emblema
   },
 
   // --- Início da partida (src/motor/equipas.js) ---
   inicio: {
     orcamento: 40,
     // Numa partida curta, o Mercado encarece depressa: sem isto não há dinheiro para os bons jogadores na 2.ª época.
-    orcamentoExtra: { 3: 40, 5: 20 },
+    orcamentoExtra: { 3: 20, 5: 10 },
     // Os 11 overalls do plantel inicial: iguais para todos (média 75), distribuídos ao acaso pelas posições.
     overalls: [78, 77, 77, 76, 75, 75, 75, 74, 73, 73, 72],
     // As posições do plantel inicial (servem a 4-4-2 e, com alternativas, as outras formações).
@@ -112,17 +113,12 @@ export const CONFIG = {
     voltas: { verao: 1, inverno: 1 },
     // Dados lançados no tabuleiro (nos jogos são sempre 2). No inverno, o 1.º lançamento de cada treinador é com um dado.
     dados: { verao: 1, inverno: 2, primeiroInverno: 1 },
-    // Casa SAD: quem pára lá recebe o valor inteiro; quem passa, recebe parte. Vale a base na época 1 e, em cada época
-    // seguinte, multiplica pelo fator do primeiro escalão em que época ≤ ate.
+    // Casa SAD: quem pára lá recebe o valor inteiro; quem passa, recebe parte. Cresce com os preços: o valor depende da
+    // fase do Mercado desta época, e por isso da duração da partida.
     injecaoSAD: {
       aoPassar: 0.5,
       inverno: 0.5,                 // no inverno vale metade do verão
-      base: 3,
-      fatores: [
-        { ate: 3, fator: 2 },
-        { ate: 7, fator: 1.5 },
-        { ate: 99, fator: 1.2 },
-      ],
+      porFase: [null, 3, 6, 12, 18, 27, 40, 60],
     },
   },
 
@@ -328,6 +324,22 @@ export const CONFIG = {
   // Numa janela, não se compram mais do que estes jogadores ao mesmo treinador (propostas, Agente e trocas).
   transferencias: {
     maxPorTreinador: 2,
+    // Durante a janela pode-se gastar mais do que se tem, até esta dívida, mas tem de se acabar a janela sem ela.
+    // Cresce com os preços: depende da fase do Mercado desta época.
+    dividaPorFase: [null, 40, 50, 60, 70, 85, 100, 120],
+    // Em dívida não se vende à banca: o jogador vai a leilão, a começar nesta parte do valor de mercado.
+    // Só se ninguém licitar é que vai para a banca, ao preço base.
+    leilaoDivida: 0.8,
+  },
+
+  // Os momentos da época, no ecrã do campeão (src/motor/momentos.js).
+  momentos: {
+    goleada: 3,                     // diferença de golos que já conta como goleada
+    hatTrick: 3,                    // golos de um jogador num jogo
+    compraCara: 1.25,               // pagar isto × o valor é uma compra ruinosa...
+    compraCaraMinimo: 3,            // ...desde que sejam pelo menos estes M€ a mais
+    pechincha: 0.7,                 // pagar isto × o valor, ou menos, é uma pechincha
+    porLista: 3,
   },
 
   // --- Motor dos jogos (src/motor/jogo.js) ---
@@ -443,7 +455,9 @@ export const CONFIG = {
   campeonato: {
     vitoria: 3,
     empate: 1,
-    tvEpoca: 40,                    // M€ de TV por época, iguais para todos e pagos por jornada
+    // M€ de TV por época, iguais para todos e pagos por jornada. Cresce com os preços: depende da fase do Mercado da
+    // época seguinte, porque é esse dinheiro que paga a janela seguinte (na última época, da própria).
+    tvPorFase: [null, 40, 60, 70, 80, 100, 130, 170],
   },
 
   // --- Taça (src/motor/campeonato.js): a eliminar, no fim das últimas épocas (CONFIG.misterio.fimDePartida.epocas) ---

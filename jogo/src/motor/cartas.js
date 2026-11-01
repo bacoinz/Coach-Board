@@ -1,7 +1,9 @@
 // Baralhos que tiram jogadores da base: Mercado (por fases), Jovens Talentos, draft, empréstimos; e as Redes.
 import { CONFIG } from '../config.js';
 import { comPeso, escolher, amostra } from './aleatorio.js';
-import { livre } from './estado.js';
+import { livre, faseMercado } from './estado.js';
+
+export { faseMercado };
 import { valorMercado } from './valores.js';
 
 const dentro = (x, [a, b]) => x >= a && x <= b;
@@ -26,12 +28,6 @@ export function livresQue(sala, ctx, { idade, overall, posicao, liga, valorMaxim
     r.push(j.id);
   }
   return r;
-}
-
-/** Fase do baralho do Mercado nesta época (1–7). */
-export function faseMercado(sala) {
-  const fases = CONFIG.mercado.fasesPorDuracao[sala.config.epocas] ?? CONFIG.mercado.fasesPorDuracao[3];
-  return fases[Math.min(sala.epoca, fases.length) - 1];
 }
 
 /** As três faixas de overall desta fase: principal, abaixo e acima. */

@@ -5,7 +5,7 @@ import { contexto, salaNoTabuleiro, salaComecada, treinadorDe, ok, verificarInva
 import { agir, rankingFinal } from '../src/motor/partida.js';
 import { jogador, transferir } from '../src/motor/estado.js';
 import { criarJogo, jogarPeriodo, forca, quimica, modificador, taticaVence, CICLO_TATICAS, pedirSubstituicao } from '../src/motor/jogo.js';
-import { calendarioVolta, ordenarTabela } from '../src/motor/campeonato.js';
+import { calendarioVolta, ordenarTabela, tvDaEpoca } from '../src/motor/campeonato.js';
 import { sugestaoFecho, comprarEmprestado } from '../src/motor/janela.js';
 import { melhorOnze } from '../src/motor/formacao.js';
 import { jogarAteAoFim } from '../scripts/treinador-auto.mjs';
@@ -357,7 +357,7 @@ describe('campeonato', () => {
     ok(agir(sala, ctx, 't1', { t: 'avancar' }));
     ok(agir(sala, ctx, 't1', { t: 'avancar' }));
     const jornadas = sala.calendario.length * 2;
-    const tv = CONFIG.campeonato.tvEpoca / jornadas;
+    const tv = tvDaEpoca(sala) / jornadas;
     const salarios = (e) => e.plantel.reduce((s, id) => s + (jogador(sala, ctx, id).emprestado ? 0 : jogador(sala, ctx, id).valor * 0.05), 0) / jornadas;
     expect(a.dinheiro).toBeCloseTo(100 + tv - salarios(a), 1);
     expect(b.dinheiro).toBeCloseTo(100 + tv - salarios(b), 1);
@@ -409,4 +409,19 @@ describe('partida inteira', () => {
       expect(melhorOnze(sala.equipas.e1.plantel.map((id) => jogador(sala, ctx, id)), sala.equipas.e1.formacao).onze).toHaveLength(11);
     });
   }
+});
+
+describe('dinheiro de TV', () => {
+  it('nunca desce de uma época para a seguinte, em nenhuma duração', () => {
+    for (const epocas of Object.keys(CONFIG.mercado.fasesPorDuracao).map(Number)) {
+      const sala = { config: { epocas }, epoca: 1 };
+      let anterior = 0;
+      for (sala.epoca = 1; sala.epoca <= epocas; sala.epoca++) {
+        const tv = tvDaEpoca(sala);
+        expect(tv).toBeGreaterThanOrEqual(anterior);
+        anterior = tv;
+      }
+      expect(anterior).toBeGreaterThan(tvDaEpoca({ config: { epocas }, epoca: 1 }));
+    }
+  });
 });

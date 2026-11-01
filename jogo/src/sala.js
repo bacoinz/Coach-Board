@@ -7,6 +7,7 @@ import { lerBase, descomprimir } from './motor/base.js';
 import * as L from './motor/sala-logica.js';
 import { agir } from './motor/partida.js';
 import { estadoPublico, privado } from './motor/vista.js';
+import { lerEmblema } from './motor/emblema.js';
 
 const DIA = 24 * 60 * 60 * 1000;
 
@@ -55,6 +56,11 @@ export class Sala extends DurableObject {
     return { existe: true, treinadores: ativos, cheia: ativos >= CONFIG.sala.maxTreinadores, fase: this.sala.fase };
   }
 
+  /** A imagem de um emblema, servida pelo Worker. */
+  async emblema(equipaId) {
+    return (await this.ctx.storage.get(`emblema:${equipaId}`)) ?? null;
+  }
+
   // --- WebSockets ---
 
   async fetch() {
@@ -69,7 +75,10 @@ export class Sala extends DurableObject {
   }
 
   async webSocketMessage(ws, mensagem) {
-    if (!this.sala || typeof mensagem !== 'string' || mensagem.length > 4000) return;
+    if (!this.sala || typeof mensagem !== 'string') return;
+    // Só o emblema traz uma imagem; todas as outras mensagens são pequenas.
+    const limite = mensagem.startsWith('{"t":"emblema"') ? (CONFIG.sala.emblema.maxKB * 1024 * 4) / 3 + 100 : 4000;
+    if (mensagem.length > limite) return;
     let msg;
     try {
       msg = JSON.parse(mensagem);
@@ -109,6 +118,9 @@ export class Sala extends DurableObject {
       case 'equipa':
         r = L.editarEquipa(sala, id, { nome: msg.nome, kit: msg.kit });
         break;
+      case 'emblema':
+        r = await this.guardarEmblema(id, msg.dados);
+        break;
       case 'pronto':
         r = L.marcarPronto(sala, id, msg.pronto);
         break;
@@ -144,6 +156,28 @@ export class Sala extends DurableObject {
     const outros = this.ctx.getWebSockets().filter((w) => w !== ws && w.deserializeAttachment()?.treinador === id);
     if (outros.length) return; // ainda tem outro separador aberto
     if (L.desligar(this.sala, id)) await this.publicar(await this.contexto());
+  }
+
+  /**
+   * Os emblemas ficam à parte, cada um na sua chave: o estado só leva o endereço, para não pesar em cada mensagem.
+   * O `v` no endereço muda a cada troca, por isso o browser pode guardar a imagem para sempre.
+   */
+  async guardarEmblema(id, dados) {
+    const pode = L.editarEquipa(this.sala, id, {});
+    if (pode.erro) return pode;
+    const t = this.sala.treinadores.find((x) => x.id === id);
+    const e = this.sala.equipas[t.equipa];
+    const chave = `emblema:${t.equipa}`;
+    if (dados == null) {
+      await this.ctx.storage.delete(chave);
+      e.emblema = null;
+      return { ok: true };
+    }
+    const imagem = lerEmblema(dados);
+    if (imagem.erro) return imagem;
+    await this.ctx.storage.put(chave, imagem);
+    e.emblema = `/api/salas/${this.sala.codigo}/emblemas/${encodeURIComponent(t.equipa)}?v=${Date.now()}`;
+    return { ok: true };
   }
 
   // --- Alarme: limpeza das salas abandonadas ---

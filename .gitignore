@@ -4,3 +4,4 @@ node_modules/
 dados/brutos/*
 !dados/brutos/.gitkeep
 *.gen.js
+jogo/public/logos/

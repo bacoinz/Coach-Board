@@ -5,6 +5,7 @@ import { jogador, transferir, registar } from './estado.js';
 import { livresQue, tirarEmprestimo } from './cartas.js';
 import { overallNaPosicao } from './formacao.js';
 import { fimDePartida } from './misterio.js';
+import { quem, registarMomento } from './momentos.js';
 
 const J = CONFIG.jogo;
 const LINHA = CONFIG.posicoes.linha;
@@ -160,6 +161,7 @@ function lesionar(sala, ctx, jogo, i, minuto) {
   if (!alvo) return;
   const e = sala.equipas[lado.equipa];
   const texto = `${alvo.nome} ${escolher(rng, J.lesoesEmCampo)}.`;
+  registarMomento(sala, { equipa: lado.equipa, tom: 'mau', peso: 3, texto: `Azar ${quem(sala, lado.equipa).do}: ${texto}` });
   if (!e.bot && !alvo.temp) {
     alvo.lesionado = true;
     alvo.overall -= J.lesao.penalizacao;

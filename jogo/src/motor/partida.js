@@ -7,12 +7,13 @@ import { abrirJanela, comprarEmprestado, escolherFormacao, escolherOnze, escolhe
 import { lancar, comprar, passar, descartarRede, terminarVez, forcarVez, confirmarCarta } from './tabuleiro.js';
 import {
   licitar, desistir, forcarFimLeilao, decidirProposta, propor, inflacionar, exclusividade, responderExclusividade,
-  venderBanca, proporTroca, responderTroca,
+  venderBanca, proporTroca, responderTroca, leiloarDivida,
 } from './negocios.js';
 import { decidirPatrocinio, extensaoMarca } from './patrocinios.js';
 import { envelhecer, calcularPremios } from './fim-epoca.js';
-import { escolherTatica, substituir, continuar, forcarCampeonato, ordenarTabela, iniciarTaca, lancarRonda, forcarRonda, fichaLesao, lesaoSuplente, lesaoFicar } from './campeonato.js';
+import { escolherTatica, substituir, continuar, forcarCampeonato, ordenarTabela, iniciarTaca, lancarRonda, forcarRonda, fichaLesao, lesaoSuplente, lesaoFicar, zerarEpoca } from './campeonato.js';
 import { fimDePartida } from './misterio.js';
+import { resumoMomentos } from './momentos.js';
 
 export function comecar(sala, ctx, id) {
   if (id !== sala.anfitriao) return erro('Só o anfitrião pode começar.');
@@ -86,7 +87,8 @@ function concluirEpoca(sala, ctx) {
   registar(sala, ctx, `${sala.equipas[tabela[0].equipa].nome} é campeão da época ${sala.epoca}!`, { tipo: 'fase' });
   const ultima = sala.epoca >= sala.config.epocas;
   sala.fase = 'fimEpoca';
-  sala.fimEpoca = { prontos: [], ultima, mudancas: ultima ? [] : envelhecer(sala, ctx) };
+  const momentos = resumoMomentos(sala);
+  sala.fimEpoca = { prontos: [], ultima, momentos, mudancas: ultima ? [] : envelhecer(sala, ctx) };
 }
 
 /** Sai do ecrã de fim de época: acaba a partida ou abre a época seguinte. */
@@ -97,6 +99,7 @@ function seguirFimEpoca(sala, ctx) {
     return;
   }
   sala.epoca++;
+  zerarEpoca(sala);
   entrarEspectadores(sala, ctx, 'verao');
   abrirJanela(sala, ctx, 'verao');
 }
@@ -180,6 +183,7 @@ export function agir(sala, ctx, id, msg) {
     case 'exclusividade': r = exclusividade(sala, ctx, eq, msg.jogador); break;
     case 'responder_empresario': r = responderExclusividade(sala, ctx, eq, Boolean(msg.anular)); break;
     case 'vender_banca': r = venderBanca(sala, ctx, eq, msg.jogador); break;
+    case 'leiloar_divida': r = leiloarDivida(sala, ctx, eq, msg.jogador); break;
     case 'propor_troca': r = proporTroca(sala, ctx, eq, { para: msg.para, dar: msg.dar, receber: msg.receber }); break;
     case 'responder_troca': r = responderTroca(sala, ctx, eq, msg.troca, Boolean(msg.aceitar)); break;
     case 'pronto_fechar': r = prontoFechar(sala, ctx, eq, msg.pronto !== false); break;

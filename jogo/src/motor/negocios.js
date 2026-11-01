@@ -1,8 +1,9 @@
 // Leilões, propostas, Agente, vendas à banca e trocas diretas (durante a janela de transferências).
 import { CONFIG } from '../config.js';
-import { jogador, transferir, mudarJogador, pagar, receber, registar, equipaDe, equipasTreinadores, libertar, erro, M } from './estado.js';
+import { jogador, transferir, mudarJogador, pagar, receber, registar, equipaDe, equipasTreinadores, libertar, erro, M, podePagar, textoSaldo } from './estado.js';
 import { podeContratar, contarContratacao, somarAjuda } from './misterio.js';
 import { clausula, precoBase, arredondar } from './valores.js';
+import { momentoCompra, quem, registarMomento } from './momentos.js';
 
 const naJanela = (sala) => sala.fase === 'janela';
 const nome = (sala, ctx, id) => ctx.base.get(id)?.curto ?? '?';
@@ -54,6 +55,7 @@ function tuaVezLivre(sala, equipaId) {
 
 export function executarVenda(sala, ctx, id, compradorId, valor) {
   const vendedorId = sala.jogadores[id]?.equipa ?? null;
+  momentoCompra(sala, compradorId, nome(sala, ctx, id), valor, jogador(sala, ctx, id).valor);
   contarContratacao(sala.equipas[compradorId]);
   if (vendedorId) contarCompra(sala, compradorId, vendedorId);
   pagar(sala, compradorId, valor);
@@ -70,7 +72,8 @@ export function executarVenda(sala, ctx, id, compradorId, valor) {
 // --- Leilões ---
 
 /**
- * Abre um leilão. origem 'mesa' (carta do Mercado ou Jovens Talentos que ninguém comprou) ou 'proposta'.
+ * Abre um leilão. origem 'mesa' (carta do Mercado ou Jovens Talentos que ninguém comprou), 'proposta' ou 'divida'
+ * (o dono está em saldo negativo e é obrigado a vender).
  * Numa proposta, o proponente começa como líder com o valor proposto.
  */
 export function abrirLeilao(sala, ctx, { jogador: id, origem, vendedor = null, proponente = null, minimo, excluir = null, obrigatorio = false, formacao = false }) {
@@ -101,7 +104,7 @@ export function licitar(sala, ctx, equipaId, valor) {
   valor = arredondar(Number(valor));
   const minimo = l.lider ? arredondar(l.valor + CONFIG.leilao.incrementoMinimo) : l.minimo;
   if (!(valor >= minimo)) return erro(`O lance mínimo é ${M(minimo)}.`);
-  if (sala.equipas[equipaId].dinheiro < valor) return erro('Não tens dinheiro para esse lance.');
+  if (!podePagar(sala, equipaId, valor)) return erro(textoSaldo(sala));
   l.valor = valor;
   l.lider = equipaId;
   registar(sala, ctx, `${nomeEquipa(sala, equipaId)} licita ${M(valor)} por ${nome(sala, ctx, l.jogador)}.`, { tipo: 'lance' });
@@ -133,6 +136,7 @@ function verificarFimLeilao(sala, ctx) {
   const l = sala.janela.leilao;
   const ativos = l.participantes.filter((x) => x !== l.lider && !l.desistiram.includes(x));
   if (ativos.length) return;
+  if (l.origem === 'divida') return fecharLeilaoDivida(sala, ctx, l);
   if (!l.lider) {
     libertar(sala, [l.jogador]);
     // Descartada: não volta a sair até à próxima janela.
@@ -157,6 +161,38 @@ function verificarFimLeilao(sala, ctx) {
   registar(sala, ctx, `${nomeEquipa(sala, l.vendedor)} decide se vende ${nome(sala, ctx, l.jogador)} por ${M(l.valor)} a ${nomeEquipa(sala, l.lider)}.`);
 }
 
+/** Quem está em dívida não escolhe: vende a quem der mais e, se ninguém quiser, à banca. */
+function fecharLeilaoDivida(sala, ctx, l) {
+  sala.janela.leilao = null;
+  if (l.lider) {
+    registarMomento(sala, { equipa: l.vendedor, tom: 'mau', peso: 6, texto: `${quem(sala, l.vendedor).o} gastou o que não tinha e teve de leiloar ${nome(sala, ctx, l.jogador)}.` });
+    executarVenda(sala, ctx, l.jogador, l.lider, l.valor);
+    return;
+  }
+  const jg = jogador(sala, ctx, l.jogador);
+  const preco = precoBase(jg.valor);
+  receber(sala, l.vendedor, preco);
+  transferir(sala, l.jogador, null);
+  registar(sala, ctx, `Ninguém quis ${jg.curto}: ${nomeEquipa(sala, l.vendedor)} vende-o à banca por ${M(preco)}.`, { tipo: 'banca' });
+  registarMomento(sala, { equipa: l.vendedor, tom: 'mau', peso: 8, texto: `${quem(sala, l.vendedor).o} pôs ${jg.curto} a leilão para pagar as dívidas e ninguém o quis. Foi para a banca por ${M(preco)}.` });
+}
+
+/** Em dívida, o jogador vai a leilão a partir de uma parte do valor de mercado (não da cláusula). */
+export function leiloarDivida(sala, ctx, equipaId, id) {
+  const janela = sala.janela;
+  if (!naJanela(sala) || janela.fase !== 'tabuleiro') return erro('Só durante o tabuleiro.');
+  if (sala.equipas[equipaId].dinheiro >= 0) return erro('Não estás em saldo negativo.');
+  const j = jogador(sala, ctx, id);
+  if (!j || j.equipa !== equipaId) return erro('Esse jogador não é teu.');
+  if (j.emprestado) return erro('Os emprestados não se vendem.');
+  if (j.soBanca) return erro('Esse jogador só pode ser vendido à banca.');
+  if (janela.leilao || janela.contestacao || janela.pendente) return erro('Há outra decisão por resolver: espera um pouco.');
+  const minimo = j.valor * CONFIG.transferencias.leilaoDivida;
+  registar(sala, ctx, `${nomeEquipa(sala, equipaId)} está em saldo negativo e leiloa ${j.curto}, a partir de ${M(arredondar(minimo))}.`, { tipo: 'leilao' });
+  abrirLeilao(sala, ctx, { jogador: id, origem: 'divida', vendedor: equipaId, minimo });
+  return { ok: true };
+}
+
 /** O dono decide a proposta (abaixo da cláusula), depois do leilão. */
 export function decidirProposta(sala, ctx, equipaId, aceitar) {
   const l = sala.janela?.leilao;
@@ -176,7 +212,7 @@ export function propor(sala, ctx, equipaId, id, valor) {
   valor = arredondar(Number(valor));
   if (!(valor >= CONFIG.valores.minimo)) return erro('Valor inválido.');
   if (!podeContratar(sala.equipas[equipaId])) return erro('Estás sancionado: já não podes contratar nesta janela.');
-  if (sala.equipas[equipaId].dinheiro < valor) return erro('Não tens dinheiro para essa proposta.');
+  if (!podePagar(sala, equipaId, valor)) return erro(textoSaldo(sala));
   const j = jogador(sala, ctx, id);
   const obrigatorio = valor >= j.clausula;
   registar(sala, ctx, `${nomeEquipa(sala, equipaId)} faz uma proposta de ${M(valor)} por ${j.curto} (${nomeEquipa(sala, j.equipa)})${obrigatorio ? ' e bate a cláusula' : ''}. Abre o leilão.`, { tipo: 'proposta' });
@@ -210,7 +246,7 @@ export function exclusividade(sala, ctx, equipaId, id) {
   if (!podeContratar(e)) return erro('Estás sancionado: já não podes contratar nesta janela.');
   const j = jogador(sala, ctx, id);
   const preco = j.clausula;
-  if (e.dinheiro < preco) return erro(`Precisas de ${M(preco)}.`);
+  if (!podePagar(sala, equipaId, preco)) return erro(textoSaldo(sala));
   e.cartas.empresario--;
   somarAjuda(e, CONFIG.investigacao.ajudaEmpresario);
   registar(sala, ctx, `${e.nome} usa o Agente para comprar ${j.curto} em exclusivo por ${M(preco)}.`, { tipo: 'empresario' });
@@ -225,6 +261,9 @@ export function exclusividade(sala, ctx, equipaId, id) {
 /** A venda em exclusivo fica marcada, para o dono ser avisado de quem lhe levou o jogador. */
 function roubar(sala, ctx, id, compradorId, preco) {
   const de = sala.jogadores[id]?.equipa;
+  const [ladrao, roubado] = [quem(sala, compradorId), quem(sala, de)];
+  registarMomento(sala, { equipa: de, tom: 'mau', peso: 7, grupo: `roubo-${id}`, texto: `${ladrao.o} roubou ${nome(sala, ctx, id)} ${roubado.ao} com um Agente. Sem aviso nem vergonha.` });
+  registarMomento(sala, { equipa: compradorId, tom: 'bom', peso: 7, grupo: `roubo-${id}`, texto: `${ladrao.o} foi buscar ${nome(sala, ctx, id)} ${roubado.ao}, com um Agente e sem pedir licença.` });
   executarVenda(sala, ctx, id, compradorId, preco);
   sala.janela.roubos = [...(sala.janela.roubos ?? []), { jogador: id, de, para: compradorId }];
 }
@@ -251,6 +290,7 @@ export function venderBanca(sala, ctx, equipaId, id) {
   if (!j || j.equipa !== equipaId) return erro('Esse jogador não é teu.');
   if (j.emprestado) return erro('Os emprestados não se vendem.');
   if (ocupado(sala, id)) return erro('Esse jogador está em negociação.');
+  if (sala.equipas[equipaId].dinheiro < 0 && !j.soBanca) return erro('Estás em saldo negativo: este jogador tem de ir a leilão.');
   const preco = precoBase(j.valor);
   receber(sala, equipaId, preco);
   transferir(sala, id, null);

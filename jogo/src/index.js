@@ -53,6 +53,13 @@ export default {
     const info = pathname.match(/^\/api\/salas\/([A-Za-z]{4})$/);
     if (info && request.method === 'GET') return json(await env.SALAS.getByName(info[1].toUpperCase()).info());
 
+    const emblema = pathname.match(/^\/api\/salas\/([A-Za-z]{4})\/emblemas\/([^/]+)$/);
+    if (emblema && request.method === 'GET') {
+      const imagem = await env.SALAS.getByName(emblema[1].toUpperCase()).emblema(decodeURIComponent(emblema[2]));
+      if (!imagem) return new Response('Não encontrado.', { status: 404 });
+      return new Response(imagem.bytes, { headers: { 'content-type': imagem.tipo, 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
+    }
+
     const ws = pathname.match(/^\/ws\/([A-Za-z]{4})$/);
     if (ws) {
       if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Esperava um WebSocket.', { status: 426 });

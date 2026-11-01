@@ -62,13 +62,13 @@ describe('tabuleiro', () => {
       ok(agir(sala, { ...ctx, aleatorio: dadoFixo }, e.treinador, { t: 'lancar' }));
       return sala.log.find((l) => l.texto.includes('SAD'))?.texto ?? null;
     };
-    expect(correr(a, 17, 1)).toContain(`recebe 12,0 M€`);
-    expect(correr(b, 17, 3)).toContain(`recebe 6,0 M€`);
+    expect(correr(a, 17, 1)).toContain(`recebe 60,0 M€`);
+    expect(correr(b, 17, 3)).toContain(`recebe 30,0 M€`);
     expect(correr(c, 35, 1)).toBeNull();
     // No inverno vale metade (a meio da volta lançam-se dois dados).
     sala.janela.tipo = 'inverno';
-    expect(correr(a, 16, 1)).toContain('recebe 6,0 M€');
-    expect(correr(b, 17, 1)).toContain('recebe 3,0 M€');
+    expect(correr(a, 16, 1)).toContain('recebe 30,0 M€');
+    expect(correr(b, 17, 1)).toContain('recebe 15,0 M€');
   });
 });
 
@@ -207,9 +207,11 @@ describe('baralho Mistério', () => {
 });
 
 describe('regras afinadas depois de jogar', () => {
-  it('a SAD duplica até à época 3, depois 1,5× até à 7 e 1,2× daí em diante', () => {
-    const v = (e) => Math.round(valorSAD(e) * 100) / 100;
-    expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v)).toEqual([3, 6, 12, 18, 27, 40.5, 60.75, 72.9, 87.48, 104.98]);
+  it('a SAD cresce com a fase do Mercado, por isso depende da duração da partida', () => {
+    const valores = (epocas) => Array.from({ length: epocas }, (_, i) => valorSAD({ config: { epocas }, epoca: i + 1 }));
+    expect(valores(3)).toEqual([3, 18, 60]);
+    expect(valores(5)).toEqual([3, 12, 18, 40, 60]);
+    expect(valores(10)).toEqual([3, 6, 6, 12, 18, 18, 27, 40, 40, 60]);
   });
   it('usar o Empresário soma pontos de ajuda: inflacionar, exclusividade e anular', () => {
     const ctx = contexto();

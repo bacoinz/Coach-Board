@@ -123,8 +123,8 @@
             <div id="padroes" class="padroes" role="radiogroup" aria-label="Equipamento"></div>
             <p class="rotulo">Contratos iniciais</p>
             <div class="contratos">
-              <span class="contrato"><small>Marca</small>Larcatoni</span>
-              <span class="contrato"><small>Patrocínio</small>Café Central de Torres Novas</span>
+              <span class="contrato"><small>Marca</small>Carlatoni</span>
+              <span class="contrato"><small>Patrocínio</small>Café o Relógio</span>
               <span class="contrato"><small>Patrocínio</small>Ping Doce</span>
             </div>
           </div>
@@ -215,7 +215,7 @@
     let padrao = 'riscas-v';
     const kit = () => ({ padrao, principal: document.getElementById('cor-1').value, secundaria: document.getElementById('cor-2').value });
     function desenhar() {
-      document.getElementById('previa-kit').innerHTML = equipamentoSVG({ ...kit(), marca: 'Larcatoni', patrocinio: 'Ping Doce', tamanho: 112 });
+      document.getElementById('previa-kit').innerHTML = equipamentoSVG({ ...kit(), marca: 'Carlatoni', patrocinio: 'Ping Doce', tamanho: 112 });
       document.getElementById('padroes').innerHTML = PADROES.map((p) => `
         <button class="segmento" role="radio" aria-checked="${p.id === padrao}" data-padrao="${p.id}" title="${p.nome}">${equipamentoSVG({ ...kit(), padrao: p.id, tamanho: 34 })}<small>${p.curto}</small></button>`).join('');
     }

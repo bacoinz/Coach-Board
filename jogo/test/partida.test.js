@@ -39,6 +39,13 @@ function passo(sala, ctx) {
   }
   const eq = j.ordem[j.vez];
   const e = sala.equipas[eq];
+  // Quem está em dívida leiloa um jogador à sorte (ou vende à banca, se for dos que só se vendem lá).
+  const devedor = !j.pendente && j.ordem.map((id) => sala.equipas[id]).find((x) => x.dinheiro < 0);
+  if (devedor) {
+    const vendaveis = devedor.plantel.map((id) => jogador(sala, ctx, id)).filter((x) => !x.emprestado);
+    const jg = vendaveis.length ? acaso(vendaveis) : null;
+    if (jg) return agir(sala, ctx, t(devedor.id), { t: jg.soBanca ? 'vender_banca' : 'leiloar_divida', jogador: jg.id });
+  }
   if (j.pendente) {
     if (j.pendente.tipo === 'rede') return agir(sala, ctx, t(eq), { t: 'descartar_rede', liga: acaso([...e.redes, j.pendente.liga]) });
     if (j.pendente.tipo === 'patrocinio') return agir(sala, ctx, t(eq), { t: 'patrocinio', aceitar: !j.pendente.bloqueio && rng() < 0.5, substitui: j.pendente.substituir?.[0] ?? 0 });

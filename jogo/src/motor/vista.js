@@ -1,6 +1,6 @@
 // O que cada treinador recebe: o estado público (igual para todos) e a sua parte privada.
 // Os plantéis e as cartas na mão são públicos; ficam de fora os tokens e o potencial escondido dos jovens.
-import { jogador } from './estado.js';
+import { jogador, saldoMinimo } from './estado.js';
 import { sugestaoFecho, precoOpcao } from './janela.js';
 import { faltaParaComecar } from './sala-logica.js';
 import { ordenarTabela } from './campeonato.js';
@@ -46,6 +46,8 @@ function jogadoresVisiveis(sala) {
   const j = sala.janela;
   if (j?.pendente?.jogador) ids.add(j.pendente.jogador);
   if (j?.leilao) ids.add(j.leilao.jogador);
+  // A equipa da época mostra-se com as cartas, e pode ter jogadores que já saíram.
+  if (sala.fase === 'fimEpoca') for (const x of sala.premios?.at(-1)?.equipa ?? []) ids.add(x.id);
   return ids;
 }
 
@@ -159,6 +161,7 @@ export function estadoPublico(sala, ctx) {
     fase: sala.fase,
     epoca: sala.epoca,
     config: sala.config,
+    saldoMinimo: saldoMinimo(sala),
     anfitriao: sala.anfitriao,
     faltaParaComecar: sala.fase === 'lobby' ? faltaParaComecar(sala) : null,
     treinadores: sala.treinadores.map((t) => ({ id: t.id, nome: t.nome, cor: t.cor, ligado: t.ligado, pronto: t.pronto, equipa: t.equipa, saiu: t.saiu || undefined })),
