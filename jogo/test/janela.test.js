@@ -5,7 +5,7 @@ import { agir } from '../src/motor/partida.js';
 import { jogador, transferir } from '../src/motor/estado.js';
 import { resolverCasa, totalCasas, precoCarta } from '../src/motor/tabuleiro.js';
 import { precoBase, precoDraft } from '../src/motor/valores.js';
-import { livresQue, faseMercado, faixasMercado, tirarMercado } from '../src/motor/cartas.js';
+import { livresQue, livresDoMercado, faseMercado, faixasMercado, tirarMercado, tirarJovemTalento, tirarRede, ligasRede, redeCobre } from '../src/motor/cartas.js';
 import { sugestaoFecho, abrirJanela } from '../src/motor/janela.js';
 
 const dentro = (x, [a, b]) => x >= a && x <= b;
@@ -157,8 +157,8 @@ describe('tabuleiro', () => {
     expect(sala.equipas[eq].redes).toContain(nova);
     expect(sala.equipas[eq].redes).toHaveLength(2);
     // Desconto: uma carta da liga custa 80%.
-    const daLiga = livresQue(sala, ctx, { liga: nova, overall: [75, 80] })[0];
-    const deFora = livresQue(sala, ctx, { overall: [75, 80] }).find((id) => !sala.equipas[eq].redes.includes(jogador(sala, ctx, id).liga));
+    const daLiga = livresQue(sala, ctx, { overall: [75, 80] }).find((id) => redeCobre(nova, jogador(sala, ctx, id).liga));
+    const deFora = livresQue(sala, ctx, { overall: [75, 80] }).find((id) => !sala.equipas[eq].redes.some((r) => redeCobre(r, jogador(sala, ctx, id).liga)));
     expect(precoCarta(sala, ctx, eq, daLiga)).toBeCloseTo(jogador(sala, ctx, daLiga).valor * CONFIG.cartas.precoCasa * (1 - CONFIG.cartas.redeDesconto), 1);
     expect(precoCarta(sala, ctx, eq, deFora)).toBeCloseTo(jogador(sala, ctx, deFora).valor * CONFIG.cartas.precoCasa, 1);
   });
@@ -172,7 +172,9 @@ describe('tabuleiro', () => {
     const j = jogador(sala, ctx, id);
     expect(dentro(j.idade, CONFIG.cartas.jovensTalentos.idade) && dentro(j.overall, CONFIG.cartas.jovensTalentos.overall)).toBe(true);
     ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'comprar' }));
-    expect(Boolean(sala.jogadores[id].formacao)).toBe(j.idade <= 21);
+    expect(sala.jogadores[id].equipa).toBe(eq);
+    // Com 78 ou mais, já não é da formação: vai para o plantel principal.
+    expect(Boolean(sala.jogadores[id].formacao)).toBe(false);
   });
   it('Empresário e Médico vão para a mão', () => {
     const ctx = contexto();
@@ -381,5 +383,57 @@ describe('fecho da janela', () => {
     expect(sala.janela.tipo).toBe('inverno');
     expect(e1.plantel).not.toContain(emprestados[0]);
     verificarInvariantes(sala);
+  });
+});
+
+describe('Mercado e Jovens Talentos', () => {
+  it('nunca sai no Mercado um jogador que cumpra o critério dos Jovens Talentos, e vice-versa', () => {
+    const ctx = contexto();
+    const sala = salaNoTabuleiro(2, {}, ctx);
+    const { overall, idade } = CONFIG.cartas.jovensTalentos;
+    const talento = (id) => {
+      const j = jogador(sala, ctx, id);
+      return j.overall >= overall[0] && j.overall <= overall[1] && j.idade >= idade[0] && j.idade <= idade[1];
+    };
+    for (let i = 0; i < 400; i++) {
+      expect(talento(tirarMercado(sala, ctx).id)).toBe(false);
+      expect(talento(tirarJovemTalento(sala, ctx))).toBe(true);
+    }
+    const [a, b] = faixasMercado(1).principal;
+    expect(livresDoMercado(sala, ctx, [a, b]).some(talento)).toBe(false);
+    expect(livresDoMercado(sala, ctx, [a, b]).length).toBeGreaterThan(50);
+  });
+
+  it('um jogador que deixa de cumprir o critério, por ter envelhecido, volta a poder sair no Mercado', () => {
+    const ctx = contexto();
+    const sala = salaNoTabuleiro(2, {}, ctx);
+    const id = livresQue(sala, ctx, CONFIG.cartas.jovensTalentos)[0];
+    expect(livresDoMercado(sala, ctx, [70, 99])).not.toContain(id);
+    sala.jogadores[id] = { id, idade: 24 };
+    expect(livresDoMercado(sala, ctx, [70, 99])).toContain(id);
+  });
+});
+
+describe('cartas de Rede', () => {
+  it('só saem as da lista, e todas têm jogadores suficientes', () => {
+    const ctx = contexto();
+    const sala = salaNoTabuleiro(2, {}, ctx);
+    const nomes = CONFIG.cartas.redes.map((r) => r.nome);
+    expect(ligasRede(sala, ctx)).toEqual(nomes);
+    for (let i = 0; i < 200; i++) expect(nomes).toContain(tirarRede(sala, ctx));
+  });
+
+  it('as ligas da lista existem mesmo na base de jogadores', () => {
+    const ctx = contexto();
+    const existem = new Set([...ctx.base.values()].map((j) => j.liga));
+    for (const r of CONFIG.cartas.redes) for (const l of r.ligas) expect(existem.has(l)).toBe(true);
+  });
+
+  it('um grupo dá desconto em todas as suas ligas e em mais nenhuma', () => {
+    expect(redeCobre('Ligas norte-americanas', 'MLS')).toBe(true);
+    expect(redeCobre('Ligas norte-americanas', 'Liga BBVA MX')).toBe(true);
+    expect(redeCobre('Ligas norte-americanas', 'Premier League')).toBe(false);
+    expect(redeCobre('Ligas sul-americanas', 'CONMEBOL Libertadores')).toBe(true);
+    expect(redeCobre('Ligas asiáticas', 'CSL')).toBe(true);
   });
 });

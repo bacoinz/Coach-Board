@@ -348,7 +348,7 @@ export function responderTroca(sala, ctx, equipaId, trocaId, aceitar) {
 /** Um jovem que chega à formação recebe o potencial escondido. */
 export function prepararJovem(sala, ctx, id) {
   const j = jogador(sala, ctx, id);
-  if (j.idade > CONFIG.jovens.promocao.idade) return;
+  if (j.idade > CONFIG.jovens.idadeMaxima || j.overall >= CONFIG.jovens.overallPrincipal) return;
   const [a, b] = CONFIG.jovens.potencial;
   mudarJogador(sala, id, { formacao: true, potencial: a + Math.floor(ctx.aleatorio() * (b - a + 1)) });
 }

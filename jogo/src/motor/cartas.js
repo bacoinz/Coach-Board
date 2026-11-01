@@ -30,6 +30,18 @@ export function livresQue(sala, ctx, { idade, overall, posicao, liga, valorMaxim
   return r;
 }
 
+/** Os jogadores da casa Jovens Talentos não saem no Mercado: cada jogador só está num dos baralhos. */
+function eJovemTalento(sala, ctx, id) {
+  const { overall, idade } = CONFIG.cartas.jovensTalentos;
+  const a = atual(sala, ctx.base.get(id));
+  return dentro(a.overall, overall) && dentro(a.idade, idade);
+}
+
+/** Ids dos jogadores que podem sair no Mercado com este overall. */
+export function livresDoMercado(sala, ctx, overall) {
+  return livresQue(sala, ctx, { overall }).filter((id) => !eJovemTalento(sala, ctx, id));
+}
+
 /** As três faixas de overall desta fase: principal, abaixo e acima. */
 export function faixasMercado(fase) {
   const { overallMinimo: min, overallMaximo: max, fases } = CONFIG.mercado;
@@ -47,7 +59,7 @@ export function tirarMercado(sala, ctx) {
   for (const nome of ordem) {
     const [a, b] = faixas[nome];
     if (a > b) continue;
-    const id = escolher(ctx.aleatorio, livresQue(sala, ctx, { overall: [a, b] }));
+    const id = escolher(ctx.aleatorio, livresDoMercado(sala, ctx, [a, b]));
     if (id != null) return { id, faixa: nome };
   }
   return null;
@@ -57,15 +69,16 @@ export function tirarJovemTalento(sala, ctx) {
   return escolher(ctx.aleatorio, livresQue(sala, ctx, CONFIG.cartas.jovensTalentos)) ?? null;
 }
 
-/** Ligas que podem sair numa carta de Rede: as que têm jogadores suficientes no baralho do Mercado. */
+/** Esta Rede dá desconto nos jogadores desta liga? */
+export const redeCobre = (nome, liga) => Boolean(CONFIG.cartas.redes.find((r) => r.nome === nome)?.ligas.includes(liga));
+
+/** As Redes que podem sair: as da lista com jogadores suficientes no baralho do Mercado. */
 export function ligasRede(sala, ctx) {
   const { overallMinimo: min, overallMaximo: max } = CONFIG.mercado;
-  const conta = new Map();
-  for (const id of livresQue(sala, ctx, { overall: [min, max] })) {
-    const liga = ctx.base.get(id).liga;
-    conta.set(liga, (conta.get(liga) ?? 0) + 1);
-  }
-  return [...conta].filter(([, n]) => n >= CONFIG.cartas.redeMinJogadores).map(([l]) => l).sort();
+  const ligas = livresDoMercado(sala, ctx, [min, max]).map((id) => ctx.base.get(id).liga);
+  return CONFIG.cartas.redes
+    .filter((r) => ligas.filter((l) => r.ligas.includes(l)).length >= CONFIG.cartas.redeMinJogadores)
+    .map((r) => r.nome);
 }
 
 export function tirarRede(sala, ctx, jaTem = []) {

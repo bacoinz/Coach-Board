@@ -24,7 +24,7 @@ export function mudarJogador(sala, id, mudancas) {
 /** Um jogador livre: sem equipa e sem estar em jogo (carta na mesa, opção do draft…) nem descartado nesta janela. */
 export function livre(sala, id) {
   const d = sala.jogadores[id];
-  return !d?.equipa && !sala.reservados?.includes(id) && !sala.descartados?.includes(id);
+  return !d?.equipa && !d?.reformado && !sala.reservados?.includes(id) && !sala.descartados?.includes(id);
 }
 
 export function reservar(sala, ids) {

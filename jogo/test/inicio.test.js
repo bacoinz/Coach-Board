@@ -3,7 +3,7 @@ import { CONFIG } from '../src/config.js';
 import { contexto, salaLobby, salaComecada, verificarInvariantes, ok } from './apoio.js';
 import { comecar, agir } from '../src/motor/partida.js';
 import { entrar, marcarPronto, configurar, editarEquipa, sair } from '../src/motor/sala-logica.js';
-import { melhorOnze, overallNaPosicao } from '../src/motor/formacao.js';
+import { melhorOnze, onzeEscolhido, overallNaPosicao } from '../src/motor/formacao.js';
 import { jogador } from '../src/motor/estado.js';
 
 describe('lobby', () => {
@@ -93,10 +93,24 @@ describe('início da partida', () => {
 
 describe('formações', () => {
   const j = (id, posicao, overall, alternativas = []) => ({ id, posicao, overall, alternativas });
-  it('penaliza as posições alternativas e recusa as outras', () => {
-    expect(overallNaPosicao(j(1, 'CM', 80, ['CDM']), 'CM')).toBe(80);
-    expect(overallNaPosicao(j(1, 'CM', 80, ['CDM']), 'CDM')).toBe(80 - CONFIG.posicoes.penalizacaoAlternativa);
-    expect(overallNaPosicao(j(1, 'CM', 80, ['CDM']), 'ST')).toBeNull();
+  it('as alternativas não perdem overall; fora de posição perde 5 na mesma linha e 10 noutra', () => {
+    const medio = j(1, 'CM', 80, ['CDM']);
+    expect(overallNaPosicao(medio, 'CM')).toBe(80);
+    expect(overallNaPosicao(medio, 'CDM')).toBe(80);
+    expect(overallNaPosicao(medio, 'LM')).toBe(75);
+    expect(overallNaPosicao(medio, 'ST')).toBe(70);
+    expect(overallNaPosicao(medio, 'GK')).toBe(70);
+    expect(overallNaPosicao(j(2, 'CB', 80), 'LB')).toBe(75);
+    expect(overallNaPosicao(j(3, 'ST', 80), 'LW')).toBe(75);
+    expect(overallNaPosicao(j(4, 'GK', 80), 'CB')).toBe(70);
+  });
+  it('sozinho, o melhor onze nunca põe ninguém fora de posição; à mão, sim, e fica com a penalização', () => {
+    const jogadores = [j(1, 'GK', 80), j(2, 'CM', 78), j(3, 'ST', 70)];
+    expect(melhorOnze(jogadores, '4-4-2').onze.find((l) => l.posicao === 'LB').jogador).toBeNull();
+    const escolha = new Array(11).fill(null);
+    escolha[1] = 2; // o médio a defesa-esquerdo
+    const { onze } = onzeEscolhido(jogadores, '4-4-2', escolha);
+    expect(onze[1]).toMatchObject({ jogador: 2, overall: 68 });
   });
   it('o melhor onze põe cada um no sítio certo e diz quem sobra', () => {
     const jogadores = [
@@ -112,7 +126,7 @@ describe('formações', () => {
     const { onze } = melhorOnze([j(1, 'GK', 80), j(2, 'CM', 78, ['CDM'])], '4-2-3-1');
     const cdm = onze.find((l) => l.jogador === 2);
     expect(cdm.posicao).toBe('CDM');
-    expect(cdm.overall).toBe(78 - CONFIG.posicoes.penalizacaoAlternativa);
+    expect(cdm.overall).toBe(78);
     expect(onze.filter((l) => l.jogador == null)).toHaveLength(9);
   });
 });

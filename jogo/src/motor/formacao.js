@@ -1,13 +1,17 @@
-// Formações táticas e o onze: que jogador ocupa cada lugar, com a penalização nas posições alternativas.
+// Formações táticas e o onze: que jogador ocupa cada lugar, com a penalização de quem joga fora de posição.
 import { CONFIG } from '../config.js';
 
 export const FORMACOES = Object.keys(CONFIG.formacoes);
 
-/** Overall de um jogador num lugar, ou null se não pode jogar lá. */
+/** Overall de um jogador num lugar que é seu (a posição principal ou uma alternativa), ou null se não é. */
+export function overallNatural(j, posicao) {
+  return j.posicao === posicao || j.alternativas?.includes(posicao) ? j.overall : null;
+}
+
+/** Overall de um jogador em qualquer lugar: fora de posição perde menos se ficar na sua linha (defesa, meio, ataque). */
 export function overallNaPosicao(j, posicao) {
-  if (j.posicao === posicao) return j.overall;
-  if (j.alternativas?.includes(posicao)) return j.overall - CONFIG.posicoes.penalizacaoAlternativa;
-  return null;
+  const { linha, foraDePosicao } = CONFIG.posicoes;
+  return overallNatural(j, posicao) ?? j.overall - (linha[j.posicao] === linha[posicao] ? foraDePosicao.mesmaLinha : foraDePosicao.outraLinha);
 }
 
 /**
@@ -82,7 +86,7 @@ export function onzeEscolhido(jogadores, formacao, escolha = null) {
   const usados = new Set();
   const fixos = lugares.map((posicao, i) => {
     const j = jogadores.find((x) => x.id === escolha[i]);
-    if (!j || usados.has(j.id) || overallNaPosicao(j, posicao) == null) return null;
+    if (!j || usados.has(j.id)) return null;
     usados.add(j.id);
     return j;
   });
@@ -96,10 +100,11 @@ function atribuir(jogadores, lugares) {
   if (!lugares.length) return { onze: [], sobram: jogadores.map((j) => j.id) };
   // Linhas = lugares; colunas = jogadores + 11 colunas "vazio" (para poder deixar um lugar por preencher).
   const colunas = [...jogadores, ...lugares.map(() => null)];
+  // Sozinho, o jogo só põe cada um nas suas posições: fora de posição é sempre escolha do treinador.
   const custo = lugares.map((pos) =>
     colunas.map((j) => {
       if (!j) return SEM_LUGAR;
-      const ov = overallNaPosicao(j, pos);
+      const ov = overallNatural(j, pos);
       return ov == null ? SEM_LUGAR * 2 : 100 - ov;
     }),
   );
@@ -107,7 +112,7 @@ function atribuir(jogadores, lugares) {
   const usados = new Set();
   const onze = lugares.map((posicao, i) => {
     const j = colunas[atribuicao[i]];
-    const ov = j ? overallNaPosicao(j, posicao) : null;
+    const ov = j ? overallNatural(j, posicao) : null;
     if (!j || ov == null) return { posicao, jogador: null, overall: null };
     usados.add(j.id);
     return { posicao, jogador: j.id, overall: ov };

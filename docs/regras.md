@@ -34,8 +34,11 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
 ### 3.1 Formação tática
 - Todos escolhem ao mesmo tempo, no início da janela: 4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 3-4-3 ou 5-3-2.
 - Só se muda na janela seguinte.
-- Um jogador pode jogar na posição principal ou nas alternativas do EAFC. Nas alternativas tem uma pequena
-  penalização de overall.
+- Na posição principal e nas alternativas do EAFC, um jogador joga com o overall todo.
+- O treinador pode pô-lo noutra posição: perde **5** de overall na mesma linha (defesa, meio-campo ou ataque) e **10** noutra
+  linha. O guarda-redes é uma linha à parte.
+- **[A]** O onze sugerido só usa as posições do jogador: fora de posição é sempre escolha do treinador. Um lugar sem ninguém
+  das suas posições continua a receber um emprestado no fecho.
 
 ### 3.2 Draft
 - Antes do tabuleiro, uma escolha de cada vez, pela **classificação invertida**. Na 1.ª época a ordem é aleatória e
@@ -55,7 +58,8 @@ especificação original estão marcadas com **[A]** (assumido) e podem mudar.
 - O plantel pode ter **um 12.º jogador**, fora do onze, desde que seja da formação.
 - No fim de cada época crescem entre **+2** (quase não jogou) e **+8** (jogou quase tudo), proporcionalmente aos
   minutos e sem passar o potencial. O valor de mercado acompanha.
-- Com **mais de 21 anos e mais de 78 de overall**, o jovem passa para o plantel principal.
+- Um jogador da formação tem no máximo **77 de overall**: quando chega aos **78**, passa para o plantel principal, seja qual
+  for a idade.
 
 ### 3.4 Tabuleiro de mercado (36 casas)
 
@@ -90,11 +94,14 @@ partida. Em 3 épocas: 3 · 18 · 60 M€. Em 5: 3 · 12 · 18 · 40 · 60 M€.
   **80% do valor** ou passa. Se passar, já não pode licitar: há **leilão** entre os outros, a partir do **valor de
   mercado**. Cada um licita ou passa e, se todos passarem, a carta é **descartada** (**[A]** não volta a sair até à
   próxima janela). A Rede soma-se aos 80%: 64% do valor.
-- **Rede de observação**: carta de uma liga que dá **20% de desconto** nos jogadores dessa liga que saiam no Mercado.
+- **Rede de observação**: carta que dá **20% de desconto** nos jogadores dessa liga ou grupo que saiam no Mercado. Há 10:
+  Liga Portugal, LaLiga, Serie A, Ligue 1, Premier League, Championship, Bundesliga, **Ligas asiáticas** (Arábia Saudita, China,
+  Coreia do Sul, Emirados, Tailândia, Índia), **Ligas sul-americanas** (Argentina, Brasil, Colômbia, Libertadores, Sudamericana)
+  e **Ligas norte-americanas** (MLS e Liga MX). Em `CONFIG.cartas.redes`.
   Máximo **2 por treinador**: ao calhar a terceira, descarta-se uma.
-- **Jovens Talentos**: um jogador com **overall 78–82 e até 23 anos**. Compra-se a 80% do valor ou vai a leilão, como
-  no Mercado **[A]**. Com até 21 anos entra na formação (com potencial escondido); senão, no plantel
-  principal.
+- **Jovens Talentos**: um jogador com **overall 78–82 e até 23 anos**. Estes jogadores não saem no Mercado, e vice-versa:
+  cada um só está num dos baralhos. Compra-se a 80% do valor ou vai a leilão, como
+  no Mercado **[A]**. Como têm 78 ou mais de overall, entram sempre no plantel principal.
 - **Agente**: carta guardada na mão, com três usos:
   - inflacionar a cláusula de um jogador teu para **2× o valor de mercado** (uma vez por jogador);
   - **anular** um Agente usado contra ti;
@@ -290,7 +297,7 @@ A mesma tática dos dois lados é neutra.
     - **lesão** no adversário (ver 4.4);
     - **penálti** a favor: um dado, golo com 3–6;
     - **bola parada perigosa**: um dado, golo com 4–6.
-- **Substituição**: uma por jogo, para o jovem da formação entrar em qualquer período. Se houver mais de um jogador
+- **Substituição**: uma por jogo, para o jovem da formação entrar em qualquer período, numa das suas posições. Se houver mais de um jogador
   dessa posição em campo, o treinador escolhe quem sai. Os minutos contam até à saída.
 - **Marcador**: sorteado com peso pela finalização e pela posição. **Assistente**: com peso pelo passe.
 - Os dados lançados são visíveis para todos.
@@ -321,6 +328,11 @@ A mesma tática dos dois lados é neutra.
 - Há uma tabela de **marcadores e assistências só da Taça**. **[A]** Estes golos não contam para as da liga, nem os minutos
   para o crescimento dos jovens.
 - **[A]** O bot, quando entra, tem uma penalização maior do que na liga, para ganhar muito raramente.
+
+### 4.6 Reformas
+- No fim de cada época, um jogador de uma equipa que faça **34 anos ou mais** pode reformar-se: **10%** aos 34, mais **10%**
+  por cada ano (20% aos 35, 30% aos 36...). Sai do plantel e não volta ao baralho. Os emprestados não contam.
+- **[A]** O lugar fica vazio até ao fecho da janela seguinte. Os bots contratam logo um jogador da mesma posição.
 
 ## 5. Marcas e patrocínios
 - Cada equipa tem **1 marca e 2 patrocínios**, e nunca dois patrocínios de valor alto ao mesmo tempo.

@@ -2,13 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { CONFIG } from '../src/config.js';
 import { contexto, salaComecada, salaNoTabuleiro, treinadorDe, vezDe, ok, verificarInvariantes } from './apoio.js';
 import { agir } from '../src/motor/partida.js';
-import { jogador, transferir } from '../src/motor/estado.js';
+import { prepararJovem } from '../src/motor/negocios.js';
+import { jogador, transferir, livre } from '../src/motor/estado.js';
 import { resolverCasa } from '../src/motor/tabuleiro.js';
 import { abrirJanela } from '../src/motor/janela.js';
 import { entrar } from '../src/motor/sala-logica.js';
 import { premio, extensaoPatrocinios, extensaoMarca } from '../src/motor/patrocinios.js';
 import { MARCAS, PATROCINIOS } from '../src/motor/marcas.js';
-import { crescimentoJovem, envelhecer, variacaoOverall, rendimentoEpoca } from '../src/motor/fim-epoca.js';
+import { crescimentoJovem, envelhecer, variacaoOverall, rendimentoEpoca, reformaSe } from '../src/motor/fim-epoca.js';
 import { emparelhar, nomeRonda, ordenarTabela } from '../src/motor/campeonato.js';
 import { criarJogo, forca } from '../src/motor/jogo.js';
 import { tirarMisterio } from '../src/motor/misterio.js';
@@ -558,5 +559,75 @@ describe('guardar e retomar', () => {
     jogarAteAoFim(sala, ctx);
     expect(sala.fase).toBe('fim');
     verificarInvariantes(sala);
+  });
+});
+
+describe('reformas', () => {
+  it('10% aos 34 anos, mais 10% por ano, e nunca antes dos 34', () => {
+    const rngA = (v) => () => v;
+    expect(reformaSe(rngA(0), 33)).toBe(false);
+    expect(reformaSe(rngA(0.09), 34)).toBe(true);
+    expect(reformaSe(rngA(0.11), 34)).toBe(false);
+    expect(reformaSe(rngA(0.29), 36)).toBe(true);
+    expect(reformaSe(rngA(0.31), 36)).toBe(false);
+    expect(reformaSe(rngA(0.99), 43)).toBe(true);
+  });
+
+  it('quem se reforma sai do plantel, aparece nas mudanças e não volta ao baralho; os bots ficam com o plantel cheio', () => {
+    const ctx = contexto();
+    const sala = salaComecada(2, { bots: 1 }, ctx);
+    sala.calendario = [[['e1', 'e2']]];
+    const bot = Object.values(sala.equipas).find((e) => e.bot);
+    const [velho, velhoBot] = [sala.equipas.e1.plantel[0], bot.plantel[0]];
+    const tamanhoBot = bot.plantel.length;
+    sala.jogadores[velho].idade = 50;
+    sala.jogadores[velhoBot].idade = 50;
+    const mudancas = envelhecer(sala, ctx);
+    expect(sala.equipas.e1.plantel).not.toContain(velho);
+    expect(sala.jogadores[velho].reformado).toBe(true);
+    expect(mudancas.find((m) => m.jogador === velho).reformado).toBe(51);
+    expect(livre(sala, velho)).toBe(false);
+    expect(bot.plantel).not.toContain(velhoBot);
+    expect(bot.plantel).toHaveLength(tamanhoBot);
+    verificarInvariantes(sala);
+  });
+});
+
+describe('partida longa com reformas', () => {
+  it('10 épocas até ao fim, com os plantéis a envelhecer e reformas pelo caminho', () => {
+    const ctx = contexto(11);
+    const sala = salaComecada(3, { epocas: 10, bots: 2 }, ctx);
+    jogarAteAoFim(sala, ctx);
+    expect(sala.fase).toBe('fim');
+    verificarInvariantes(sala);
+    expect(Object.values(sala.jogadores).filter((d) => d.reformado).length).toBeGreaterThan(0);
+    for (const e of Object.values(sala.equipas)) for (const id of e.plantel) expect(sala.jogadores[id].reformado).toBeFalsy();
+  });
+});
+
+describe('quem é da formação', () => {
+  it('com 78 de overall já não é da formação: passa ao plantel principal, seja qual for a idade', () => {
+    const ctx = contexto();
+    const sala = salaComecada(2, {}, ctx);
+    sala.calendario = [[['e1', 'e2']]];
+    const [a, b] = sala.equipas.e1.plantel;
+    Object.assign(sala.jogadores[a], { formacao: true, overall: 70, idade: 19, potencial: 95, minutos: 0 });
+    Object.assign(sala.jogadores[b], { formacao: true, overall: 76, idade: 19, potencial: 78, minutos: 99999 });
+    envelhecer(sala, ctx);
+    expect(sala.jogadores[a].formacao).toBe(true);
+    expect(sala.jogadores[b].overall).toBe(78);
+    expect(sala.jogadores[b].formacao).toBe(false);
+  });
+
+  it('um jovem só entra na formação com 77 ou menos', () => {
+    const ctx = contexto();
+    const sala = salaComecada(2, {}, ctx);
+    const jovem = [...ctx.base.values()].find((j) => j.overall >= 78 );
+    const miudo = [...ctx.base.values()].find((j) => j.overall <= 77);
+    for (const j of [jovem, miudo]) sala.jogadores[j.id] = { id: j.id, overall: j.overall, idade: 20 };
+    prepararJovem(sala, ctx, jovem.id);
+    prepararJovem(sala, ctx, miudo.id);
+    expect(sala.jogadores[jovem.id].formacao).toBeFalsy();
+    expect(sala.jogadores[miudo.id].formacao).toBe(true);
   });
 });

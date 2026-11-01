@@ -1,8 +1,9 @@
 // Fim de época: prémios, idade, evolução dos jogadores e crescimento dos jovens da formação.
 // Só evoluem os jogadores que estão em equipas: os do baralho ficam como na base, senão deixava de haver jovens no draft.
 import { CONFIG } from '../config.js';
-import { comPeso } from './aleatorio.js';
-import { jogador, mudarJogador, registar } from './estado.js';
+import { comPeso, escolher } from './aleatorio.js';
+import { jogador, mudarJogador, registar, transferir } from './estado.js';
+import { livresQue } from './cartas.js';
 
 const E = CONFIG.evolucao;
 const LINHA = CONFIG.posicoes.linha;
@@ -52,6 +53,23 @@ export function crescimentoJovem(minutos, minutosPossiveis) {
   return Math.round(a + (b - a) * parte);
 }
 
+/** Quem faz esta idade reforma-se? */
+export function reformaSe(rng, idade) {
+  const { desde, probabilidade, aumentoPorAno } = E.reforma;
+  return idade >= desde && rng() < probabilidade + (idade - desde) * aumentoPorAno;
+}
+
+/** O jogador sai do jogo de vez. Um bot contrata logo outro para o lugar, porque não passa pelo fecho da janela. */
+function reformar(sala, ctx, e, j, idade) {
+  transferir(sala, j.id, null);
+  mudarJogador(sala, j.id, { reformado: true });
+  registar(sala, ctx, `${j.curto} (${e.nome}) reforma-se aos ${idade} anos.`, { tipo: 'carta' });
+  if (!e.bot) return;
+  const novo = escolher(ctx.aleatorio, livresQue(sala, ctx, { posicao: j.posicao, overall: [j.overall - 2, j.overall + 2], idade: [18, 30] }))
+    ?? escolher(ctx.aleatorio, livresQue(sala, ctx, { posicao: j.posicao, idade: [18, 30] }));
+  if (novo != null) transferir(sala, novo, e.id);
+}
+
 /** Aplica o ano que passou a todos os jogadores das equipas. Devolve as mudanças a mostrar. */
 export function envelhecer(sala, ctx) {
   const jornadas = sala.calendario.length * 2;
@@ -61,11 +79,16 @@ export function envelhecer(sala, ctx) {
     for (const id of e.plantel) {
       const j = jogador(sala, ctx, id);
       if (j.emprestado) continue;
+      if (reformaSe(ctx.aleatorio, j.idade + 1)) {
+        reformar(sala, ctx, e, j, j.idade + 1);
+        mudancas.push({ jogador: id, nome: j.curto, equipa: e.id, antes: j.overall, depois: j.overall, formacao: Boolean(j.formacao), reformado: j.idade + 1 });
+        continue;
+      }
       let overall = j.overall;
       if (j.formacao) overall = Math.min(Math.max(j.potencial ?? overall, overall), overall + crescimentoJovem(j.minutos ?? 0, minutosPossiveis));
       else overall = Math.min(E.overallMaximo, overall + variacaoOverall(ctx.aleatorio, j.idade, overall, rendimentoEpoca(sala, ctx, j)));
       const idade = j.idade + 1;
-      const promovido = j.formacao && idade > CONFIG.jovens.promocao.idade && overall > CONFIG.jovens.promocao.overall;
+      const promovido = j.formacao && overall >= CONFIG.jovens.overallPrincipal;
       mudarJogador(sala, id, { idade, overall, minutos: 0, ...(promovido ? { formacao: false } : {}) });
       if (promovido) registar(sala, ctx, `${j.curto} (${e.nome}) passa ao plantel principal, com ${overall} de overall.`, { tipo: 'carta' });
       if (overall !== j.overall || promovido) mudancas.push({ jogador: id, nome: j.curto, equipa: e.id, antes: j.overall, depois: overall, formacao: Boolean(j.formacao), promovido });

@@ -2,7 +2,7 @@
 // propostas, fecho). O servidor é autoritativo: aqui só se desenha o estado e se enviam intenções.
 import { Ligacao } from './ligacao.js';
 import { CONFIG } from './comum/config.gen.js';
-import { onzeEscolhido, overallNaPosicao } from './comum/formacao.gen.js';
+import { onzeEscolhido, overallNaPosicao, overallNatural } from './comum/formacao.gen.js';
 import { equipamentoSVG, emblemaSVG, PADROES } from './equipamento.js';
 import { moedaEmpresarioSVG, moedaMedicoSVG } from './moedas.js';
 import { CASA, instalarFundos, simboloSVG } from './casas.js';
@@ -39,6 +39,7 @@ function mostrar(ecra) {
 }
 
 function arrancar() {
+  if (/^\/demo\/?$/.test(location.pathname)) return arrancarDemo();
   const m = location.pathname.match(/^\/sala\/([A-Za-z]{4})\/?$/);
   if (!m) {
     $('#nome').value = ID.nome;
@@ -52,6 +53,30 @@ function arrancar() {
     return;
   }
   ligar();
+}
+
+/** A demo não fala com o servidor: desenha estados já gravados, como se tivessem chegado pela ligação. */
+async function arrancarDemo() {
+  const { iniciarDemo } = await import('./demo.js');
+  try {
+    await iniciarDemo({
+      mostrarEstado: ({ sala, eu }) => {
+        passoFimEpoca = 1;
+        abaFimEpoca = 'marcadores';
+        separador = 'atual';
+        aoMensagem({ t: 'estado', sala, eu });
+      },
+      abrir: (nome) => {
+        const d = $(`#dialogo-${nome}`);
+        if (d.open) return;
+        (nome === 'plantel' ? desenharPlantel : desenharClassificacoes)();
+        d.show();
+      },
+    });
+  } catch (e) {
+    $('#erro-inicio').textContent = e.message;
+    mostrar('inicio');
+  }
 }
 
 function ligar() {
@@ -90,6 +115,8 @@ const minhaEquipa = () => (EU && S ? S.equipas[EU.equipa] : null);
 const souAnfitriao = () => S && EU && S.anfitriao === EU.id;
 const equipa = (id) => S.equipas[id];
 const jogador = (id) => S.jogadores[id];
+/** O que o suplente de um lesionado perde, se entrar fora das suas posições. */
+const textoForaDePosicao = (j, posicao) => (overallNatural(j, posicao) == null ? ` (−${CONFIG.jogo.lesao.foraDePosicao}, fora de posição)` : '');
 const nomeEquipa = (id) => esc(S.equipas[id]?.nome ?? '?');
 const kit = (e, tamanho = 30) => equipamentoSVG({ ...e.kit, tamanho });
 const treinador = (id) => S.treinadores.find((t) => t.id === id);
@@ -438,7 +465,7 @@ function painelLeilao(e) {
          <div class="linha-botoes"><button class="btn btn-principal" data-acao="decidir" data-aceitar="1">Vender</button><button class="btn btn-contorno" data-acao="decidir">Recusar</button></div>`
       : `<p class="nota">${nomeEquipa(l.vendedor)} está a decidir se vende.</p>`;
   } else if (participo && !souLider) {
-    const valor = lanceProposto != null && lanceProposto >= minimo ? lanceProposto : minimo;
+    const valor = Math.round((lanceProposto != null && lanceProposto >= minimo ? lanceProposto : minimo) * 10) / 10;
     acoes = `<div class="lance-linha"><div class="lance">
         <input id="valor-lance" class="campo" type="number" step="0.5" min="${minimo}" value="${valor}" aria-label="Valor do lance (M€)">
         <button class="btn btn-principal" data-acao="licitar" ${podePagar(e, minimo) ? '' : 'disabled'}>Licitar</button>
@@ -742,7 +769,6 @@ function mostrarLesao(jogo, eu) {
   if (lesaoMostrada === chave) return;
   lesaoMostrada = chave;
   const J = CONFIG.jogo.lesao;
-  const fora = sup && overallNaPosicao(sup, les.posicao) == null;
   d.innerHTML = `<div class="carta-sorte carta-sorte-medico">
       <p class="rotulo">Lesão</p>
       ${moedaMedicoSVG(110)}
@@ -750,7 +776,7 @@ function mostrarLesao(jogo, eu) {
       <p>${esc(les.texto ?? 'Lesionou-se.')}</p>
       <div class="carta-sorte-botoes">
         ${e.cartas.medico > 0 ? `<button class="btn btn-branco" data-acao="usar_medico" data-jogador="${les.jogador}">Usar ficha de lesão (tens ${e.cartas.medico})</button>` : ''}
-        ${sup ? `<button class="btn btn-branco" data-acao="lesao_suplente" data-jogador="${les.jogador}">Entra ${esc(sup.curto)}${fora ? ` (−${J.foraDePosicao}, fora de posição)` : ''}</button>` : ''}
+        ${sup ? `<button class="btn btn-branco" data-acao="lesao_suplente" data-jogador="${les.jogador}">Entra ${esc(sup.curto)}${textoForaDePosicao(sup, les.posicao)}</button>` : ''}
         <button class="btn btn-fantasma" data-acao="lesao_ficar" data-jogador="${les.jogador}">Fica em campo (−${J.penalizacao})</button>
       </div>
     </div>`;
@@ -813,6 +839,7 @@ function painelCampeonato() {
 // --- Fim da época ---
 
 let abaFimEpoca = 'marcadores';
+let entradaCampeao = null; // o troféu e o emblema só entram a saltar uma vez por época
 let passoFimEpoca = 1; // 1: o campeão; 2: as melhorias do meu plantel
 let epocaCelebrada = null;
 
@@ -913,6 +940,7 @@ function ecraCampeao(f, p, e) {
   const m = f.momentos ?? {};
   const meus = e ? m.equipas?.[e.id] : null;
   celebrar(`epoca-${p.epoca}`, campeao);
+  if (entradaCampeao?.epoca !== p.epoca) entradaCampeao = { epoca: p.epoca, ate: performance.now() + 1000 };
   const separador = (aba, texto) => `<button class="separador-btn" role="tab" aria-selected="${abaFimEpoca === aba}" data-acao="fim-aba" data-aba="${aba}">${texto}</button>`;
   const lateral = abaFimEpoca === 'equipa'
     ? campoEquipaEpoca(p)
@@ -922,7 +950,7 @@ function ecraCampeao(f, p, e) {
   const botao = !e || e.espera ? '' : pronto ? '<p class="nota centro">À espera dos outros treinadores.</p>'
     : semMelhorias ? `<button class="btn btn-principal" data-acao="continuar">${f.ultima ? 'Ver o palmarés' : 'Seguir para a próxima época'}</button>`
       : '<button class="btn btn-principal" data-acao="fim-continuar">Continuar</button>';
-  return `<div class="fim-epoca">
+  return `<div class="fim-epoca${performance.now() < entradaCampeao.ate ? ' fim-entrada' : ''}">
     <header class="fim-topo">
       ${TACA_SVG}
       <div class="fim-campeao">${emblemaSVG(campeao, 132)}</div>
@@ -960,14 +988,14 @@ function ecraMelhorias(f, p, e) {
     const jg = jogador(m.jogador);
     const dif = m.depois - m.antes;
     return `<div class="melhoria ${dif > 0 ? 'sobe' : dif < 0 ? 'desce' : ''}">
-      ${jg ? `<div class="carta-clicavel" data-jogador="${jg.id}">${cartaHTML(jg, { tamanho: 'pequena' })}</div>` : `<strong>${esc(m.nome)}`}
-      <p class="melhoria-valor"><span>${m.antes}</span> → <strong>${m.depois}</strong> <em>${dif > 0 ? '+' : ''}${dif}</em></p>
+      ${jg ? `<div class="carta-clicavel" data-jogador="${jg.id}">${cartaHTML(jg, { tamanho: 'pequena' })}</div>` : `<strong>${esc(m.nome)}</strong>`}
+      ${m.reformado ? `<p class="melhoria-valor"><strong>Reforma-se aos ${m.reformado} anos</strong></p>` : `<p class="melhoria-valor"><span>${m.antes}</span> → <strong>${m.depois}</strong> <em>${dif > 0 ? '+' : ''}${dif}</em></p>`}
       ${m.promovido ? '<small>Passa ao plantel principal</small>' : ''}
     </div>`;
   }).join('');
   return `<div class="fim-epoca">
     <h2 class="titulo titulo-medio centro">O teu plantel depois da época ${p.epoca}</h2>
-    <p class="nota centro">Quem jogou bem cresceu, e os anos pesam a quem já tem muitos.</p>
+    <p class="nota centro">Quem jogou bem cresceu, os anos pesam a quem já tem muitos, e os mais velhos podem reformar-se.</p>
     <div class="melhorias">${cartas}</div>
     <div class="fim-botao">${pronto ? '<p class="nota centro">À espera dos outros treinadores.</p>' : '<button class="btn btn-principal" data-acao="continuar">Seguir para a próxima época</button>'}</div>
   </div>`;
@@ -987,7 +1015,7 @@ function painelFim() {
   const ranking = (S.ranking ?? []).map((r, i) => `<tr class="${r.equipa === EU.equipa ? 'eu' : ''}"><td>${i + 1}</td><td class="celula-equipa">${emblemaSVG(equipa(r.equipa), 22)}${nomeEquipa(r.equipa)}</td><td>${r.campeonatos}</td><td>${r.tacas}</td><td>${String(r.titulos).replace('.', ',')}</td><td class="pts">${r.pontos}</td></tr>`).join('');
   const vencedor = S.ranking?.[0] && equipa(S.ranking[0].equipa);
   if (vencedor) celebrar('fim', vencedor);
-  return `<div class="fim-epoca">${vencedor ? `<header class="fim-topo">
+  return `<div class="fim-epoca fim-entrada">${vencedor ? `<header class="fim-topo">
       ${TACA_SVG}
       <div class="fim-campeao">${emblemaSVG(vencedor, 132)}</div>
       <div class="fim-titulo"><p class="rotulo">Vencedor da partida</p><h2>${esc(vencedor.nome)}</h2><p>${mister(vencedor)} · ${String(S.ranking[0].titulos).replace('.', ',')} títulos</p></div>
@@ -1091,7 +1119,7 @@ function substituicaoHTML(lado, jogo) {
   const sup = lado.suplente != null && !lado.subUsada ? jogador(lado.suplente) : null;
   let aviso = '';
   if (alvo) {
-    const forma = sup && overallNaPosicao(sup, alvo.posicao) == null ? ` (−${CONFIG.jogo.lesao.foraDePosicao}, fora de posição)` : '';
+    const forma = sup ? textoForaDePosicao(sup, alvo.posicao) : '';
     aviso = `<div class="aviso-lesao"><p><strong>${esc(alvo.nome)}</strong> continua lesionado.</p>
       ${sup ? `<button class="btn btn-mini btn-principal" data-acao="lesao_suplente" data-jogador="${alvo.jogador}">Entra ${esc(sup.curto)}${forma}</button>` : ''}
     </div>`;
@@ -1246,6 +1274,9 @@ function desenharClassificacoes() {
 
 /** A carta que acabou de sair aparece em grande a todos, até quem a tirou a confirmar. */
 const LIGAS = {
+  'Ligas asiáticas': ['LIGAS ASIÁTICAS', null],
+  'Ligas sul-americanas': ['LIGAS SUL-AMERICANAS', null],
+  'Ligas norte-americanas': ['LIGAS NORTE-AMERICANAS', null],
   'LALIGA EA SPORTS': ['LALIGA', 'es'],
   'LALIGA HYPERMOTION': ['LALIGA 2', 'es'],
   'Premier League': ['PREMIER LEAGUE', 'gb-eng'],
@@ -1434,10 +1465,46 @@ function mostrarSoma(espera) {
 }
 
 /** O onze a mostrar: durante o campeonato, o que está a jogar; na janela, a escolha do treinador ou o melhor possível. */
-function onzeDe(e) {
+function onzeGuardado(e) {
   const formacao = e.formacao ?? '4-4-2';
   if (S.fase !== 'janela' && e.onze) return { formacao, onze: e.onze };
   return { formacao, onze: onzeEscolhido(e.plantel.map(jogador).filter((x) => x && !x.emprestado), formacao, e.escolhaOnze).onze };
+}
+
+// Enquanto um titular está no banco e o lugar dele vazio, as mudanças ficam só aqui. Vão para o servidor quando o lugar
+// voltar a estar preenchido; se fechares o plantel antes disso, fica tudo como estava.
+let rascunhoOnze = null;
+
+function onzeDe(e) {
+  const guardado = onzeGuardado(e);
+  if (!rascunhoOnze || e.id !== minhaEquipa()?.id) return guardado;
+  const valido = podeMudarOnze() && rascunhoOnze.length === guardado.onze.length && rascunhoOnze.every((id) => id == null || e.plantel.includes(id));
+  if (!valido) {
+    rascunhoOnze = null;
+    return guardado;
+  }
+  return {
+    formacao: guardado.formacao,
+    onze: guardado.onze.map((l, i) => {
+      const id = rascunhoOnze[i];
+      return { posicao: l.posicao, jogador: id, overall: id == null ? null : overallNaPosicao(jogador(id), l.posicao) };
+    }),
+  };
+}
+
+/** Os lugares que o treinador deixou vazios e que antes tinham alguém. */
+function lugaresPorPreencher(e, lugares) {
+  const { onze } = onzeGuardado(e);
+  return onze.filter((l, i) => lugares[i] == null && l.jogador != null);
+}
+
+function guardarOnze(lugares) {
+  if (lugaresPorPreencher(minhaEquipa(), lugares).length) {
+    rascunhoOnze = lugares;
+    return;
+  }
+  rascunhoOnze = null;
+  enviar({ t: 'onze', lugares });
 }
 
 const TEXTO_EFEITOS = {
@@ -1511,19 +1578,23 @@ const podeMudarOnze = () => {
   return S.fase === 'campeonato' && S.campeonato.fase === 'taticas';
 };
 
-/** Os lugares para onde o jogador pode ir, trocando com quem lá está. */
+/** Os lugares para onde o jogador pode ir: todos menos o seu, porque fora de posição só perde overall. */
 function lugaresValidos(onze, origem) {
-  const j = origem.banco != null ? jogador(origem.banco) : jogador(onze[origem.lugar].jogador);
-  const validos = new Set();
-  onze.forEach((l, i) => {
-    if (i === origem.lugar || overallNaPosicao(j, l.posicao) == null) return;
-    // Numa troca dentro do campo, o outro também tem de poder jogar no lugar deste.
-    const outro = l.jogador != null ? jogador(l.jogador) : null;
-    if (origem.lugar != null && outro && overallNaPosicao(outro, onze[origem.lugar].posicao) == null) return;
-    validos.add(i);
-  });
-  return validos;
+  return new Set(onze.map((_, i) => i).filter((i) => i !== origem.lugar));
 }
+
+/** O banco é uma fila vertical: quando não cabem todos, abre outra coluna à esquerda e a janela cresce. */
+function ajustarBanco(jogadores, noFecho) {
+  const d = $('#dialogo-plantel');
+  const altura = innerHeight - 48 - $('#barra-equipa').offsetHeight - 56;
+  const linhas = Math.max(1, Math.floor(altura / (noFecho ? 204 : 164)));
+  d.style.setProperty('--linhas-banco', linhas);
+  d.style.setProperty('--colunas-banco', Math.max(1, Math.ceil(jogadores / linhas)));
+}
+addEventListener('resize', () => $('#dialogo-plantel').open && desenharPlantel());
+$('#dialogo-plantel').addEventListener('close', () => {
+  rascunhoOnze = null;
+});
 
 function desenharPlantel() {
   const e = minhaEquipa();
@@ -1537,6 +1608,8 @@ function desenharPlantel() {
   const vendidos = banco.filter((x) => x.id !== doze && !x.emprestado);
   const totalBanca = vendidos.reduce((s, x) => s + x.valor * CONFIG.valores.precoBase, 0);
   const vazios = onze.filter((l) => l.jogador == null).map((l) => posicao(l.posicao));
+  const porPreencher = lugaresPorPreencher(e, onze.map((l) => l.jogador));
+  ajustarBanco(banco.length, noFecho);
   const cartaBanco = (j) => `<div class="banco-jogador">
       <div class="lugar-fora${edita ? ' lugar-editavel' : ''}" ${edita ? `data-banco="${j.id}"` : `data-jogador="${j.id}"`}>${miniCartaHTML(j)}<span class="lugar-pos">${[j.posicao, ...(j.alternativas ?? [])].map(posicao).join(' ')}</span></div>
       ${noFecho && j.formacao ? `<button class="btn btn-mini ${doze === j.id ? 'btn-principal' : 'btn-fantasma'}" type="button" data-acao="fecho-doze" data-jogador="${j.id}">${doze === j.id ? '12.º' : 'Ficar'}</button>` : ''}
@@ -1546,14 +1619,15 @@ function desenharPlantel() {
     <button class="btn-minimizar" data-fechar aria-label="Minimizar" title="Minimizar"><span aria-hidden="true">⌄</span></button>
     <div class="plantel-corpo">
       <div class="campo-caixa">${campoHTML(formacao, onze, S.jogadores, { editavel: edita })}</div>
-      <div class="plantel-banco-caixa">
-        <p class="rotulo">Banco${banco.length ? '' : ': ninguém'}</p>
+      <div id="plantel-banco-caixa" class="plantel-banco-caixa">
+        <p class="rotulo">Banco</p>
         <div class="plantel-banco">${banco.map(cartaBanco).join('')}</div>
       </div>
-      ${edita ? '<p class="nota plantel-dica">Arrasta um jogador para trocar de lugar. Toca para ver a ficha.</p>' : ''}
+      ${porPreencher.length ? `<p class="nota plantel-dica plantel-falta">Falta preencher: ${porPreencher.map((l) => posicao(l.posicao)).join(', ')}. Se fechares agora, fica como estava.</p>`
+        : edita ? '<p class="nota plantel-dica">Arrasta um jogador para trocar de lugar ou para o banco. Toca para ver a ficha.</p>' : ''}
       ${noFecho ? `<div class="plantel-fecho">
         <p class="nota">${vendidos.length ? `Vão para a banca: ${dinheiro(totalBanca)}.` : 'Não sai ninguém.'}${vazios.length ? ` Emprestados para ${vazios.join(', ')}.` : ''}</p>
-        <button class="btn btn-principal" data-acao="fechar">Confirmar plantel</button>
+        <button class="btn btn-principal" data-acao="fechar" ${porPreencher.length ? 'disabled' : ''}>Confirmar plantel</button>
       </div>` : ''}
     </div>`;
 }
@@ -1565,12 +1639,7 @@ let fimArrasto = 0;
 function destinosArrasto(origem) {
   const { onze } = onzeDe(minhaEquipa());
   const lugares = lugaresValidos(onze, origem);
-  const bancos = new Set();
-  if (origem.lugar != null) {
-    for (const el of $$('#dialogo-plantel [data-banco]')) {
-      if (overallNaPosicao(jogador(Number(el.dataset.banco)), onze[origem.lugar].posicao) != null) bancos.add(Number(el.dataset.banco));
-    }
-  }
+  const bancos = new Set(origem.lugar != null ? $$('#dialogo-plantel [data-banco]').map((el) => Number(el.dataset.banco)) : []);
   return { onze, lugares, bancos };
 }
 
@@ -1583,6 +1652,7 @@ function iniciarArrasto(ev) {
   a.bancos = bancos;
   for (const el of $$('#dialogo-plantel [data-lugar]')) el.classList.add(lugares.has(Number(el.dataset.lugar)) ? 'valido' : 'invalido');
   for (const el of $$('#dialogo-plantel [data-banco]')) el.classList.add(bancos.has(Number(el.dataset.banco)) ? 'valido' : 'invalido');
+  if (a.origem.lugar != null) $('#plantel-banco-caixa').classList.add('alvo-banco');
   const r = a.el.getBoundingClientRect();
   a.fantasma = a.el.cloneNode(true);
   a.fantasma.classList.remove('invalido', 'valido');
@@ -1625,7 +1695,8 @@ function acabarArrasto(ev, cancelado) {
   }
   fimArrasto = performance.now();
   a.fantasma.remove();
-  const alvo = cancelado ? null : document.elementFromPoint(ev.clientX, ev.clientY)?.closest('#dialogo-plantel [data-lugar], #dialogo-plantel [data-banco]');
+  const debaixo = cancelado ? null : document.elementFromPoint(ev.clientX, ev.clientY);
+  const alvo = debaixo?.closest('#dialogo-plantel [data-lugar], #dialogo-plantel [data-banco]');
   const nova = a.onze.map((l) => l.jogador);
   let mudou = false;
   if (alvo?.dataset.lugar != null && a.lugares.has(Number(alvo.dataset.lugar))) {
@@ -1636,8 +1707,12 @@ function acabarArrasto(ev, cancelado) {
   } else if (alvo?.dataset.banco != null && a.bancos.has(Number(alvo.dataset.banco))) {
     nova[a.origem.lugar] = Number(alvo.dataset.banco);
     mudou = true;
+  } else if (a.origem.lugar != null && debaixo?.closest('#plantel-banco-caixa')) {
+    // Para o banco: o lugar fica vazio até alguém o ocupar.
+    nova[a.origem.lugar] = null;
+    mudou = true;
   }
-  if (mudou) enviar({ t: 'onze', lugares: nova });
+  if (mudou) guardarOnze(nova);
   desenharPlantel();
 }
 document.addEventListener('pointerup', (ev) => acabarArrasto(ev, false));
@@ -1883,6 +1958,7 @@ const ACOES = {
   'abrir-plantel': () => {
     const d = $('#dialogo-plantel');
     if (d.open) return d.close();
+    rascunhoOnze = null;
     desenharPlantel();
     d.show();
   },
@@ -1896,7 +1972,7 @@ document.addEventListener('click', (ev) => {
   const contrato = ev.target.closest('[data-contrato]');
   if (contrato || contratoAmpliado) ampliarContrato(contrato && contrato.dataset.contrato !== contratoAmpliado ? contrato.dataset.contrato : null);
   if (contrato) return;
-  if (ev.target.matches('#dialogo-equipa')) {
+  if (ev.target.matches('#dialogo-equipa, #dialogo-jogador')) {
     const r = ev.target.getBoundingClientRect();
     if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) return ev.target.close();
   }

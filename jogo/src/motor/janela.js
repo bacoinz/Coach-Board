@@ -155,7 +155,6 @@ export function escolherOnze(sala, ctx, equipaId, lugares) {
     const j = jogador(sala, ctx, lugares[i]);
     if (!j || j.equipa !== equipaId) return erro('Esse jogador não é teu.');
     if (antesDoJogo && j.lesionado) return erro(`${j.curto} está lesionado.`);
-    if (overallNaPosicao(j, posicoes[i]) == null) return erro(`${j.curto} não joga a ${CONFIG.posicoes.nome[posicoes[i]]}.`);
   }
   if (antesDoJogo) {
     if (ids.length < e.onze.filter((l) => l.jogador != null).length) return erro('Não podes deixar lugares vazios.');

@@ -70,7 +70,8 @@ export const CONFIG = {
     // Linha de cada posição: conta para a Defesa (GR + DEF) ou para o Ataque (MED + AV) no motor dos jogos.
     linha: { GK: 'GR', CB: 'DEF', LB: 'DEF', RB: 'DEF', CDM: 'MED', CM: 'MED', CAM: 'MED', LM: 'MED', RM: 'MED', LW: 'AV', RW: 'AV', ST: 'AV' },
     nome: { GK: 'GR', CB: 'DC', LB: 'DE', RB: 'DD', CDM: 'MDC', CM: 'MC', CAM: 'MCO', LM: 'ME', RM: 'MD', LW: 'EE', RW: 'ED', ST: 'PL' },
-    penalizacaoAlternativa: 2,      // overall a menos numa posição alternativa
+    // Na posição principal e nas alternativas joga com o overall todo. Noutra posição pode jogar, escolhido à mão, com menos:
+    foraDePosicao: { mesmaLinha: 5, outraLinha: 10 },
   },
   formacoes: {
     '4-4-2': ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'RM', 'ST', 'ST'],
@@ -84,7 +85,8 @@ export const CONFIG = {
   // --- Formação (jovens) ---
   jovens: {
     potencial: [85, 95],            // potencial escondido de um jovem
-    promocao: { idade: 21, overall: 78 }, // com mais do que isto passa ao plantel principal
+    idadeMaxima: 21,                // só entra na formação até esta idade
+    overallPrincipal: 78,           // com este overall já não é da formação: entra ou passa ao plantel principal
   },
 
   // --- Draft (src/motor/draft.js). Critérios: idade e overall inclusivos. ---
@@ -286,7 +288,20 @@ export const CONFIG = {
     precoCasa: 0.8,                 // quem cai no Mercado ou em Jovens Talentos compra a 80% do valor
     redeDesconto: 0.2,              // 20% de desconto nos jogadores da liga (soma-se ao anterior)
     maxRedes: 2,
-    redeMinJogadores: 60,           // só há carta de Rede para ligas com pelo menos isto no baralho do Mercado
+    redeMinJogadores: 60,           // só há carta de Rede com pelo menos isto no baralho do Mercado
+    // As cartas de Rede que existem: uma liga, ou um grupo de ligas.
+    redes: [
+      { nome: 'Liga Portugal', ligas: ['Liga Portugal'] },
+      { nome: 'LALIGA EA SPORTS', ligas: ['LALIGA EA SPORTS'] },
+      { nome: 'Serie A Enilive', ligas: ['Serie A Enilive'] },
+      { nome: "Ligue 1 McDonald's", ligas: ["Ligue 1 McDonald's"] },
+      { nome: 'Premier League', ligas: ['Premier League'] },
+      { nome: 'EFL Championship', ligas: ['EFL Championship'] },
+      { nome: 'Bundesliga', ligas: ['Bundesliga'] },
+      { nome: 'Ligas asiáticas', ligas: ['ROSHN Saudi League', 'CSL', 'K League 1', 'United Emirates League', 'Thailand League', 'ISL'] },
+      { nome: 'Ligas sul-americanas', ligas: ['LPF', 'CONMEBOL Libertadores', 'CONMEBOL Sudamericana', 'Liga do Brasil', 'Liga Colombia'] },
+      { nome: 'Ligas norte-americanas', ligas: ['MLS', 'Liga BBVA MX'] },
+    ],
     jovensTalentos: { idade: [0, 23], overall: [78, 82] },
   },
 
@@ -376,7 +391,7 @@ export const CONFIG = {
     probabilidadeAssistencia: 0.8,
     // Quem substitui: lesão sem carta médica (15% de ser pelo menos tão bom) ou efeito de carta Mistério por um jogo.
     // Quem se lesiona e fica em campo joga com menos isto de overall até ao fim do jogo.
-    // Um suplente que entra para fora das suas posições joga com menos foraDePosicao.
+    // Um suplente que entra por lesão para fora das suas posições joga só com menos foraDePosicao.
     lesao: { penalizacao: 10, foraDePosicao: 3 },
     // As lesões em campo; as outras, mais disparatadas, ficam para as cartas Mistério.
     lesoesEmCampo: [
@@ -441,6 +456,8 @@ export const CONFIG = {
     ],
     // A partir daqui, pode perder overall: a probabilidade começa aqui e aumenta a cada ano.
     veteranos: { desde: 34, probabilidade: 0.2, aumentoPorAno: 0.1, delta: -1 },
+    // No fim de cada época: quem faz esta idade pode reformar-se, com esta probabilidade, que sobe a cada ano.
+    reforma: { desde: 34, probabilidade: 0.1, aumentoPorAno: 0.1 },
     overallMaximo: 99,
     // O rendimento da época (de −1 a +1) inclina as probabilidades: mais peso às subidas de quem jogou bem.
     // Médios e avançados: golos e assistências por jogo, em relação ao alvo. Defesas e GR: golos sofridos pela equipa por

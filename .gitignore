@@ -5,3 +5,4 @@ dados/brutos/*
 !dados/brutos/.gitkeep
 *.gen.js
 jogo/public/logos/
+jogo/public/dados/demo.json

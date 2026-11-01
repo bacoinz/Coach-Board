@@ -2,7 +2,7 @@
 import { CONFIG } from '../config.js';
 import { dado } from './aleatorio.js';
 import { jogador, reservar, libertar, receber, registar, erro, M, podePagar, textoSaldo } from './estado.js';
-import { tirarMercado, tirarJovemTalento, tirarRede, faseMercado } from './cartas.js';
+import { tirarMercado, tirarJovemTalento, tirarRede, faseMercado, redeCobre } from './cartas.js';
 import { abrirLeilao, executarVenda, prepararJovem } from './negocios.js';
 import { tirarMisterio, investigar, podeContratar } from './misterio.js';
 import { tirarPatrocinio } from './patrocinios.js';
@@ -109,7 +109,7 @@ export const valorSAD = (sala) => CONFIG.tabuleiro.injecaoSAD.porFase[faseMercad
 export function precoCarta(sala, ctx, equipaId, id) {
   const jg = jogador(sala, ctx, id);
   const e = sala.equipas[equipaId];
-  const rede = e.redes.includes(jg.liga) ? CONFIG.cartas.redeDesconto : 0;
+  const rede = e.redes.some((r) => redeCobre(r, jg.liga)) ? CONFIG.cartas.redeDesconto : 0;
   return arredondar(jg.valor * CONFIG.cartas.precoCasa * (1 - rede) * (1 - (e.descontoProxima ?? 0)));
 }
 
@@ -149,8 +149,8 @@ export function resolverCasa(sala, ctx, equipaId, casa) {
       if (!liga) return registar(sala, ctx, 'Não há mais Redes de observação.');
       if (e.redes.length < CONFIG.cartas.maxRedes) {
         e.redes.push(liga);
-        j.ultimaCarta = { equipa: equipaId, tipo: 'rede', bom: true, titulo: 'Rede de observação', texto: `20% de desconto nos jogadores da liga ${liga}.`, detalhe: null, liga };
-        registar(sala, ctx, `${e.nome} ganha a Rede de observação de ${liga}: 20% de desconto nos jogadores dessa liga.`, { tipo: 'carta' });
+        j.ultimaCarta = { equipa: equipaId, tipo: 'rede', bom: true, titulo: 'Rede de observação', texto: `20% de desconto nos jogadores de ${liga}.`, detalhe: null, liga };
+        registar(sala, ctx, `${e.nome} ganha a Rede de observação de ${liga}: 20% de desconto nesses jogadores.`, { tipo: 'carta' });
       } else j.pendente = { tipo: 'rede', equipa: equipaId, liga };
       break;
     }

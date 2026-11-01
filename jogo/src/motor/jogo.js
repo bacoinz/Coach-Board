@@ -3,7 +3,7 @@ import { CONFIG } from '../config.js';
 import { comPeso, dado, escolher, inteiro } from './aleatorio.js';
 import { jogador, transferir, registar } from './estado.js';
 import { livresQue, tirarEmprestimo } from './cartas.js';
-import { overallNaPosicao } from './formacao.js';
+import { overallNaPosicao, overallNatural } from './formacao.js';
 import { fimDePartida } from './misterio.js';
 import { quem, registarMomento } from './momentos.js';
 
@@ -21,7 +21,7 @@ const media = (lista) => (lista.length ? lista.reduce((s, x) => s + x, 0) / list
 
 function entrada(sala, ctx, id, posicao, extra = {}) {
   const j = jogador(sala, ctx, id);
-  return { posicao, jogador: id, nome: j.curto, nacao: j.nacao, overall: overallNaPosicao(j, posicao) ?? j.overall, ...extra };
+  return { posicao, jogador: id, nome: j.curto, nacao: j.nacao, overall: overallNaPosicao(j, posicao), ...extra };
 }
 
 /** O onze de uma equipa para este jogo, depois dos efeitos das cartas Mistério, que se gastam aqui. */
@@ -56,7 +56,7 @@ function prepararLado(sala, ctx, equipaId, tatica) {
       if (i < 0) continue;
       const pos = lado.onze[i].posicao;
       const sup = lado.suplente != null && jogador(sala, ctx, lado.suplente);
-      if (sup && overallNaPosicao(sup, pos) != null) {
+      if (sup && overallNatural(sup, pos) != null) {
         lado.onze[i] = entrada(sala, ctx, sup.id, pos);
         lado.suplente = null;
       } else {
@@ -219,8 +219,8 @@ export function suplentePorLesao(sala, ctx, jogo, equipaId, id) {
   const i = les ? lado.onze.findIndex((l) => l.jogador === les.jogador) : -1;
   if (i < 0) return { erro: 'Esse jogador não está lesionado em campo.' };
   const sup = jogador(sala, ctx, lado.suplente);
-  const ov = overallNaPosicao(sup, les.posicao) ?? sup.overall - J.lesao.foraDePosicao;
-  const novo = { ...entrada(sala, ctx, sup.id, les.posicao), overall: ov };
+  // Fora das suas posições, perde menos do que quem é escalado à mão: já basta ter um jogador lesionado.
+  const novo = { ...entrada(sala, ctx, sup.id, les.posicao), overall: overallNatural(sup, les.posicao) ?? sup.overall - J.lesao.foraDePosicao };
   jogo.eventos.push({ minuto: jogo.periodo * J.minutosPorPeriodo, lado: jogo.lados.indexOf(lado), tipo: 'substituicao', entra: novo.nome, sai: les.nome });
   lado.onze[i] = novo;
   lado.suplente = null;
@@ -336,7 +336,7 @@ export function pedirSubstituicao(sala, ctx, jogo, equipaId, sai) {
   if (lado.subUsada || lado.suplente == null) return { erro: 'Já não tens substituição.' };
   const lugar = lado.onze.find((l) => l.jogador === sai);
   if (!lugar) return { erro: 'Esse jogador não está em campo.' };
-  if (overallNaPosicao(jogador(sala, ctx, lado.suplente), lugar.posicao) == null) return { erro: 'O jovem não joga nessa posição.' };
+  if (overallNatural(jogador(sala, ctx, lado.suplente), lugar.posicao) == null) return { erro: 'O jovem não joga nessa posição.' };
   lado.subPedida = sai;
   return { ok: true };
 }
@@ -345,5 +345,5 @@ export function pedirSubstituicao(sala, ctx, jogo, equipaId, sai) {
 export function podemSair(sala, ctx, lado) {
   if (lado.subUsada || lado.suplente == null) return [];
   const sup = jogador(sala, ctx, lado.suplente);
-  return lado.onze.filter((l) => overallNaPosicao(sup, l.posicao) != null).map((l) => l.jogador);
+  return lado.onze.filter((l) => overallNatural(sup, l.posicao) != null).map((l) => l.jogador);
 }

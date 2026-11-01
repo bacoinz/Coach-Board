@@ -4,7 +4,7 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-01",
   // Gera public/js/comum/*.gen.js (configuração e formações) antes de cada dev/deploy.
-  "build": { "command": "node scripts/gerar-comum.mjs", "watch_dir": ["src", "../assets"] },
+  "build": { "command": "node scripts/gerar-comum.mjs && node scripts/gerar-demo.mjs", "watch_dir": ["src", "../assets"] },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

@@ -3,7 +3,8 @@ import { CONFIG } from '../src/config.js';
 import { contexto, salaComecada, salaNoTabuleiro, treinadorDe, vezDe, ok } from './apoio.js';
 import { agir } from '../src/motor/partida.js';
 import { jogador } from '../src/motor/estado.js';
-import { criterioExtra, criterioJovem } from '../src/motor/janela.js';
+import { criterioExtra, criterioJovem, sugestaoFecho } from '../src/motor/janela.js';
+import { criarJogo } from '../src/motor/jogo.js';
 import { executarVenda } from '../src/motor/negocios.js';
 import { melhorOnze, onzeEscolhido } from '../src/motor/formacao.js';
 import { livresQue } from '../src/motor/cartas.js';
@@ -71,14 +72,40 @@ describe('o onze escolhido pelo treinador', () => {
     return { ctx, sala, e, onze, lugares: onze.map((l) => l.jogador) };
   };
 
-  it('não aceita um jogador fora das suas posições', () => {
-    const { ctx, sala, lugares, onze } = preparar();
+  it('aceita um jogador fora das suas posições, e o jogo fica com o overall penalizado', () => {
+    const { ctx, sala, e, lugares, onze } = preparar();
     const gr = onze.findIndex((l) => l.posicao === 'GK');
     const outro = onze.findIndex((l, i) => i !== gr && l.jogador != null);
     const trocados = [...lugares];
     [trocados[gr], trocados[outro]] = [trocados[outro], trocados[gr]];
-    expect(agir(sala, ctx, 't1', { t: 'onze', lugares: trocados }).erro).toMatch(/não joga/);
+    ok(agir(sala, ctx, 't1', { t: 'onze', lugares: trocados }));
+    expect(e.escolhaOnze).toEqual(trocados);
+    const naBaliza = jogador(sala, ctx, onze[outro].jogador);
+    expect(onzeEscolhido(e.plantel.map((id) => jogador(sala, ctx, id)), e.formacao, trocados).onze[gr]).toMatchObject({
+      jogador: naBaliza.id,
+      overall: naBaliza.overall - CONFIG.posicoes.foraDePosicao.outraLinha,
+    });
   });
+  it('fora de posição chega ao jogo: o fecho guarda a escolha e o lance usa o overall penalizado', () => {
+    const ctx = contexto();
+    const sala = salaNoTabuleiro(2, {}, ctx);
+    const e = sala.equipas.e1;
+    const todos = e.plantel.map((id) => jogador(sala, ctx, id));
+    const { onze } = melhorOnze(todos, e.formacao);
+    const dd = onze.findIndex((l) => l.posicao === 'RB');
+    const pl = onze.findIndex((l) => l.posicao === 'ST');
+    const lugares = onze.map((l) => l.jogador);
+    [lugares[dd], lugares[pl]] = [lugares[pl], lugares[dd]];
+    ok(agir(sala, ctx, 't1', { t: 'onze', lugares }));
+    sala.janela.fase = 'fecho';
+    for (const eq of ['e1', 'e2']) ok(agir(sala, ctx, treinadorDe(sala, eq), { t: 'fechar', ...sugestaoFecho(sala, ctx, eq) }));
+    expect(sala.fase).toBe('campeonato');
+    const avancado = jogador(sala, ctx, lugares[dd]);
+    expect(e.onze[dd]).toMatchObject({ jogador: avancado.id, overall: avancado.overall - CONFIG.posicoes.foraDePosicao.outraLinha });
+    const jogo = criarJogo(sala, ctx, 'e1', 'e2', { e1: 'Autocarro', e2: 'Autocarro' });
+    expect(jogo.lados[0].onze.find((l) => l.jogador === avancado.id).overall).toBe(avancado.overall - CONFIG.posicoes.foraDePosicao.outraLinha);
+  });
+
   it('não aceita o mesmo jogador em dois lugares nem jogadores de outros', () => {
     const { ctx, sala, lugares } = preparar();
     const repetido = [...lugares];
