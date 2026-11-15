@@ -1,6 +1,7 @@
 // Visualização de um jogo ao estilo do 2D do Football Manager, desenhada num canvas: as duas equipas sobem e descem
 // com a bola, marcam-se e misturam-se, a bola anda de jogador em jogador e cada lance acaba em remate.
 // Serve de textura no relvado 3D e, sem WebGL, aparece diretamente na página.
+import { traduzir } from './idioma.js';
 import { CONFIG } from './comum/config.gen.js';
 import { LUGARES } from './campo.js';
 
@@ -472,7 +473,7 @@ export class Relvado {
       c.font = '38px Anton, Impact, sans-serif';
       c.fillStyle = '#fff';
       c.textAlign = 'center';
-      c.fillText(this.titulo, W / 2, H / 2);
+      c.fillText(traduzir(this.titulo), W / 2, H / 2);
     }
     if (this.aviso) {
       if (agora > this.aviso.ate) this.aviso = null;
@@ -484,7 +485,7 @@ export class Relvado {
         c.fillStyle = golo ? '#1f120d' : '#fff';
         c.textAlign = 'center';
         c.font = golo ? '68px Anton, Impact, sans-serif' : '700 30px Inter, sans-serif';
-        c.fillText(this.aviso.texto, W / 2, H / 2);
+        c.fillText(traduzir(this.aviso.texto), W / 2, H / 2);
       }
     }
     c.restore();

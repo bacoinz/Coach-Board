@@ -1,5 +1,6 @@
 // Carta de jogador (retangular: a foto ocupa a carta e desvanece para a cor do nível; overall, posição, nome e 6 facetas)
 // e a carta pequena usada no campo (só cara, nome e overall). A liga e o clube ficam para o detalhe do jogador.
+import { nomeNacao } from './idioma.js';
 import { CONFIG } from './comum/config.gen.js';
 import { esc, dinheiro } from './util.js';
 import { moedaEmpresarioSVG } from './moedas.js';
@@ -55,7 +56,7 @@ export function cartaHTML(j, { tamanho = 'normal' } = {}) {
   <div class="carta-tags">${etiquetas(j)}</div>
   <div class="carta-nome">${esc(j.curto)}</div>
   <div class="carta-facetas">${facetas}</div>
-  <div class="carta-rodape">${j.bandeira ? `<img class="bandeira" src="/bandeiras/${esc(j.bandeira)}.svg" alt="" loading="lazy">` : ''}<span>${esc(j.nacao)}</span></div>
+  <div class="carta-rodape">${j.bandeira ? `<img class="bandeira" src="/bandeiras/${esc(j.bandeira)}.svg" alt="" loading="lazy">` : ''}<span>${esc(nomeNacao(j))}</span></div>
 </article>`;
 }
 

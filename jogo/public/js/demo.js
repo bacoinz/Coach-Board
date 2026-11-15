@@ -90,5 +90,7 @@ export async function iniciarDemo({ mostrarEstado, abrir }) {
     if (ev.key === 'ArrowRight') ir(atual + 1);
     if (ev.key === 'ArrowLeft') ir(atual - 1);
   });
-  ir(0);
+  // /demo?passo=5 abre logo nesse passo (serve para as imagens do README).
+  const pedido = Number(new URLSearchParams(location.search).get('passo'));
+  ir(Number.isInteger(pedido) && pedido >= 1 ? Math.min(pedido, passos.length) - 1 : 0);
 }

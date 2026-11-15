@@ -1,5 +1,6 @@
 // O aspeto de cada casa do tabuleiro: nome, cores e símbolo. O tabuleiro 3D, os baralhos, as cartas e os títulos
 // desenham-se todos a partir daqui, em canvas ou em SVG.
+import { traduzir } from './idioma.js';
 
 const retangulo = (x, y, w, h, r = 0) => `M${x + r} ${y}h${w - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${h - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w - 2 * r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h - 2 * r)}a${r} ${r} 0 0 1 ${r} ${-r}z`;
 const circulo = (x, y, r) => `M${x - r} ${y}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0z`;
@@ -218,6 +219,7 @@ export function pintarFundo(c, tipo, W, H) {
 
 /** Escreve o texto no maior tamanho que caiba na largura. */
 export function textoAjustado(c, texto, x, y, larguraMax, tamanho, peso = 800, familia = 'Inter, sans-serif') {
+  texto = traduzir(texto);
   let t = tamanho;
   do {
     c.font = `${peso} ${t}px ${familia}`;

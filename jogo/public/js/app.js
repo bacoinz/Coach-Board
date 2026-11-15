@@ -1,5 +1,6 @@
 // Cliente do The Gaffer: ecrãs de início e lobby, e a janela de transferências (tabuleiro 2D, draft, leilões,
 // propostas, fecho). O servidor é autoritativo: aqui só se desenha o estado e se enviam intenções.
+import { instalarTradutor, mudarIdioma, IDIOMA, traduzir, nomeNacao } from './idioma.js';
 import { Ligacao } from './ligacao.js';
 import { CONFIG } from './comum/config.gen.js';
 import { onzeEscolhido, overallNaPosicao, overallNatural } from './comum/formacao.gen.js';
@@ -16,6 +17,7 @@ import { tabuleiroHTML, dadoHTML } from './tabuleiro2d.js';
 import { Relvado } from './relvado.js';
 import { $, $$, esc, dinheiro, toast, identidade } from './util.js';
 
+instalarTradutor();
 const ID = identidade();
 let ligacao = null;
 let S = null; // estado público da sala
@@ -1773,7 +1775,7 @@ function abrirJogador(id) {
         </dl>
         <hr>
         <dl>
-          <dt>Nacionalidade</dt><dd>${esc(jg.nacao)}</dd>
+          <dt>Nacionalidade</dt><dd>${esc(nomeNacao(jg))}</dd>
           <dt>Liga</dt><dd>${esc(jg.liga)}</dd>
           <dt>Clube real</dt><dd>${esc(jg.clube)}</dd>
         </dl>
@@ -1913,7 +1915,7 @@ const ACOES = {
   patrocinio: (d) => enviar({ t: 'patrocinio', aceitar: Boolean(d.aceitar), substitui: Number(d.substitui ?? 0) }),
   forcar_vez: () => enviar({ t: 'forcar_vez' }),
   forcar_leilao: () => enviar({ t: 'forcar_leilao' }),
-  forcar_fecho: () => confirm('Fechar a janela já? Quem ainda não completou as voltas perde o resto.') && enviar({ t: 'forcar_fecho' }),
+  forcar_fecho: () => confirm(traduzir('Fechar a janela já? Quem ainda não completou as voltas perde o resto.')) && enviar({ t: 'forcar_fecho' }),
   propor: (d) => {
     enviar({ t: 'propor', jogador: Number(d.jogador), valor: Number($('#valor-proposta').value) });
     $('#dialogo-jogador').close();
@@ -2045,8 +2047,12 @@ $('#form-nome').addEventListener('submit', (ev) => {
 new ResizeObserver(([r]) => document.documentElement.style.setProperty('--altura-barra', `${Math.ceil(r.target.offsetHeight)}px`)).observe($('#barra-equipa'));
 instalarFundos();
 $('#volume').value = volume();
+for (const el of $$('[data-mudar-idioma]')) {
+  el.value = IDIOMA;
+  el.addEventListener('change', () => mudarIdioma(el.value));
+}
 $('#btn-sair').addEventListener('click', () => {
-  if (!confirm('Sair da sala? A tua equipa fica no jogo e podes voltar pelo mesmo link.')) return;
+  if (!confirm(traduzir('Sair da sala? A tua equipa fica no jogo e podes voltar pelo mesmo link.'))) return;
   ligacao?.fechar();
   history.pushState(null, '', `/${ID.sufixo}`);
   S = null;

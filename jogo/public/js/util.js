@@ -1,4 +1,5 @@
 // Pequenos utilitários do cliente.
+import { emIngles } from './idioma.js';
 
 export const $ = (sel, raiz = document) => raiz.querySelector(sel);
 export const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
@@ -6,8 +7,12 @@ export const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
-/** Dinheiro em M€, à portuguesa: "12,5 M€". */
-export const dinheiro = (v) => `${(Math.round((v ?? 0) * 10) / 10).toFixed(1).replace('.', ',')} M€`;
+/** Dinheiro em M€, à portuguesa ("12,5 M€") ou à inglesa ("€12.5M"). */
+export const dinheiro = (v) => {
+  const x = (Math.round((v ?? 0) * 10) / 10).toFixed(1);
+  if (!emIngles) return `${x.replace('.', ',')} M€`;
+  return x.startsWith('-') ? `−€${x.slice(1)}M` : `€${x}M`;
+};
 
 export function toast(texto, ms = 3200) {
   const caixa = $('#toasts');
