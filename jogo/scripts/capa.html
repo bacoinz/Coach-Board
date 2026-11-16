@@ -1,0 +1,120 @@
+<!doctype html>
+<!-- A imagem de capa do README (docs/capa.png e docs/capa-pt.png), no estilo da do nectr: o nome e a frase à
+     esquerda, o jogo à direita. Gera-se com node scripts/capa.mjs, que lhe passa ?lang=pt ou ?lang=en. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Anton; src: url('/jogo/public/fontes/anton-latin.woff2') format('woff2'); }
+  @font-face { font-family: Anton; src: url('/jogo/public/fontes/anton-latin-ext.woff2') format('woff2'); unicode-range: U+0100-024F; }
+  @font-face { font-family: Inter; src: url('/jogo/public/fontes/inter-latin.woff2') format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: Inter; src: url('/jogo/public/fontes/inter-latin-ext.woff2') format('woff2'); font-weight: 100 900; unicode-range: U+0100-024F; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    position: relative;
+    font-family: Inter, sans-serif;
+    color: #f3ece4;
+    background:
+      radial-gradient(ellipse 60% 70% at 78% 30%, #c49a6c26, transparent 70%),
+      radial-gradient(ellipse 70% 80% at 20% 90%, #134a2c99, transparent 70%),
+      linear-gradient(160deg, #0b1a12 0%, #07110c 55%, #050b08 100%);
+  }
+  /* As riscas do relvado, muito ao de leve. */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(90deg, #ffffff05 0 120px, transparent 120px 240px);
+  }
+  .texto {
+    position: absolute;
+    left: 96px;
+    top: 150px;
+    width: 640px;
+  }
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+  .logo {
+    width: 84px;
+    height: 84px;
+    padding: 6px;
+    border-radius: 22px;
+    background: #ffffff0d;
+  }
+  .nome {
+    font-family: Anton, Impact, sans-serif;
+    font-size: 76px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .nome span { color: #d9b48a; }
+  h1 {
+    margin-top: 64px;
+    font-size: 70px;
+    font-weight: 900;
+    line-height: 1.04;
+    letter-spacing: -2.2px;
+  }
+  h1 em {
+    font-style: normal;
+    color: #d9b48a;
+  }
+  .sub {
+    margin-top: 36px;
+    font-size: 29px;
+    line-height: 1.42;
+    color: #cfc4b8;
+  }
+  .sub + .sub { margin-top: 18px; }
+  .pastilha {
+    display: inline-block;
+    margin-top: 52px;
+    padding: 18px 30px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #e2c19b, #c49a6c);
+    color: #1f120d;
+    font-size: 25px;
+    font-weight: 800;
+    box-shadow: 0 10px 40px #c49a6c55;
+  }
+  /* O jogo: uma janela grande e outra mais pequena, por cima. */
+  .janela {
+    position: absolute;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid #ffffff1f;
+    background: #0b1a12;
+    box-shadow: 0 40px 120px #000c, 0 0 0 1px #0007;
+  }
+  .janela img { display: block; width: 100%; }
+  .grande { left: 760px; top: 120px; width: 1120px; }
+  .pequena { left: 1250px; top: 660px; width: 620px; height: 160px; border-radius: 16px; border: 1px solid #c49a6c66; }
+  .pequena img { width: 1180px; max-width: none; margin: -40px 0 0 -440px; }
+</style>
+</head>
+<body>
+  <div class="texto">
+    <div class="marca">
+      <img class="logo" src="/jogo/public/favicon.svg" alt="">
+      <p class="nome">Coach <span>Board</span></p>
+    </div>
+    <h1 data-en="Build your club,<br>win the league,<br><em>beat your mates.</em>" data-pt="Cria o teu clube,<br>ganha a liga,<br><em>vence os amigos.</em>"></h1>
+    <p class="sub" data-en="A football board game: roll the dice on the transfer market, bid for real players and play the matches live." data-pt="Um jogo de tabuleiro de futebol: lança os dados no mercado, licita por jogadores reais e joga os jogos ao vivo."></p>
+    <p class="sub" data-en="Auctions, release clauses, injuries, the Cup." data-pt="Leilões, cláusulas, lesões, a Taça."></p>
+    <p class="pastilha" data-en="Free to play · self-host on Cloudflare" data-pt="Grátis · aloja-se na Cloudflare"></p>
+  </div>
+  <div class="janela grande"><img data-img="mercado" alt=""></div>
+  <div class="janela pequena"><img data-img="campeao" alt=""></div>
+  <script>
+    const lingua = new URLSearchParams(location.search).get('lang') === 'pt' ? 'pt' : 'en';
+    document.documentElement.lang = lingua;
+    for (const el of document.querySelectorAll('[data-en]')) el.innerHTML = el.dataset[lingua];
+    for (const el of document.querySelectorAll('[data-img]')) el.src = `/docs/screenshots/capa-${el.dataset.img}-${lingua}.png`;
+  </script>
+</body>
+</html>

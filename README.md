@@ -1,17 +1,11 @@
 <div align="center">
 
-<img src="jogo/public/favicon.svg" alt="Coach Board logo" width="96" height="96">
-
-# Coach Board
-
-**A multiplayer football board game: build your club, play the transfer market and win the league against your friends.**<br>
-Real players, a Monopoly-style transfer board and dice-driven matches, season after season. Free to host on Cloudflare.
+<img src="docs/capa.png" alt="Coach Board: build your club, win the league, beat your mates" width="100%">
 
 <a href="https://coach-board.bacoinz.workers.dev"><img src="https://img.shields.io/badge/play-coach--board.bacoinz.workers.dev-c49a6c?style=flat-square&labelColor=0b1a12" alt="Play online"></a> <img src="https://img.shields.io/badge/version-1.0-c49a6c?style=flat-square&labelColor=0b1a12" alt="Version 1.0"> <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-c49a6c?style=flat-square&labelColor=0b1a12" alt="License: PolyForm Noncommercial"></a> <img src="https://img.shields.io/badge/cost-0%20%E2%82%AC%2Fmonth-c49a6c?style=flat-square&labelColor=0b1a12" alt="Cost: 0 €/month"> <img src="https://img.shields.io/badge/Cloudflare-Workers%20%C2%B7%20Durable%20Objects-c49a6c?style=flat-square&logo=cloudflare&logoColor=white&labelColor=0b1a12" alt="Cloudflare Workers and Durable Objects"> <img src="https://img.shields.io/badge/interface-English%20%C2%B7%20Portugu%C3%AAs-c49a6c?style=flat-square&labelColor=0b1a12" alt="Interface: English and Portuguese">
 
 [**▶ Play now**](https://coach-board.bacoinz.workers.dev) · [Watch the demo](https://coach-board.bacoinz.workers.dev/demo?lang=en) · [How to play](#how-to-play) · [Run your own](#run-your-own) · [Report a bug](https://github.com/bacoinz/coach-board/issues/new/choose) · [🇵🇹 Português](README.pt-PT.md)
 
-<img src="docs/screenshots/market.png" alt="The transfer board, with a player card from the Market" width="100%">
 
 </div>
 

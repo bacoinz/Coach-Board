@@ -34,6 +34,11 @@ const IMAGENS = [
   ['match', '/demo?lang=en&passo=20', 1440, 900],
   ['injury', '/demo?lang=en&passo=21', 1440, 900],
   ['champion', '/demo?lang=en&passo=24', 1440, 900],
+  // Para a imagem de capa (scripts/capa.mjs): sem o guia da demo, nas duas línguas.
+  ['capa-mercado-en', '/demo?lang=en&passo=5&limpo=1', 1440, 900],
+  ['capa-campeao-en', '/demo?lang=en&passo=24&limpo=1', 1440, 900],
+  ['capa-mercado-pt', '/demo?lang=pt&passo=5&limpo=1', 1440, 900],
+  ['capa-campeao-pt', '/demo?lang=pt&passo=24&limpo=1', 1440, 900],
 ];
 
 await mkdir(destino, { recursive: true });

@@ -27,6 +27,8 @@ export async function iniciarDemo({ mostrarEstado, abrir }) {
   // Um diálogo modal bloquearia o guia, por isso as cartas abrem-se como os outros.
   HTMLDialogElement.prototype.showModal = HTMLDialogElement.prototype.show;
   document.body.classList.add('modo-demo');
+  // /demo?limpo=1 esconde o guia: serve para a imagem de capa do README.
+  if (new URLSearchParams(location.search).has('limpo')) document.body.classList.add('demo-limpa');
   const guia = document.createElement('aside');
   guia.className = 'demo-guia painel';
   guia.setAttribute('aria-live', 'polite');

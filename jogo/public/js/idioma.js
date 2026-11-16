@@ -128,12 +128,19 @@ function traduzirAtributo(el, nome) {
   if (t !== v) el.setAttribute(nome, t);
 }
 
+// O texto que já pusemos em inglês: não se traduz outra vez ("E" passa a "D", e "D" não pode passar a "L").
+const jaTraduzido = new WeakMap();
+
 function traduzirNo(no) {
   if (no.nodeType === 3) {
     if (no.parentNode?.namespaceURI === SVG) return;
     const v = no.nodeValue;
+    if (jaTraduzido.get(no) === v) return;
     const t = traduzir(v);
-    if (t !== v) no.nodeValue = t;
+    if (t !== v) {
+      jaTraduzido.set(no, t);
+      no.nodeValue = t;
+    }
     return;
   }
   if (no.nodeType !== 1 || no.tagName === 'SCRIPT' || no.tagName === 'STYLE') return;

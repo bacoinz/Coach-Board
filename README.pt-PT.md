@@ -1,17 +1,11 @@
 <div align="center">
 
-<img src="jogo/public/favicon.svg" alt="Logótipo do Coach Board" width="96" height="96">
-
-# Coach Board
-
-**Um jogo de tabuleiro de futebol multijogador: cria o teu clube, joga o mercado de transferências e ganha a liga aos teus amigos.**<br>
-Jogadores reais, um tabuleiro de mercado ao estilo Monopólio e jogos decididos aos dados, época após época. Aloja-se de graça na Cloudflare.
+<img src="docs/capa-pt.png" alt="Coach Board: cria o teu clube, ganha a liga, vence os amigos" width="100%">
 
 <a href="https://coach-board.bacoinz.workers.dev"><img src="https://img.shields.io/badge/jogar-coach--board.bacoinz.workers.dev-c49a6c?style=flat-square&labelColor=0b1a12" alt="Jogar online"></a> <img src="https://img.shields.io/badge/vers%C3%A3o-1.0-c49a6c?style=flat-square&labelColor=0b1a12" alt="Versão 1.0"> <a href="LICENSE.md"><img src="https://img.shields.io/badge/licen%C3%A7a-PolyForm%20Noncommercial-c49a6c?style=flat-square&labelColor=0b1a12" alt="Licença: PolyForm Noncommercial"></a> <img src="https://img.shields.io/badge/custo-0%20%E2%82%AC%2Fm%C3%AAs-c49a6c?style=flat-square&labelColor=0b1a12" alt="Custo: 0 €/mês"> <img src="https://img.shields.io/badge/Cloudflare-Workers%20%C2%B7%20Durable%20Objects-c49a6c?style=flat-square&logo=cloudflare&logoColor=white&labelColor=0b1a12" alt="Cloudflare Workers e Durable Objects">
 
 [**▶ Jogar agora**](https://coach-board.bacoinz.workers.dev) · [Ver a demo](https://coach-board.bacoinz.workers.dev/demo?lang=pt) · [Como jogar](#como-jogar) · [Alojar o teu](#alojar-o-teu) · [Reportar um bug](https://github.com/bacoinz/coach-board/issues/new/choose) · [🇬🇧 English](README.md)
 
-<img src="docs/screenshots/market.png" alt="O tabuleiro de transferências, com uma carta do Mercado" width="100%">
 
 </div>
 

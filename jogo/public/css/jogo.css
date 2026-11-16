@@ -3149,3 +3149,15 @@ button.barra-contrato.ampliado {
     padding-bottom: 44dvh;
   }
 }
+
+.demo-limpa .demo-guia {
+  display: none;
+}
+.modo-demo.demo-limpa #legenda-vez {
+  top: 4px !important;
+}
+.modo-demo.demo-limpa #palco #equipas-esq {
+  position: revert;
+  top: auto;
+  left: auto;
+}
