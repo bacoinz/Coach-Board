@@ -7,7 +7,7 @@ export const PARES = [
   // --- Início, entrada e lobby ---
   ['Cria o teu clube, compra e vende num tabuleiro de mercado e disputa a liga contra os teus amigos, época após época.', 'Build your club, buy and sell on a transfer-market board and fight your friends for the league, season after season.'],
   ['O teu nome', 'Your name'],
-  ['Ex.: Mister', 'E.g. Gaffer'],
+  ['Ex.: Mister', 'E.g. Coach'],
   ['Criar sala', 'Create room'],
   ['ou entra numa sala', 'or join a room'],
   ['CÓDIGO', 'CODE'],
@@ -568,8 +568,8 @@ export const PARES = [
   ['Próximo passo', 'Next step'],
   ['Voltar ao menu', 'Back to menu'],
   ['Sair da demo', 'Leave the demo'],
-  ['Bem-vindo ao The Gaffer', 'Welcome to The Gaffer'],
-  ['O The Gaffer é um jogo de tabuleiro interativo em que és um treinador e jogas contra os teus amigos, época após época, comprando e vendendo jogadores, para ver quem consegue somar mais títulos.', 'The Gaffer is an interactive board game where you are a manager playing against your friends, season after season, buying and selling players to see who can win the most titles.'],
+  ['Bem-vindo ao Coach Board', 'Welcome to Coach Board'],
+  ['O Coach Board é um jogo de tabuleiro interativo em que és um treinador e jogas contra os teus amigos, época após época, comprando e vendendo jogadores, para ver quem consegue somar mais títulos.', 'Coach Board is an interactive board game where you are a manager playing against your friends, season after season, buying and selling players to see who can win the most titles.'],
   ['Cada época tem duas janelas de transferências (verão e inverno) e duas voltas de campeonato.', 'Each season has two transfer windows (summer and winter) and two halves of the league.'],
   ['Começas com 11 jogadores, um orçamento igual para todos, uma marca de equipamento e dois patrocinadores. Toda a informação da tua equipa está no rodapé.', 'You start with 11 players, the same budget as everyone, a kit brand and two sponsors. All your team\'s info is in the bar at the bottom.'],
   ['A formação', 'The formation'],
@@ -643,7 +643,7 @@ export const PARES = [
   ['Campeão!', 'Champions!'],
   ['No fim da época vês quem foi o campeão, os melhores marcadores e assistências, os melhores e piores momentos e a equipa da época.', 'At the end of the season you see the champion, the top scorers and assists, the best and worst moments and the team of the season.'],
   ['Em "Continuar" vês a evolução do teu plantel para a próxima época, e começa tudo outra vez, agora com jogadores melhores e mais caros.', 'Under "Continue" you see how your squad has developed for next season, and it all starts again, now with better and pricier players.'],
-  ['Agora é a tua vez! Cria uma sala, partilha o link e joga contra os teus amigos. Sê campeão com o teu clube no The Gaffer.', 'Now it\'s your turn! Create a room, share the link and play against your friends. Be a champion with your club in The Gaffer.'],
+  ['Agora é a tua vez! Cria uma sala, partilha o link e joga contra os teus amigos. Sê campeão com o teu clube no Coach Board.', 'Now it\'s your turn! Create a room, share the link and play against your friends. Be a champion with your club in Coach Board.'],
   ['Ah, e não te esqueças de clicar em "TERMINAR A VEZ" quando acabares de jogar, se faz favor!', 'Oh, and don\'t forget to click "END TURN" when you are done, please!'],
 
   // --- Mensagens do servidor: registo, erros e momentos ---

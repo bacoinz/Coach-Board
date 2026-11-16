@@ -1,4 +1,4 @@
-Required Notice: Copyright 2026 bacoinz (https://github.com/bacoinz/the-gaffer)
+Required Notice: Copyright 2026 bacoinz (https://github.com/bacoinz/coach-board)
 
 # PolyForm Noncommercial License 1.0.0
 

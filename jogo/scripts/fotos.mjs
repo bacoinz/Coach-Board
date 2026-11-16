@@ -11,7 +11,7 @@ import { CONFIG } from '../src/config.js';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(raiz, '..', 'dados', 'brutos', '.cache-fotos');
-const UA = 'TheGaffer/0.1 (https://the-gaffer.bacoinz.workers.dev; football board game, data build script)';
+const UA = 'CoachBoard/1.0 (https://coach-board.bacoinz.workers.dev; football board game, data build script)';
 mkdirSync(CACHE, { recursive: true });
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));

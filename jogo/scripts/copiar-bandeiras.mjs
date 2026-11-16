@@ -16,7 +16,7 @@ for (const [, codigo] of Object.values(PAISES)) {
   total += statSync(join(destino, `${codigo}.svg`)).size;
 }
 writeFileSync(join(raiz, 'public', 'LICENCAS.txt'), [
-  '# Licenças de terceiros incluídas no The Gaffer',
+  '# Licenças de terceiros incluídas no Coach Board',
   '',
   '## Fontes — SIL Open Font License 1.1',
   '- Anton (Vernon Adams)',

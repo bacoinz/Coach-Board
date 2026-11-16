@@ -1,4 +1,4 @@
-# Licenças de terceiros incluídas no The Gaffer
+# Licenças de terceiros incluídas no Coach Board
 
 ## Fontes — SIL Open Font License 1.1
 - Anton (Vernon Adams)

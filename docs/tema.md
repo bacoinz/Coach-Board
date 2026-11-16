@@ -1,6 +1,6 @@
 # Tema
 
-O The Gaffer usa o tema partilhado dos outros jogos: `jogo/public/css/tema.css`, copiado do Scout Report. Mantém-se
+O Coach Board usa o tema partilhado dos outros jogos: `jogo/public/css/tema.css`, copiado do Scout Report. Mantém-se
 tudo igual (relvado escuro, painéis, Anton + Inter, botões, salas, placar, pódio, `<dialog>` "Como jogar" com passos
 01., 02., … e botão "Percebi") e só muda a cor de destaque.
 

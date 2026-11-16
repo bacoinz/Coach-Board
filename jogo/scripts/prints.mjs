@@ -38,7 +38,7 @@ const IMAGENS = [
 
 await mkdir(destino, { recursive: true });
 for (const [nome, caminho, w, h] of IMAGENS) {
-  const perfil = await mkdtemp(join(tmpdir(), 'gaffer-print-'));
+  const perfil = await mkdtemp(join(tmpdir(), 'coach-board-print-'));
   try {
     await promisify(execFile)(chrome, [
       '--headless=new', '--hide-scrollbars', '--force-device-scale-factor=1', `--user-data-dir=${perfil}`,

@@ -1,28 +1,28 @@
 <div align="center">
 
-<img src="jogo/public/favicon.svg" alt="The Gaffer logo" width="96" height="96">
+<img src="jogo/public/favicon.svg" alt="Coach Board logo" width="96" height="96">
 
-# The Gaffer
+# Coach Board
 
 **A multiplayer football board game: build your club, play the transfer market and win the league against your friends.**<br>
 Real players, a Monopoly-style transfer board and dice-driven matches, season after season. Free to host on Cloudflare.
 
-<a href="https://the-gaffer.bacoinz.workers.dev"><img src="https://img.shields.io/badge/play-the--gaffer.bacoinz.workers.dev-c49a6c?style=flat-square&labelColor=0b1a12" alt="Play online"></a> <img src="https://img.shields.io/badge/version-1.0-c49a6c?style=flat-square&labelColor=0b1a12" alt="Version 1.0"> <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-c49a6c?style=flat-square&labelColor=0b1a12" alt="License: PolyForm Noncommercial"></a> <img src="https://img.shields.io/badge/cost-0%20%E2%82%AC%2Fmonth-c49a6c?style=flat-square&labelColor=0b1a12" alt="Cost: 0 €/month"> <img src="https://img.shields.io/badge/Cloudflare-Workers%20%C2%B7%20Durable%20Objects-c49a6c?style=flat-square&logo=cloudflare&logoColor=white&labelColor=0b1a12" alt="Cloudflare Workers and Durable Objects"> <img src="https://img.shields.io/badge/interface-English%20%C2%B7%20Portugu%C3%AAs-c49a6c?style=flat-square&labelColor=0b1a12" alt="Interface: English and Portuguese">
+<a href="https://coach-board.bacoinz.workers.dev"><img src="https://img.shields.io/badge/play-coach--board.bacoinz.workers.dev-c49a6c?style=flat-square&labelColor=0b1a12" alt="Play online"></a> <img src="https://img.shields.io/badge/version-1.0-c49a6c?style=flat-square&labelColor=0b1a12" alt="Version 1.0"> <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-c49a6c?style=flat-square&labelColor=0b1a12" alt="License: PolyForm Noncommercial"></a> <img src="https://img.shields.io/badge/cost-0%20%E2%82%AC%2Fmonth-c49a6c?style=flat-square&labelColor=0b1a12" alt="Cost: 0 €/month"> <img src="https://img.shields.io/badge/Cloudflare-Workers%20%C2%B7%20Durable%20Objects-c49a6c?style=flat-square&logo=cloudflare&logoColor=white&labelColor=0b1a12" alt="Cloudflare Workers and Durable Objects"> <img src="https://img.shields.io/badge/interface-English%20%C2%B7%20Portugu%C3%AAs-c49a6c?style=flat-square&labelColor=0b1a12" alt="Interface: English and Portuguese">
 
-[**▶ Play now**](https://the-gaffer.bacoinz.workers.dev) · [Watch the demo](https://the-gaffer.bacoinz.workers.dev/demo?lang=en) · [How to play](#how-to-play) · [Run your own](#run-your-own) · [Report a bug](https://github.com/bacoinz/the-gaffer/issues/new/choose) · [🇵🇹 Português](README.pt-PT.md)
+[**▶ Play now**](https://coach-board.bacoinz.workers.dev) · [Watch the demo](https://coach-board.bacoinz.workers.dev/demo?lang=en) · [How to play](#how-to-play) · [Run your own](#run-your-own) · [Report a bug](https://github.com/bacoinz/coach-board/issues/new/choose) · [🇵🇹 Português](README.pt-PT.md)
 
 <img src="docs/screenshots/market.png" alt="The transfer board, with a player card from the Market" width="100%">
 
 </div>
 
 > [!TIP]
-> **Try it right now:** open **[the-gaffer.bacoinz.workers.dev](https://the-gaffer.bacoinz.workers.dev)**, create a room and share the link with your friends. No account, no install. New to the game? The **[guided demo](https://the-gaffer.bacoinz.workers.dev/demo?lang=en)** walks you through everything.
+> **Try it right now:** open **[coach-board.bacoinz.workers.dev](https://coach-board.bacoinz.workers.dev)**, create a room and share the link with your friends. No account, no install. New to the game? The **[guided demo](https://coach-board.bacoinz.workers.dev/demo?lang=en)** walks you through everything.
 
-## Why The Gaffer
+## Why Coach Board
 
 Football manager games are great alone, but hard to play *with* your mates. Board games are fun with friends, but nobody wants to keep track of transfer fees and league tables on paper.
 
-The Gaffer is both: a quick, chaotic board game where everyone is a manager, the transfer market is a board you roll dice around, and the matches are played out live with dice, tactics and the odd ridiculous injury. A match takes from one evening (3 seasons) to a long campaign (10 seasons), and the room saves itself so you can pick it up later.
+Coach Board is both: a quick, chaotic board game where everyone is a manager, the transfer market is a board you roll dice around, and the matches are played out live with dice, tactics and the odd ridiculous injury. A match takes from one evening (3 seasons) to a long campaign (10 seasons), and the room saves itself so you can pick it up later.
 
 ## Features
 
@@ -83,21 +83,21 @@ The Gaffer is both: a quick, chaotic board game where everyone is a manager, the
 
 ## How to play
 
-1. **Create a room** at [the-gaffer.bacoinz.workers.dev](https://the-gaffer.bacoinz.workers.dev) and share the link (Discord works great). Everyone sets up their team in the lobby, and the host picks the length (3, 5, 8 or 10 seasons) and the bots.
+1. **Create a room** at [coach-board.bacoinz.workers.dev](https://coach-board.bacoinz.workers.dev) and share the link (Discord works great). Everyone sets up their team in the lobby, and the host picks the length (3, 5, 8 or 10 seasons) and the bots.
 2. **Each season has two transfer windows** (summer and winter), each followed by half of the league.
 3. **In the window**, choose your formation, pick a youngster in the draft, then take turns rolling the die around the board. Each square does something: buy players, get sponsors, agents, scouts, money from the board, or a Mystery card. On your turn you can also bid for other managers' players. Don't forget to press **END TURN**.
 4. **At the window closing** you keep your starting 11 and one academy player. The rest are sold to the bank.
 5. **In the league**, pick a secret tactic before each match, then roll the dice in turns. Decide what to do when someone gets injured.
 6. **At the end**, whoever has the most titles wins (a Cup is worth half a league).
 
-The full rules are in the in-game **How to play** menu and, in Portuguese, in [docs/regras.md](docs/regras.md). The quickest way to learn is the [guided demo](https://the-gaffer.bacoinz.workers.dev/demo?lang=en).
+The full rules are in the in-game **How to play** menu and, in Portuguese, in [docs/regras.md](docs/regras.md). The quickest way to learn is the [guided demo](https://coach-board.bacoinz.workers.dev/demo?lang=en).
 
 ## Run your own
 
 You need Node 22+ and, to put it online, a free Cloudflare account. It takes about 10 minutes, and there is nothing to configure: no database, no secrets.
 
 ```bash
-git clone https://github.com/bacoinz/the-gaffer && cd the-gaffer/jogo
+git clone https://github.com/bacoinz/coach-board && cd coach-board/jogo
 npm install
 npm run dev
 ```
@@ -153,18 +153,18 @@ Useful commands, inside `jogo/`: `npm run dev`, `npm test`, `npm run simular`, `
 
 ## Found a bug?
 
-This is version **1.0**, and there will be bugs. If you find one, please **[open an issue](https://github.com/bacoinz/the-gaffer/issues/new/choose)** saying what you did, what happened and, if you can, a screenshot. Ideas and balance feedback are welcome too.
+This is version **1.0**, and there will be bugs. If you find one, please **[open an issue](https://github.com/bacoinz/coach-board/issues/new/choose)** saying what you did, what happened and, if you can, a screenshot. Ideas and balance feedback are welcome too.
 
 ## Support
 
-The Gaffer is free and has no ads. If you enjoyed it, you can buy me a coffee:
+Coach Board is free and has no ads. If you enjoyed it, you can buy me a coffee:
 
 <a href="https://ko-fi.com/bacoinz"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi"></a>
 
 ## Credits
 
 - Player ratings: [EA SPORTS FC 27 Player Ratings](https://www.kaggle.com/datasets/mikedpad/ea-sports-fc27-player-ratings) (Kaggle). Photos: [Wikimedia Commons](https://commons.wikimedia.org), with the credits in [`jogo/public/LICENCAS.txt`](jogo/public/LICENCAS.txt).
-- The Gaffer is a fan-made game, not affiliated with EA SPORTS, the clubs or the leagues. The brands and sponsors in the game are parodies.
+- Coach Board is a fan-made game, not affiliated with EA SPORTS, the clubs or the leagues. The brands and sponsors in the game are parodies.
 
 ## License
 

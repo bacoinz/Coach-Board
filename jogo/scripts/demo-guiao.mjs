@@ -78,7 +78,7 @@ function jogarGuiao(base, semente) {
   };
 
   // --- Formação e draft ---
-  mostrar('Bem-vindo ao The Gaffer', ['O The Gaffer é um jogo de tabuleiro interativo em que és um treinador e jogas contra os teus amigos, época após época, comprando e vendendo jogadores, para ver quem consegue somar mais títulos.', 'Cada época tem duas janelas de transferências (verão e inverno) e duas voltas de campeonato.', 'Começas com 11 jogadores, um orçamento igual para todos, uma marca de equipamento e dois patrocinadores. Toda a informação da tua equipa está no rodapé.'], { alvo: '#barra-equipa' });
+  mostrar('Bem-vindo ao Coach Board', ['O Coach Board é um jogo de tabuleiro interativo em que és um treinador e jogas contra os teus amigos, época após época, comprando e vendendo jogadores, para ver quem consegue somar mais títulos.', 'Cada época tem duas janelas de transferências (verão e inverno) e duas voltas de campeonato.', 'Começas com 11 jogadores, um orçamento igual para todos, uma marca de equipamento e dois patrocinadores. Toda a informação da tua equipa está no rodapé.'], { alvo: '#barra-equipa' });
   mostrar('A formação', ['Cada janela de transferências começa com a escolha da formação, que decide que posições precisas de ter.', 'Só a podes voltar a mudar na janela seguinte, por isso pensa bem!']);
   for (const eq of [EU, RIVAL]) fazer(eq, { t: 'formacao', formacao: '4-4-2' });
   while (janela().fase === 'draft') {
@@ -240,7 +240,7 @@ function jogarGuiao(base, semente) {
   avancarAte(() => sala.fase === 'fimEpoca');
   exigir(sala.palmares.at(-1)?.campeao === EU, 'o guião quer-te campeão');
   exigir(sala.fimEpoca.mudancas.some((m) => m.equipa === EU && m.depois > m.antes), 'o guião quer mostrar a evolução do plantel');
-  mostrar('Campeão!', ["No fim da época vês quem foi o campeão, os melhores marcadores e assistências, os melhores e piores momentos e a equipa da época.","Em \"Continuar\" vês a evolução do teu plantel para a próxima época, e começa tudo outra vez, agora com jogadores melhores e mais caros.","Agora é a tua vez! Cria uma sala, partilha o link e joga contra os teus amigos. Sê campeão com o teu clube no The Gaffer.","Ah, e não te esqueças de clicar em \"TERMINAR A VEZ\" quando acabares de jogar, se faz favor!"]);
+  mostrar('Campeão!', ["No fim da época vês quem foi o campeão, os melhores marcadores e assistências, os melhores e piores momentos e a equipa da época.","Em \"Continuar\" vês a evolução do teu plantel para a próxima época, e começa tudo outra vez, agora com jogadores melhores e mais caros.","Agora é a tua vez! Cria uma sala, partilha o link e joga contra os teus amigos. Sê campeão com o teu clube no Coach Board.","Ah, e não te esqueças de clicar em \"TERMINAR A VEZ\" quando acabares de jogar, se faz favor!"]);
   return passos;
 }
 

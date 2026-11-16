@@ -1,6 +1,6 @@
-/* The Gaffer: o que é próprio deste jogo (o tema partilhado está em tema.css). */
+/* Coach Board: o que é próprio deste jogo (o tema partilhado está em tema.css). */
 
-/* A palavra em destaque do título ("Gaffer", "jogar", "final"). */
+/* A palavra em destaque do título ("Board", "jogar", "final"). */
 .caramelo {
   background: linear-gradient(180deg, var(--destaque-claro), var(--destaque));
   -webkit-background-clip: text;

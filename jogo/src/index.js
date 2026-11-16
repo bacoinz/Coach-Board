@@ -34,7 +34,7 @@ async function pagina(request, env, codigo = null) {
   const imagem = new URL('/og.png', request.url).href;
   let reescrever = new HTMLRewriter().on('meta[property="og:image"]', { element: (el) => el.setAttribute('content', imagem) });
   if (codigo) {
-    const titulo = `The Gaffer · Sala ${codigo}`;
+    const titulo = `Coach Board · Sala ${codigo}`;
     const descricao = `Entra na sala ${codigo}: cria o teu clube, compra e vende no tabuleiro de mercado e ganha a liga.`;
     reescrever = reescrever
       .on('meta[property="og:title"]', { element: (el) => el.setAttribute('content', titulo) })

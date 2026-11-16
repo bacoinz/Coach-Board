@@ -1,4 +1,4 @@
-# The Gaffer — regras
+# Coach Board — regras
 
 Referência das regras do jogo, por ordem cronológica. Os números (dinheiro, preços, probabilidades, bónus) estão
 todos em `jogo/src/config.js`; aqui aparecem só os que fazem parte da regra. As decisões que não vinham na

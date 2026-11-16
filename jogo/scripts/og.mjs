@@ -35,7 +35,7 @@ const servidor = createServer(async (req, res) => {
 });
 await new Promise((ok) => servidor.listen(0, '127.0.0.1', ok));
 
-const perfil = await mkdtemp(join(tmpdir(), 'gaffer-og-'));
+const perfil = await mkdtemp(join(tmpdir(), 'coach-board-og-'));
 try {
   await promisify(execFile)(chrome, [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1', `--user-data-dir=${perfil}`,

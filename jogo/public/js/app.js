@@ -1,4 +1,4 @@
-// Cliente do The Gaffer: ecrãs de início e lobby, e a janela de transferências (tabuleiro 2D, draft, leilões,
+// Cliente do Coach Board: ecrãs de início e lobby, e a janela de transferências (tabuleiro 2D, draft, leilões,
 // propostas, fecho). O servidor é autoritativo: aqui só se desenha o estado e se enviam intenções.
 import { instalarTradutor, mudarIdioma, IDIOMA, traduzir, nomeNacao } from './idioma.js';
 import { Ligacao } from './ligacao.js';

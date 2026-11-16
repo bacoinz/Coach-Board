@@ -1,8 +1,8 @@
 {
-  "name": "the-gaffer",
+  "name": "coach-board",
   "version": "1.0.0",
   "private": true,
-  "description": "The Gaffer — mercado estilo Monopólio e campeonato entre amigos.",
+  "description": "Coach Board — mercado estilo Monopólio e campeonato entre amigos.",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
